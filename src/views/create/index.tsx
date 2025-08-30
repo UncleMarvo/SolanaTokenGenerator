@@ -25,11 +25,13 @@ import axios from "axios";
 import { notify } from "../../utils/notifications";
 import { ClipLoader } from "react-spinners";
 import { useNetworkConfiguration } from "contexts/NetworkConfigurationProvider";
+import { tokenStorage } from "../../utils/tokenStorage";
 
 import { AiOutlineClose } from "react-icons/ai";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import CreateSVG from "../../components/SVG/CreateSVG";
 import { Branding } from "../../components/Branding";
+import { PresetBadge } from "../../components/PresetBadge";
 import { InputView } from "../index";
 
 interface CreateViewProps {
@@ -51,6 +53,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
     amount: "",
     image: "",
     description: "",
+    preset: "honest" as "honest" | "degen",
   });
 
   const handleFormFieldChange = (fieldName, e) => {
@@ -70,10 +73,10 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
       }
 
       // Validate required fields
-      if (!token.name || !token.symbol || !token.decimals || !token.amount || !token.image || !token.description) {
+      if (!token.name || !token.symbol || !token.decimals || !token.amount || !token.image || !token.description || !token.preset) {
         notify({
           type: "error",
-          message: "Please fill in all required fields (name, symbol, decimals, amount, image, and description)",
+          message: "Please fill in all required fields (name, symbol, decimals, amount, image, description, and preset)",
         });
         return;
       }
@@ -161,7 +164,22 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           }
         );
 
-        setTokenMintAddress(mintKeypair.publicKey.toString());
+        const mintAddress = mintKeypair.publicKey.toString();
+        setTokenMintAddress(mintAddress);
+        
+        // Store token data locally
+        tokenStorage.storeToken({
+          mintAddress,
+          name: token.name,
+          symbol: token.symbol,
+          decimals: token.decimals,
+          amount: token.amount,
+          image: token.image,
+          description: token.description,
+          preset: token.preset,
+          createdAt: Date.now(),
+        });
+        
         notify({
           type: "success",
           message: "Token was created successfully",
@@ -340,6 +358,53 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         clickhandle={(e) => handleFormFieldChange("amount", e)}
                       />
 
+                      {/* Preset Selector */}
+                      <div className="mb-6">
+                        <label className="block text-muted mb-3 font-semibold">
+                          Launch Preset
+                        </label>
+                        <div className="space-y-3">
+                          <label className="flex items-start space-x-3 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="preset"
+                              value="honest"
+                              checked={token.preset === "honest"}
+                              onChange={(e) => handleFormFieldChange("preset", e)}
+                              className="text-primary focus:ring-primary mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-fg font-medium">Honest Launch</span>
+                                <span className="bg-success/20 text-success text-xs px-2 py-1 rounded-full">Recommended</span>
+                              </div>
+                              <p className="text-muted text-sm mt-1">
+                                Revoke mint/freeze authority, plan LP lock for community trust
+                              </p>
+                            </div>
+                          </label>
+                          <label className="flex items-start space-x-3 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="preset"
+                              value="degen"
+                              checked={token.preset === "degen"}
+                              onChange={(e) => handleFormFieldChange("preset", e)}
+                              className="text-primary focus:ring-primary mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-fg font-medium">Degen Mode</span>
+                                <span className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full">No Safeguards</span>
+                              </div>
+                              <p className="text-muted text-sm mt-1">
+                                No authority changes, maximum flexibility for rapid deployment
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
                       {/* Wallet Connection Status */}
                       <div className="mb-4 text-center">
                         {!publicKey ? (
@@ -435,6 +500,11 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                       />
                     </div>
 
+                    {/* Preset Badge */}
+                    <div className="mt-4 text-center">
+                      <PresetBadge preset={token.preset} />
+                    </div>
+
                     <div className="mt-5 w-full text-center">
                       <p className="text-muted text-base font-medium leading-6">
                         <InputView
@@ -473,6 +543,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                           className="bg-accent hover:bg-accent/80 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">Add Liquidity</span>
+                        </a>
+                        
+                        <a
+                          href={`/token/${tokenMintAddress}`}
+                          className="bg-muted/20 hover:bg-muted/30 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-fg backdrop-blur-2xl transition-all duration-500"
+                        >
+                          <span className="fw-bold">View Share Page</span>
                         </a>
                       </div>
                     </div>
