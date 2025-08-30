@@ -24,6 +24,8 @@ const MemeKitPage: FC = () => {
   });
   const [result, setResult] = useState<MemeKitResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [copyStates, setCopyStates] = useState<{ [key: string]: boolean }>({});
+  const [error, setError] = useState<string | null>(null);
 
   // Update form when URL parameters are available
   useEffect(() => {
@@ -41,9 +43,10 @@ const MemeKitPage: FC = () => {
     }
   }, [router.isReady, router.query.name, router.query.ticker]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       const response = await fetch("/api/meme/generate", {
@@ -55,9 +58,16 @@ const MemeKitPage: FC = () => {
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error || "Failed to generate meme kit");
+        return;
+      }
+      
       setResult(data);
     } catch (error) {
       console.error("Error generating meme kit:", error);
+      setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -78,6 +88,18 @@ const MemeKitPage: FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleCopy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStates(prev => ({ ...prev, [key]: true }));
+      setTimeout(() => {
+        setCopyStates(prev => ({ ...prev, [key]: false }));
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy text:", error);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -89,14 +111,23 @@ const MemeKitPage: FC = () => {
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold text-center mb-8">AI Meme Kit Generator</h1>
             
-            {/* Pre-filled indicator */}
-            {router.query.name && router.query.ticker && (
-              <div className="bg-success/20 border border-success/30 rounded-lg p-4 mb-6 text-center">
-                <p className="text-success text-sm">
-                  ✅ Pre-filled with token details: <strong>{router.query.name}</strong> (${router.query.ticker})
-                </p>
-              </div>
-            )}
+                         {/* Pre-filled indicator */}
+             {router.query.name && router.query.ticker && (
+               <div className="bg-success/20 border border-success/30 rounded-lg p-4 mb-6 text-center">
+                 <p className="text-success text-sm">
+                   ✅ Pre-filled with token details: <strong>{router.query.name}</strong> (${router.query.ticker})
+                 </p>
+               </div>
+             )}
+
+             {/* Error display */}
+             {error && (
+               <div className="bg-danger/20 border border-danger/30 rounded-lg p-4 mb-6 text-center">
+                 <p className="text-danger text-sm">
+                   ❌ {error}
+                 </p>
+               </div>
+             )}
             
             {!result ? (
               <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
@@ -171,7 +202,19 @@ const MemeKitPage: FC = () => {
                   <div className="space-y-4">
                     {result.twitterThreads.map((thread, index) => (
                       <div key={index} className="p-4 bg-muted/10 rounded-lg">
-                        <p className="text-fg">{thread}</p>
+                        <div className="flex justify-between items-start space-x-4">
+                          <p className="text-fg flex-1 whitespace-pre-line">{thread}</p>
+                          <button
+                            onClick={() => handleCopy(thread, `thread-${index}`)}
+                            className={`flex-shrink-0 px-3 py-1 rounded text-sm font-medium transition-all duration-300 ${
+                              copyStates[`thread-${index}`]
+                                ? "bg-success text-bg"
+                                : "bg-muted/20 hover:bg-muted/30 text-fg"
+                            }`}
+                          >
+                            {copyStates[`thread-${index}`] ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -183,7 +226,19 @@ const MemeKitPage: FC = () => {
                   <div className="space-y-4">
                     {result.copypastas.map((copypasta, index) => (
                       <div key={index} className="p-4 bg-muted/10 rounded-lg">
-                        <p className="text-fg">{copypasta}</p>
+                        <div className="flex justify-between items-start space-x-4">
+                          <p className="text-fg flex-1">{copypasta}</p>
+                          <button
+                            onClick={() => handleCopy(copypasta, `copypasta-${index}`)}
+                            className={`flex-shrink-0 px-3 py-1 rounded text-sm font-medium transition-all duration-300 ${
+                              copyStates[`copypasta-${index}`]
+                                ? "bg-success text-bg"
+                                : "bg-muted/20 hover:bg-muted/30 text-fg"
+                            }`}
+                          >
+                            {copyStates[`copypasta-${index}`] ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -204,13 +259,30 @@ const MemeKitPage: FC = () => {
                   </div>
                 </div>
 
-                {/* Download Button */}
-                <div className="text-center">
+                {/* Download Buttons */}
+                <div className="text-center space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                      onClick={handleDownload}
+                      className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300"
+                    >
+                      Download Kit (JSON)
+                    </button>
+                    
+                    <a
+                      href={`/api/meme/kit.zip?name=${encodeURIComponent(form.name)}&ticker=${encodeURIComponent(form.ticker)}&vibe=${encodeURIComponent(form.vibe)}&preset=degen&shareUrl=${encodeURIComponent(`${window.location.origin}/token/example`)}`}
+                      className="bg-accent hover:bg-accent/80 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300 text-center"
+                    >
+                      Download Kit (ZIP)
+                    </a>
+                  </div>
+                  
                   <button
-                    onClick={handleDownload}
-                    className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300"
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                    className="bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300 disabled:opacity-50"
                   >
-                    Download Kit
+                    {isLoading ? "Regenerating..." : "Regenerate"}
                   </button>
                 </div>
 

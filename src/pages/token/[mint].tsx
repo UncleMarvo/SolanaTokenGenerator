@@ -144,13 +144,20 @@ const TokenSharePage: FC = () => {
             {/* Action Buttons */}
             <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
               <h2 className="text-xl font-bold mb-6">Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a
-                  href={`/meme-kit?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}`}
-                  className="bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-4 rounded-lg transition-all duration-300 text-center"
-                >
-                  Get Meme Kit
-                </a>
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                       <a
+                         href={`/meme-kit?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}`}
+                         className="bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-4 rounded-lg transition-all duration-300 text-center"
+                       >
+                         Get Meme Kit
+                       </a>
+                       
+                       <a
+                         href={`/api/meme/kit.zip?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}&vibe=degen&preset=${encodeURIComponent(token.preset)}&shareUrl=${encodeURIComponent(window.location.href)}`}
+                         className="bg-accent hover:bg-accent/80 text-bg font-bold py-3 px-4 rounded-lg transition-all duration-300 text-center"
+                       >
+                         Download ZIP
+                       </a>
                 
                 <a
                   href={`/liquidity?tokenMint=${encodeURIComponent(token.mintAddress)}&dex=Raydium&pair=SOL/TOKEN`}

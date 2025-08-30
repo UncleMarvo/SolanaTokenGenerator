@@ -98,6 +98,52 @@ If you download the final source code then you can follow the following instruct
   URL:https://beta.solpg.io/
 ```
 
+## AI Meme Kit Configuration (Optional)
+
+The Meme Kit feature supports optional AI-powered content generation using OpenAI's API.
+
+### Setup Instructions
+
+1. **Copy the environment template:**
+   ```bash
+   cp env.example .env.local
+   ```
+
+2. **Configure AI settings in `.env.local`:**
+   ```bash
+   # Enable AI-powered meme generation
+   MEME_AI=on
+   
+   # Your OpenAI API key (get from https://platform.openai.com/api-keys)
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+3. **Restart your development server:**
+   ```bash
+   npm run dev
+   ```
+
+### Features
+
+- **AI Generation**: When enabled, generates unique meme content using GPT-3.5-turbo
+- **Template Fallback**: Falls back to template generation if AI fails or is disabled
+- **Rate Limiting**: 5 requests per 10 minutes per IP address
+- **Safety Filters**: Blocks content with disallowed terms
+- **Vibe-Specific**: Content tailored to funny/serious/degen tones
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MEME_AI` | Enable AI generation | `off` |
+| `OPENAI_API_KEY` | OpenAI API key | Required if AI enabled |
+
+### Safety & Rate Limiting
+
+- **Rate Limit**: 5 requests per 10 minutes per IP
+- **Safety Check**: Filters out violent/illegal terms
+- **Fallback**: Automatic fallback to templates if AI fails
+
 ## Important Links
 
 - [Get Pro Blockchain Developer Course](https://www.theblockchaincoders.com/pro-nft-marketplace)

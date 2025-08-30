@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { generateMemeContent } from "../../../lib/memeTemplates";
 
 interface MemeKitRequest {
   name: string;
@@ -13,7 +14,144 @@ interface MemeKitResponse {
   roadmap: string[];
 }
 
-export default function handler(
+// Rate limiting store (in production, use Redis or similar)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+// Disallowed terms for safety
+const DISALLOWED_TERMS = [
+  'kill', 'murder', 'bomb', 'terror', 'hate', 'racist', 'nazi', 'hitler',
+  'scam', 'fake', 'rug', 'ponzi', 'pyramid', 'illegal', 'drugs', 'weapon'
+];
+
+// Rate limiting function
+function checkRateLimit(identifier: string): boolean {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000; // 10 minutes
+  const maxRequests = 5;
+
+  const record = rateLimitStore.get(identifier);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+
+  if (record.count >= maxRequests) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
+// Safety check function
+function checkSafety(name: string, ticker: string): string | null {
+  const text = `${name} ${ticker}`.toLowerCase();
+  
+  for (const term of DISALLOWED_TERMS) {
+    if (text.includes(term)) {
+      return `Content contains disallowed term: ${term}`;
+    }
+  }
+  
+  return null;
+}
+
+// AI generation function
+async function generateWithAI(name: string, ticker: string, vibe: string): Promise<MemeKitResponse> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OpenAI API key not configured");
+  }
+
+  const vibePrompts = {
+    funny: "funny and humorous with lots of emojis and memes",
+    serious: "professional and business-focused with technical terms",
+    degen: "extremely hype and degen-style with rocket emojis and moon references"
+  };
+
+  const prompt = `Generate a meme kit for token "${name}" ($${ticker}) with ${vibePrompts[vibe as keyof typeof vibePrompts]} tone.
+
+Return ONLY a JSON object with this exact structure:
+{
+  "twitterThreads": [
+    "🧵 Thread 1 content here...",
+    "🚀 Thread 2 content here..."
+  ],
+  "copypastas": [
+    "Copypasta 1 here",
+    "Copypasta 2 here"
+  ],
+  "roadmap": [
+    "Step 1: Launch",
+    "Step 2: Vibe", 
+    "Step 3: Moon",
+    "Step 4: Lambo"
+  ]
+}
+
+Keep threads 6-8 lines each, copypastas short and punchy, roadmap 4 steps. Use emojis and hashtags appropriately.`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a meme kit generator for Solana tokens. Generate engaging, appropriate content."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_tokens: 800,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("No content received from OpenAI");
+    }
+
+         // Parse the JSON response (handle markdown formatting)
+     let jsonContent = content.trim();
+     
+     // Remove markdown code blocks if present
+     if (jsonContent.startsWith('```json')) {
+       jsonContent = jsonContent.replace(/^```json\n/, '').replace(/\n```$/, '');
+     } else if (jsonContent.startsWith('```')) {
+       jsonContent = jsonContent.replace(/^```\n/, '').replace(/\n```$/, '');
+     }
+     
+     const parsed = JSON.parse(jsonContent);
+    
+    return {
+      logoUrl: "/brand/meme-placeholder.png",
+      twitterThreads: parsed.twitterThreads || [],
+      copypastas: parsed.copypastas || [],
+      roadmap: parsed.roadmap || [],
+    };
+  } catch (error) {
+    console.error("AI generation error:", error);
+    throw error;
+  }
+}
+
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<MemeKitResponse | { error: string }>
 ) {
@@ -28,83 +166,51 @@ export default function handler(
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Mock response based on vibe
-    const mockResponse: MemeKitResponse = {
-      logoUrl: "/brand/meme-placeholder.png",
-      twitterThreads: generateTwitterThreads(ticker, vibe),
-      copypastas: generateCopypastas(ticker, vibe),
-      roadmap: generateRoadmap(vibe),
-    };
+    // Safety check
+    const safetyError = checkSafety(name, ticker);
+    if (safetyError) {
+      return res.status(400).json({ error: safetyError });
+    }
 
-    res.status(200).json(mockResponse);
+    // Rate limiting (using IP address)
+    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const identifier = Array.isArray(clientIP) ? clientIP[0] : clientIP;
+    
+    if (!checkRateLimit(identifier)) {
+      return res.status(429).json({ error: "Rate limit exceeded. Try again in 10 minutes." });
+    }
+
+    let response: MemeKitResponse;
+
+    // Check if AI is enabled and API key exists
+    if (process.env.MEME_AI === "on" && process.env.OPENAI_API_KEY) {
+      try {
+        response = await generateWithAI(name, ticker, vibe);
+      } catch (aiError) {
+        console.error("AI generation failed, falling back to templates:", aiError);
+        // Fallback to template generation
+        const generatedContent = generateMemeContent(name, ticker, vibe);
+        response = {
+          logoUrl: "/brand/meme-placeholder.png",
+          twitterThreads: generatedContent.twitterThreads,
+          copypastas: generatedContent.copypastas,
+          roadmap: generatedContent.roadmap,
+        };
+      }
+    } else {
+      // Use template-based generation
+      const generatedContent = generateMemeContent(name, ticker, vibe);
+      response = {
+        logoUrl: "/brand/meme-placeholder.png",
+        twitterThreads: generatedContent.twitterThreads,
+        copypastas: generatedContent.copypastas,
+        roadmap: generatedContent.roadmap,
+      };
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error generating meme kit:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
-
-function generateTwitterThreads(ticker: string, vibe: string): string[] {
-  const threads = {
-    funny: [
-      `🧵 Why $${ticker} is the most hilarious token you'll ever buy:\n\n1. It's so funny, even your wallet will laugh\n2. The memes write themselves\n3. Your friends will think you're a genius\n4. The only thing funnier than the price is the community\n\n#${ticker} #Solana #Memes`,
-      `😂 The $${ticker} story in 3 tweets:\n\n1. "This will never work"\n2. "Maybe it will work"\n3. "I can't believe it worked"\n\n#${ticker} #Solana #Crypto`
-    ],
-    serious: [
-      `📊 $${ticker} Token Analysis:\n\n• Strong fundamentals\n• Experienced team\n• Clear roadmap\n• Growing community\n• Real utility\n\nThis is not financial advice. #${ticker} #Solana`,
-      `🔍 Deep dive into $${ticker}:\n\nMarket cap: Growing\nLiquidity: Strong\nCommunity: Active\nDevelopment: Ongoing\n\nSolid project with real potential. #${ticker} #Solana`
-    ],
-    degen: [
-      `🚀 $${ticker} APE IN NOW OR MISS OUT FOREVER:\n\n• 1000x potential\n• Next moon mission\n• Early gem alert\n• Don't be poor\n• DYOR but ape anyway\n\n#${ticker} #Solana #Moon`,
-      `💎 $${ticker} DIAMOND HANDS ONLY:\n\n• Paper hands not welcome\n• HODL to the moon\n• This is the way\n• Trust the process\n• We're all gonna make it\n\n#${ticker} #Solana #WAGMI`
-    ]
-  };
-
-  return threads[vibe as keyof typeof threads] || threads.degen;
-}
-
-function generateCopypastas(ticker: string, vibe: string): string[] {
-  const copypastas = {
-    funny: [
-      `BUY $${ticker} OR STAY BROKE 🚀`,
-      `$${ticker} is so good, even my cat wants to invest 😸`,
-      `I sold my kidney for $${ticker} and I don't regret it 💎`
-    ],
-    serious: [
-      `$${ticker} represents the future of decentralized finance.`,
-      `Investing in $${ticker} is investing in innovation.`,
-      `$${ticker} - Building the future, one block at a time.`
-    ],
-    degen: [
-      `$${ticker} OR STAY POOR FOREVER 🚀💎`,
-      `APE INTO $${ticker} NOW BEFORE IT'S TOO LATE 🔥`,
-      `$${ticker} IS THE NEXT 1000X GEM 💎💎💎`
-    ]
-  };
-
-  return copypastas[vibe as keyof typeof copypastas] || copypastas.degen;
-}
-
-function generateRoadmap(vibe: string): string[] {
-  const roadmaps = {
-    funny: [
-      "Step 1: Launch with a bang",
-      "Step 2: Make everyone laugh",
-      "Step 3: Moon (because why not?)",
-      "Step 4: Profit and memes"
-    ],
-    serious: [
-      "Phase 1: Platform Development",
-      "Phase 2: Community Building",
-      "Phase 3: Partnership Expansion",
-      "Phase 4: Ecosystem Growth"
-    ],
-    degen: [
-      "Step 1: Launch",
-      "Step 2: Vibe",
-      "Step 3: Moon",
-      "Step 4: Lambo"
-    ]
-  };
-
-  return roadmaps[vibe as keyof typeof roadmaps] || roadmaps.degen;
 }
