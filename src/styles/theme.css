@@ -1,0 +1,40 @@
+/* Degen Neon Theme - CSS Variables */
+
+/* Light Mode (:root) */
+:root {
+  --bg: #0F1115;
+  --fg: #E6F1FF;
+  --muted: #9BA7B4;
+  --primary: #8AFFEF;
+  --primary-600: #3FD6C8;
+  --secondary: #7C5CFF;
+  --secondary-600: #5B3FE6;
+  --accent: #FFB224;
+  --danger: #FF5C5C;
+  --success: #3FE69E;
+}
+
+/* Dark Mode (.dark) */
+.dark {
+  --bg: #0B0D10;
+  --fg: #E6F1FF;
+  --muted: #9BA7B4;
+  --primary: #8AFFEF;
+  --primary-600: #3FD6C8;
+  --secondary: #7C5CFF;
+  --secondary-600: #5B3FE6;
+  --accent: #FFB224;
+  --danger: #FF5C5C;
+  --success: #3FE69E;
+}
+
+/* Ensure html element supports dark mode toggle */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Apply theme variables to body for fallback */
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+}

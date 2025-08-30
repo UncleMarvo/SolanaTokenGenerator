@@ -11,7 +11,7 @@ export const InputView: FC<InputViewProps> = ({ placeholder, name, clickhandle }
     <div className="mb-4">
       <label
         htmlFor="input-label"
-        className="text-base/normal text-default-200 mb-2 block font-semibold"
+        className="text-base/normal text-muted mb-2 block font-semibold"
       >
         {name}
       </label>
@@ -21,7 +21,7 @@ export const InputView: FC<InputViewProps> = ({ placeholder, name, clickhandle }
         id="input-label"
         onChange={clickhandle}
         placeholder={placeholder}
-        className="border-default-200 block w-full rounded border-white/10 bg-transparent py-1.5 px-3 text-white/80 focus:border-white/25 focus:ring-transparent"
+        className="border-muted block w-full rounded border-muted/10 bg-transparent py-1.5 px-3 text-fg/80 focus:border-muted/25 focus:ring-transparent"
       />
     </div>
   );

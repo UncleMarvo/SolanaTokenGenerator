@@ -53,7 +53,7 @@ const Notification = ({type, message, description, txid, onHide}) => {
   }, [onHide]);
 
   return (
-    <div className="bg-bkg-1 pointer-events-auto z-50 mx-4 mt-2 mb-12 w-full max-w-sm overflow-hidden rounded-md bg-[#0a1023] p-2 shadow-lg right-1">
+    <div className="bg-bg pointer-events-auto z-50 mx-4 mt-2 mb-12 w-full max-w-sm overflow-hidden rounded-md p-2 shadow-lg right-1">
       <div className="p-4">
         <div className="flex items-center">
           <div className="flex-shrink-0">
@@ -64,23 +64,23 @@ const Notification = ({type, message, description, txid, onHide}) => {
             }
             {
               type === "info" ? (
-                <InformationCircleIcon className="text-info mr-1 h-8 w-8" />
+                <InformationCircleIcon className="text-secondary mr-1 h-8 w-8" />
               ) : null
             }
             {
               type === "error" ? (
-                <XCircleIcon className="text-error mr-1 h-8 w-8" />
+                <XCircleIcon className="text-danger mr-1 h-8 w-8" />
               ) : null
             }
           </div>
 
           <div className="ml-2 w-0 flex-1">
-            <div className="text-fgd-1 font-bold">
+            <div className="text-fg font-bold">
               {message}
             </div>
             { 
               description ? (
-                <p className="text-fgd-2 mt-0.5 text-sm">{description}</p>
+                <p className="text-muted mt-0.5 text-sm">{description}</p>
               ) : null
             }
             {
@@ -88,7 +88,7 @@ const Notification = ({type, message, description, txid, onHide}) => {
               // href
               txid ? (
                 <div className="flex flex-row">
-                  <a href={`https://explorer.solana.com/tx/${txid}?cluster=${networkConfiguration}`} target="_blank" rel="noferrer" className="link-accent link flex flex-row">
+                  <a href={`https://explorer.solana.com/tx/${txid}?cluster=${networkConfiguration}`} target="_blank" rel="noferrer" className="text-accent hover:text-accent/80 link flex flex-row">
                     <NotificationSVG />
                     <div className="mx-4 flex">
                       { txid.slice(0, 8)}...
@@ -101,7 +101,7 @@ const Notification = ({type, message, description, txid, onHide}) => {
           </div>
 
           <div className="ml-4 flex flex-shrink-0 self-start">
-            <button onClick={() => onHide()} className="bg-bkg-2 default-transition text-fgd-3 hover:text-fgd-4 inline-flex rounded-md focus:outline-none">
+            <button onClick={() => onHide()} className="bg-muted/10 hover:bg-muted/20 text-muted hover:text-fg inline-flex rounded-md focus:outline-none transition-all">
               <span className="sr-only">Close</span>
               <XIcon className="h-5 w-5" />
             </button>

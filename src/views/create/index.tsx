@@ -245,7 +245,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
   return (
     <>
       {isLoading && (
-        <div className="absolute top-0 left-0 z-50 flex h-screen w-full items-center justify-center bg-black/[.3] backdrop-blur-[10px]">
+        <div className="absolute top-0 left-0 z-50 flex h-screen w-full items-center justify-center bg-bg/[.3] backdrop-blur-[10px]">
           <ClipLoader />
         </div>
       )}
@@ -253,7 +253,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
       {!tokenMintAddress ? (
         <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
           <div className="container">
-            <div className="bg-default-950/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
+            <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
               <div className="grid gap-10 lg:grid-cols-2">
                 <div className="ps-4 hidden py-4 pt-10 lg:block">
                   <div className="upload relative w-full overflow-hidden rounded-xl">
@@ -279,17 +279,17 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                   <textarea
                     rows={6}
                     onChange={(e) => handleFormFieldChange("description", e)}
-                    className="border-default-200 relative mt-48 block w-full rounded border-white/10 bg-transparent py-1.5 px-3 text-white/80 focus:border-white/25 focus:ring-transparent"
+                    className="border-muted relative mt-48 block w-full rounded border-muted/10 bg-transparent py-1.5 px-3 text-fg/80 focus:border-muted/25 focus:ring-transparent"
                     placeholder="Description of your token"
                   ></textarea>
                 </div>
 
                 <div className="lg:ps-0 flex flex-col p-10">
                   <div className="pb-6 my-auto">
-                    <h4 className="mb-4 text-2xl font-bold text-white">
+                    <h4 className="mb-4 text-2xl font-bold text-fg">
                       Solana Token Creator
                     </h4>
-                    <p className="text-default-300 mb-8 max-w-sm">
+                    <p className="text-muted mb-8 max-w-sm">
                       Kindly provide all the details about your token.
                     </p>
 
@@ -324,7 +324,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         <button
                           type="submit"
                           onClick={() => createToken(token)}
-                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-white backdrop-blur-2xl transition-all duration-500"
+                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">Create Token</span>
                         </button>
@@ -338,9 +338,9 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         <li>
                           <a
                             onClick={() => setOpenCreateModal(false)}
-                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-2xl transition-all duration-500 hover:bg-blue-600/60"
+                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
                           >
-                            <i className="text-2xl text-white group-hover:text-white">
+                            <i className="text-2xl text-fg group-hover:text-fg">
                               <AiOutlineClose />
                             </i>
                           </a>
@@ -356,7 +356,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
       ) : (
         <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
           <div className="container">
-            <div className="bg-default-950/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
+            <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
               <div className="grid gap-10 lg:grid-cols-2">
                 {/* FIRST */}
                 <Branding
@@ -378,10 +378,10 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                   </div>
 
                   <div className="my-auto pb-6 text-center">
-                    <h4 className="mb-4 text-2xl font-bold text-white">
+                    <h4 className="mb-4 text-2xl font-bold text-fg">
                       Link to your new token
                     </h4>
-                    <p className="text-default-300 mx-auto mb-5 max-w-sm">
+                    <p className="text-muted mx-auto mb-5 max-w-sm">
                       Your Solana token is successfully created, check now on
                       explorer
                     </p>
@@ -395,7 +395,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                     </div>
 
                     <div className="mt-5 w-full text-center">
-                      <p className="text-default-300 text-base font-medium leading-6">
+                      <p className="text-muted text-base font-medium leading-6">
                         <InputView
                           name={"Token Address"}
                           placeholder={tokenMintAddress}
@@ -415,7 +415,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                           href={`https://explorer.solana.com/address/${tokenMintAddress}?cluster=${networkConfiguration}`}
                           target="_blank"
                           rel="noferrer"
-                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-white backdrop-blur-2xl transition-all duration-500"
+                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">View on Solana</span>
                         </a>
@@ -429,9 +429,9 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         <li>
                           <a
                             onClick={() => setOpenCreateModal(false)}
-                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-2xl transition-all duration-500 hover:bg-blue-600/60"
+                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
                           >
-                            <i className="text-2xl text-white group-hover:text-white">
+                            <i className="text-2xl text-fg group-hover:text-fg">
                               <AiOutlineClose />
                             </i>
                           </a>

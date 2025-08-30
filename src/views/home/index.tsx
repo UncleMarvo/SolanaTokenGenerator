@@ -12,7 +12,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
   return (
     <section id="home" className="relative overflow-hidden pb-20 pt-[72px]">
       <div className="px-6 py-4">
-        <div className="bg-default-950/40 rounded-2xl">
+        <div className="bg-bg/40 rounded-2xl">
           <div className="container">
             <div className="p-6">
               <div className="relative grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
@@ -24,10 +24,10 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                     CREATE SOLANA TOKEN {pkg.version}
                   </span>
 
-                  <h1 className="md:text-5xl/tight my-4 max-w-lg text-4xl font-medium text-white">
+                  <h1 className="md:text-5xl/tight my-4 max-w-lg text-4xl font-medium text-fg">
                     Now Create Solana token without code
                   </h1>
-                  <p className="text-default-300 md:text-lg">
+                  <p className="text-muted md:text-lg">
                     Launch your solana token, all in one solana token
                     development and deployment
                   </p>
@@ -35,9 +35,9 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                   <div className="new_add_css">
                     <a
                       onClick={() => setOpenCreateModal(true)}
-                      className="hover:bg-primary-hover pe-4 group mt-10 inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-1 py-1 text-white transition-all duration-300"
+                      className="hover:bg-primary-600 pe-4 group mt-10 inline-flex items-center justify-center gap-2 rounded-full border border-muted/10 px-1 py-1 text-fg transition-all duration-300"
                     >
-                      <span className="bg-primary/20 text-primary me-2 flex h-11 w-11 items-center justify-center rounded-full group-hover:bg-white/10 group-hover:text-white">
+                      <span className="bg-primary/20 text-primary me-2 flex h-11 w-11 items-center justify-center rounded-full group-hover:bg-muted/10 group-hover:text-fg">
                         <MdGeneratingTokens />
                       </span>
                       Create

@@ -55,21 +55,21 @@ export const FeatureView: FC<FeatureViewProps> = ({
       <div className="container">
         <div className="mb-10 flex items-end justify-between">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-medium capitalize text-white">
+            <h2 className="mb-4 text-3xl font-medium capitalize text-fg">
               Choose Solana Blockchain Generator
             </h2>
-            <p className="text-default-200 text-sm font-medium">
+            <p className="text-muted text-sm font-medium">
               Now you can create Solana Tokens <br />
               without code instantly
             </p>
           </div>
         </div>
 
-        <div className="bg-default-950/40 flex flex-wrap items-center rounded-3xl backdrop-blur-3xl">
+        <div className="bg-bg/40 flex flex-wrap items-center rounded-3xl backdrop-blur-3xl">
           {features.map((list, index) => (
             <div
               key={index}
-              className={`w-auto grow border-b border-white/10 md:w-12 ${
+              className={`w-auto grow border-b border-muted/10 md:w-12 ${
                 index == 0
                   ? "md:border-e"
                   : index == 1
@@ -83,15 +83,15 @@ export const FeatureView: FC<FeatureViewProps> = ({
                 <div className="bg-primary/10 text-primary mb-10 inline-flex h-16 w-16 items-center justify-center rounded-xl">
                   <i data-lucide="framer">{list.icon}</i>
                 </div>
-                <h2 className="mb-4 text-2xl font-medium text-white">
+                <h2 className="mb-4 text-2xl font-medium text-fg">
                   {list.name}
                 </h2>
-                <p className="text-default-200 mb-6 text-base">
+                <p className="text-muted mb-6 text-base">
                   {list.description}
                 </p>
                 <a
                   onClick={() => list.function(true)}
-                  className="hover:bg-primary inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-2 text-white transition-all duration-300"
+                  className="hover:bg-primary-600 inline-flex items-center justify-center gap-2 rounded-full border border-muted/10 px-6 py-2 text-fg transition-all duration-300"
                 >
                   Use Tools
                   <i>

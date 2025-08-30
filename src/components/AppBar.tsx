@@ -37,7 +37,7 @@ export const AppBar: FC = (props) => {
 
             <div className="ms-auto flex items-center px-2.5 lg:hidden">
               <button
-                className="hs-collapse-toggle bg-default-100/5 inline-flex h-9 w-12 items-center justify-center rounded-md border border-white/20"
+                className="hs-collapse-toggle bg-muted/5 inline-flex h-9 w-12 items-center justify-center rounded-md border border-muted/20"
                 type="button"
                 data-hs-collapse="#mobileMenu"
                 data-hs-type="collapse"
