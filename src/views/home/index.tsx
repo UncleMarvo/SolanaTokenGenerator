@@ -3,7 +3,7 @@ import { MdGeneratingTokens } from "react-icons/md";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import pkg from "../../../package.json";
-import { heroCarouselImages } from "../../../config/brand";
+import { heroCarouselImages } from "../../config/brand";
 
 interface HomeViewProps {
   setOpenCreateModal: (value: boolean) => void;
