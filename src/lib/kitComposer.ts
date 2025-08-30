@@ -2,7 +2,18 @@ import sharp from 'sharp';
 import QRCode from 'qrcode';
 import { hashString, hashToRange, hslToHex } from './hash';
 
+// Deterministic PRNG (Linear Congruential Generator)
+export function seededRng(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0; // LCG parameters
+    return (state & 0x7fffffff) / 0x7fffffff; // Return 0..1
+  };
+}
+
 // Types
+export type Theme = "neonGrid" | "waveGlow" | "posterize";
+
 export interface Palette {
   bg: string;
   fg: string;
@@ -16,6 +27,7 @@ export interface ComposeOptions {
   subtext?: string;
   palette: Palette;
   badge?: string;
+  theme: Theme;
 }
 
 export interface FaviconOptions {
@@ -29,6 +41,24 @@ const DEGEN_NEON_PALETTE: Palette = {
   fg: '#E6F1FF',
   accent: '#8AFFEF'
 };
+
+// Generate deterministic theme from ticker
+export function themeFromTicker(ticker: string): Theme {
+  const hash = hashString(ticker);
+  const themeIndex = hashToRange(hash >> 4, 3); // Use different bits for theme selection
+  
+  const themes: Theme[] = ["neonGrid", "waveGlow", "posterize"];
+  return themes[themeIndex];
+}
+
+// Generate deterministic default logo variant from ticker
+export function defaultLogoFromTicker(ticker: string): string {
+  const hash = hashString(ticker);
+  const logoIndex = hashToRange(hash >> 6, 3); // Use different bits for logo selection
+  
+  const logos = ["textMark", "badgeMark", "pixelMark"];
+  return logos[logoIndex];
+}
 
 // Generate deterministic palette from ticker
 export function paletteFromTicker(ticker: string): Palette {
@@ -50,9 +80,71 @@ export function paletteFromTicker(ticker: string): Palette {
   return { bg, fg, accent };
 }
 
+// Create theme-specific background SVG
+function createThemeBackground(w: number, h: number, palette: Palette, theme: Theme, rng: () => number): string {
+  switch (theme) {
+    case "neonGrid":
+      const gridOffset = Math.floor(rng() * 20);
+      const glowRadius = 30 + Math.floor(rng() * 20);
+      return `
+        <defs>
+          <pattern id="gridPattern" x="${gridOffset}" y="${gridOffset}" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="${palette.accent}" stroke-width="1" opacity="0.3"/>
+          </pattern>
+          <radialGradient id="cornerGlow" cx="0%" cy="0%" r="50%">
+            <stop offset="0%" style="stop-color:${palette.accent};stop-opacity:0.6"/>
+            <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="${palette.bg}"/>
+        <rect width="100%" height="100%" fill="url(#gridPattern)"/>
+        <circle cx="${w - 60}" cy="60" r="${glowRadius}" fill="url(#cornerGlow)"/>
+      `;
+      
+    case "waveGlow":
+      const waveCenterX = 40 + Math.floor(rng() * 20);
+      const waveCenterY = 40 + Math.floor(rng() * 20);
+      const noiseFreq = 0.6 + rng() * 0.4;
+      return `
+        <defs>
+          <radialGradient id="waveGradient" cx="${waveCenterX}%" cy="${waveCenterY}%" r="70%">
+            <stop offset="0%" style="stop-color:${palette.accent};stop-opacity:0.4"/>
+            <stop offset="50%" style="stop-color:${palette.accent};stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:${palette.bg};stop-opacity:1"/>
+          </radialGradient>
+          <filter id="noise">
+            <feTurbulence type="fractalNoise" baseFrequency="${noiseFreq}" numOctaves="4" result="noise"/>
+            <feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.05 0" result="noiseOpacity"/>
+          </filter>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#waveGradient)"/>
+        <rect width="100%" height="100%" filter="url(#noise)" opacity="0.05"/>
+      `;
+      
+    case "posterize":
+      const accentX = 0.25 + rng() * 0.1;
+      const accentY = 0.65 + rng() * 0.1;
+      const dotRadius = 6 + Math.floor(rng() * 4);
+      return `
+        <defs>
+          <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${palette.accent};stop-opacity:0.8"/>
+            <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0.3"/>
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="${palette.bg}"/>
+        <polygon points="0,${h} ${w * accentX},0 ${w * (accentX + 0.1)},0 ${w},${h * accentY}" fill="url(#accentGradient)"/>
+        <circle cx="${w * 0.8}" cy="${h * 0.2}" r="${dotRadius}" fill="${palette.accent}" opacity="0.6"/>
+      `;
+      
+    default:
+      return `<rect width="100%" height="100%" fill="${palette.bg}"/>`;
+  }
+}
+
 // Create SVG text overlay
-function createTextSVG(options: ComposeOptions): string {
-  const { w, h, text, subtext, palette, badge } = options;
+function createTextSVG(options: ComposeOptions, rng: () => number): string {
+  const { w, h, text, subtext, palette, badge, theme } = options;
   
   const fontSize = Math.min(w / 15, 48);
   const subFontSize = Math.min(w / 25, 24);
@@ -65,10 +157,6 @@ function createTextSVG(options: ComposeOptions): string {
   return `
     <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:${palette.bg};stop-opacity:1" />
-          <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0.3" />
-        </linearGradient>
         <filter id="glow">
           <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
           <feMerge> 
@@ -78,7 +166,7 @@ function createTextSVG(options: ComposeOptions): string {
         </filter>
       </defs>
       
-      <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+             ${createThemeBackground(w, h, palette, theme, rng)}
       
       <text x="50%" y="${textY}" 
             font-family="Arial, sans-serif" 
@@ -116,11 +204,11 @@ function createTextSVG(options: ComposeOptions): string {
 }
 
 // Compose header image
-export async function composeHeader(options: ComposeOptions): Promise<Buffer> {
+export async function composeHeader(options: ComposeOptions, rng: () => number): Promise<Buffer> {
   const { w, h } = options;
   
   // Create SVG overlay
-  const svg = createTextSVG(options);
+  const svg = createTextSVG(options, rng);
   const svgBuffer = Buffer.from(svg);
   
   // Create image with sharp
@@ -201,6 +289,253 @@ export async function composeFavicon(options: FaviconOptions): Promise<Buffer> {
   return result;
 }
 
+// Sticker composition function
+export async function composeSticker(text: string, palette: Palette, rng: () => number): Promise<Buffer> {
+  const size = 512;
+  const fontSize = 80;
+  
+  const svg = `
+    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stickerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${palette.bg};stop-opacity:0.9" />
+          <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0.2" />
+        </linearGradient>
+        <filter id="stickerGlow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="stickerShadow">
+          <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="${palette.bg}" flood-opacity="0.5"/>
+        </filter>
+      </defs>
+      
+      <rect width="100%" height="100%" fill="url(#stickerGradient)" rx="20" filter="url(#stickerShadow)"/>
+      
+      <!-- Accent shape (random diagonal line) -->
+      <line x1="0" y1="${size}" x2="${size * (0.25 + rng() * 0.1)}" y2="0" 
+            stroke="${palette.accent}" 
+            stroke-width="${6 + Math.floor(rng() * 4)}" 
+            opacity="${0.5 + rng() * 0.3}"/>
+      
+      <text x="50%" y="50%" 
+            font-family="Arial, sans-serif" 
+            font-size="${fontSize}" 
+            font-weight="bold" 
+            text-anchor="middle" 
+            dominant-baseline="middle"
+            fill="${palette.fg}"
+            filter="url(#stickerGlow)">
+        ${text}
+      </text>
+    </svg>
+  `;
+  
+  const svgBuffer = Buffer.from(svg);
+  
+  const image = sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 1 }
+    }
+  });
+  
+  const result = await image
+    .composite([{ input: svgBuffer, top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+    
+  return result;
+}
+
+// Logo composition functions
+export async function composeLogoTextMark(ticker: string, palette: Palette): Promise<Buffer> {
+  const size = 1024;
+  const initials = ticker.slice(0, 2).toUpperCase();
+  const fontSize = 320;
+  
+  const svg = `
+    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="textMarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${palette.bg};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0.3" />
+        </linearGradient>
+        <filter id="textMarkGlow">
+          <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      
+      <rect width="100%" height="100%" fill="url(#textMarkGradient)"/>
+      
+      <text x="50%" y="50%" 
+            font-family="Arial, sans-serif" 
+            font-size="${fontSize}" 
+            font-weight="bold" 
+            text-anchor="middle" 
+            dominant-baseline="middle"
+            fill="${palette.fg}"
+            filter="url(#textMarkGlow)">
+        ${initials}
+      </text>
+    </svg>
+  `;
+  
+  const svgBuffer = Buffer.from(svg);
+  
+  const image = sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 1 }
+    }
+  });
+  
+  const result = await image
+    .composite([{ input: svgBuffer, top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+    
+  return result;
+}
+
+export async function composeLogoBadgeMark(ticker: string, palette: Palette): Promise<Buffer> {
+  const size = 1024;
+  const initials = ticker.slice(0, 2).toUpperCase();
+  const fontSize = 200;
+  
+  const svg = `
+    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="badgeGradient" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" style="stop-color:${palette.accent};stop-opacity:0.8"/>
+          <stop offset="100%" style="stop-color:${palette.bg};stop-opacity:1"/>
+        </radialGradient>
+        <filter id="badgeGlow">
+          <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      
+      <rect width="100%" height="100%" fill="${palette.bg}"/>
+      
+      <circle cx="${size * 0.5}" cy="${size * 0.5}" r="${size * 0.4}" 
+              fill="url(#badgeGradient)" 
+              stroke="${palette.accent}" 
+              stroke-width="8"
+              filter="url(#badgeGlow)"/>
+      
+      <text x="50%" y="50%" 
+            font-family="Arial, sans-serif" 
+            font-size="${fontSize}" 
+            font-weight="bold" 
+            text-anchor="middle" 
+            dominant-baseline="middle"
+            fill="${palette.fg}">
+        ${initials}
+      </text>
+    </svg>
+  `;
+  
+  const svgBuffer = Buffer.from(svg);
+  
+  const image = sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 1 }
+    }
+  });
+  
+  const result = await image
+    .composite([{ input: svgBuffer, top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+    
+  return result;
+}
+
+export async function composeLogoPixelMark(ticker: string, palette: Palette): Promise<Buffer> {
+  const size = 1024;
+  const initials = ticker.slice(0, 2).toUpperCase();
+  const fontSize = 180;
+  const pixelSize = 32;
+  
+  // Create pixel pattern based on ticker hash
+  const hash = hashString(ticker);
+  const pixels = [];
+  
+  for (let y = 0; y < size / pixelSize; y++) {
+    for (let x = 0; x < size / pixelSize; x++) {
+      const pixelHash = hashString(`${ticker}${x}${y}`);
+      if (hashToRange(pixelHash, 100) < 30) { // 30% chance of pixel
+        pixels.push(`<rect x="${x * pixelSize}" y="${y * pixelSize}" width="${pixelSize}" height="${pixelSize}" fill="${palette.accent}" opacity="0.6"/>`);
+      }
+    }
+  }
+  
+  const svg = `
+    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="pixelGlow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      
+      <rect width="100%" height="100%" fill="${palette.bg}"/>
+      
+      ${pixels.join('\n      ')}
+      
+      <text x="50%" y="50%" 
+            font-family="Arial, sans-serif" 
+            font-size="${fontSize}" 
+            font-weight="bold" 
+            text-anchor="middle" 
+            dominant-baseline="middle"
+            fill="${palette.fg}"
+            filter="url(#pixelGlow)">
+        ${initials}
+      </text>
+    </svg>
+  `;
+  
+  const svgBuffer = Buffer.from(svg);
+  
+  const image = sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 1 }
+    }
+  });
+  
+  const result = await image
+    .composite([{ input: svgBuffer, top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+    
+  return result;
+}
+
 // Generate QR code PNG
 export async function makeQrPng(url: string): Promise<Buffer> {
   const qrDataUrl = await QRCode.toDataURL(url, {
@@ -223,6 +558,7 @@ export interface KitManifest {
   ticker: string;
   vibe: string;
   preset: string;
+  theme: Theme;
   palette: Palette;
   assets: {
     og: string;
@@ -230,6 +566,13 @@ export interface KitManifest {
     tgHeader: string;
     favicon: string;
     qr: string;
+         logos: {
+       textMark: string;
+       badgeMark: string;
+       pixelMark: string;
+       default: string;
+     };
+     stickers: string[];
   };
   content: {
     threads: string[];
