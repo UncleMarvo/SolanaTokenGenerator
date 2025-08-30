@@ -27,6 +27,7 @@ import { ClipLoader } from "react-spinners";
 import { useNetworkConfiguration } from "contexts/NetworkConfigurationProvider";
 
 import { AiOutlineClose } from "react-icons/ai";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import CreateSVG from "../../components/SVG/CreateSVG";
 import { Branding } from "../../components/Branding";
 import { InputView } from "../index";
@@ -59,6 +60,25 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
   // CREATE TOKEN FUNCTION
   const createToken = useCallback(
     async (token) => {
+      // Check if wallet is connected
+      if (!publicKey) {
+        notify({
+          type: "error",
+          message: "Please connect your wallet first",
+        });
+        return;
+      }
+
+      // Validate required fields
+      if (!token.name || !token.symbol || !token.decimals || !token.amount || !token.image || !token.description) {
+        notify({
+          type: "error",
+          message: "Please fill in all required fields (name, symbol, decimals, amount, image, and description)",
+        });
+        return;
+      }
+
+      setIsLoading(true);
       const lamports = await getMinimumBalanceForRentExemptMint(connection);
       const mintKeypair = Keypair.generate();
       const tokenATA = await getAssociatedTokenAddress(
@@ -320,13 +340,34 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         clickhandle={(e) => handleFormFieldChange("amount", e)}
                       />
 
+                      {/* Wallet Connection Status */}
+                      <div className="mb-4 text-center">
+                        {!publicKey ? (
+                          <div className="bg-danger/20 border border-danger/30 rounded-lg p-3 mb-4">
+                            <p className="text-danger text-sm mb-2">Wallet not connected</p>
+                            <WalletMultiButton className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300" />
+                          </div>
+                        ) : (
+                          <div className="bg-success/20 border border-success/30 rounded-lg p-3 mb-4">
+                            <p className="text-success text-sm">✅ Wallet connected: {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}</p>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="mb-6 text-center">
                         <button
                           type="submit"
                           onClick={() => createToken(token)}
-                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                          disabled={!publicKey || isLoading}
+                          className={`group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 backdrop-blur-2xl transition-all duration-500 ${
+                            !publicKey 
+                              ? 'bg-muted/50 text-muted cursor-not-allowed' 
+                              : 'bg-primary-600/90 hover:bg-primary-600 text-bg'
+                          }`}
                         >
-                          <span className="fw-bold">Create Token</span>
+                          <span className="fw-bold">
+                            {!publicKey ? 'Connect Wallet First' : isLoading ? 'Creating Token...' : 'Create Token'}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -410,14 +451,28 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         </span>
                       </p>
 
-                      <div className="mb-6 text-center">
+                      <div className="mb-6 text-center space-y-3">
                         <a
                           href={`https://explorer.solana.com/address/${tokenMintAddress}?cluster=${networkConfiguration}`}
                           target="_blank"
                           rel="noferrer"
-                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                          className="bg-primary-600/90 hover:bg-primary-600 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">View on Solana</span>
+                        </a>
+                        
+                        <a
+                          href={`/meme-kit?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}`}
+                          className="bg-secondary hover:bg-secondary-600 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                        >
+                          <span className="fw-bold">Get Your Meme Kit</span>
+                        </a>
+                        
+                        <a
+                          href={`/liquidity?tokenMint=${encodeURIComponent(tokenMintAddress)}&dex=Raydium&pair=SOL/TOKEN`}
+                          className="bg-accent hover:bg-accent/80 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                        >
+                          <span className="fw-bold">Add Liquidity</span>
                         </a>
                       </div>
                     </div>
