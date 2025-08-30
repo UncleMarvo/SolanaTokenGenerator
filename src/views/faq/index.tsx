@@ -45,10 +45,10 @@ export const FaqView: FC = ({}) => {
       <div className="container">
         <div className="mb-10 flex items-end justify-between">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-medium capitalize text-white">
+            <h2 className="mb-4 text-3xl font-medium capitalize text-fg">
               Any Questions?
             </h2>
-            <p className="text-default-200 text-sm font-medium">
+            <p className="text-muted text-sm font-medium">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus
               semper faucibus erat, quis malesuada risus tempor ac. Quisque et
               erat elit.
@@ -63,10 +63,10 @@ export const FaqView: FC = ({}) => {
                   <div 
                     key={index} 
                     id={question.id} 
-                    className={`hs-accordion bg-default-950/40 overflow-hidden rounded-lg border border-white/10 backdrop-blur-3xl`}>
-                    <button className="hs-accordion-toggle inline-flex items-center justify-between gap-x-3 px-6 py-4 text-left capitalize text-white transition-all" aria-controls={`faq-accordion-${index + 1}`}>
+                    className={`hs-accordion bg-bg/40 overflow-hidden rounded-lg border border-muted/10 backdrop-blur-3xl`}>
+                    <button className="hs-accordion-toggle inline-flex items-center justify-between gap-x-3 px-6 py-4 text-left capitalize text-fg transition-all" aria-controls={`faq-accordion-${index + 1}`}>
                       <h5 className="flex text-base font-semibold">
-                        <i className="me-3 h-5 w-5 stroke-white align-middle"></i>
+                        <i className="me-3 h-5 w-5 stroke-fg align-middle"></i>
                         {question.question}
                       </h5>
                       <i className="hs-accordion-active:-rotate-180 h-4 w-4 transition-all duration-500"></i>
@@ -77,10 +77,10 @@ export const FaqView: FC = ({}) => {
                       className="hs-accordion-content w-full overflow-hidden transition-[height] duration-300" 
                       aria-labelledby={question.id}>
                       <div className="px-6 pb-4 pt-0">
-                        <p className="text-default-300 mb-2 text-sm font-medium">
+                        <p className="text-muted mb-2 text-sm font-medium">
                         {question.answer}
                         </p>
-                        <p className="text-default-300 text-sm font-medium">
+                        <p className="text-muted text-sm font-medium">
                           Have you ever wanted to become a blockchain developer? Check the pro NFT Marketplace Course.
                         </p>
                       </div>

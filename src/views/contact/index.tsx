@@ -23,9 +23,9 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
   const CloseModal = () => (
     <a
       onClick={() => setOpenContact(false)}
-      className="group mt-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-2xl transition-all duration-500 hover:bg-blue-600/60"
+      className="group mt-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
     >
-      <i className="text-2xl text-white group-hover:text-white">
+      <i className="text-2xl text-fg group-hover:text-fg">
         <AiOutlineClose />
       </i>
     </a>
@@ -35,7 +35,7 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
     <>
       <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
         <div className="container">
-          <div className="bg-default-950/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl  modal-grid">
+          <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl  modal-grid">
             <div className="grid gap-10 lg:grid-cols-2">
               {/* FIRST */}
               <Branding
@@ -57,10 +57,10 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
                 </div>
 
                 <div className="my-auto pb-6 text-center">
-                  <h4 className="mb-4 text-2xl font-bold text-white">
+                  <h4 className="mb-4 text-2xl font-bold text-fg">
                     Send email to us for more details
                   </h4>
-                  <p className="text-default-300 mx-auto mb-5 max-w-sm">
+                  <p className="text-muted mx-auto mb-5 max-w-sm">
                     Send your message so we can provide you with more details
                   </p>
 
@@ -69,7 +69,7 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
                       <div className="mb-4">
                         <label
                           htmlFor="email"
-                          className="text-base/normal text-default-200 mb-2 block font-semibold"
+                          className="text-base/normal text-muted mb-2 block font-semibold"
                         >
                           Email
                         </label>
@@ -78,7 +78,7 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
                           id="email"
                           name="email"
                           placeholder="email"
-                          className="border-defaul-200 block w-full rounded border-white/10 bg-transparent py-1.5 px-3 text-white/80 focus:border-white/25 focus:ring-transparent"
+                          className="border-muted block w-full rounded border-muted/10 bg-transparent py-1.5 px-3 text-fg/80 focus:border-muted/25 focus:ring-transparent"
                         />
                       </div>
                       <ValidationError
@@ -92,7 +92,7 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
                         id="message"
                         rows={6}
                         placeholder="message"
-                        className="border-defaul-200 relative block w-full rounded border-white/10 bg-transparent py-1.5 px-3 text-white/80 focus:border-white/25 focus:ring-transparent"
+                        className="border-muted relative block w-full rounded border-muted/10 bg-transparent py-1.5 px-3 text-fg/80 focus:border-muted/25 focus:ring-transparent"
                       ></textarea>
                       <ValidationError
                         prefix="Message"
@@ -104,7 +104,7 @@ export const ContactView: FC<ContactViewProps> = ({ setOpenContact }) => {
                         <button
                           type="submit"
                           disabled={state.submitting}
-                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-white backdrop-blur-2xl transition-all duration-500"
+                          className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">Send Message</span>
                         </button>

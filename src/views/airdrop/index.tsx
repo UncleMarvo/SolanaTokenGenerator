@@ -69,9 +69,9 @@ export const AirdropView: FC<AirdropViewProps> = ({ setOpenAirdrop }) => {
   const CloseModal = () => (
     <a
       onClick={() => setOpenAirdrop(false)}
-      className="group mt-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-2xl transition-all duration-500 hover:bg-blue-600/60"
+      className="group mt-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
     >
-      <i className="text-2xl text-white group-hover:text-white">
+      <i className="text-2xl text-fg group-hover:text-fg">
         <AiOutlineClose />
       </i>
     </a>
@@ -81,7 +81,7 @@ export const AirdropView: FC<AirdropViewProps> = ({ setOpenAirdrop }) => {
     <>
       <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
         <div className="container">
-          <div className="bg-default-950/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
+          <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
             <div className="grid gap-10 lg:grid-cols-2">
               {/* FIRST */}
               <Branding
@@ -103,12 +103,12 @@ export const AirdropView: FC<AirdropViewProps> = ({ setOpenAirdrop }) => {
                 </div>
 
                 <div className="my-auto pb-6 text-center">
-                  <h4 className="mb-4 text-2xl font-bold text-white">
+                  <h4 className="mb-4 text-2xl font-bold text-fg">
                     {wallet && (
                       <p>SOL Balance: {(balance || 0).toLocaleString()}</p>
                     )}
                   </h4>
-                  <p className="text-default-300 mx-auto mb-5 max-w-sm">
+                  <p className="text-muted mx-auto mb-5 max-w-sm">
                     Now you can claim your 1 Airdrop and use to test and create
                     token in our platform.
                   </p>
@@ -120,7 +120,7 @@ export const AirdropView: FC<AirdropViewProps> = ({ setOpenAirdrop }) => {
                     <button
                       onClick={onClick}
                       disabled={!publicKey}
-                      className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-white backdrop-blur-2xl transition-all duration-500"
+                      className="bg-primary-600/90 hover:bg-primary-600 group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                     >
                       <span className="fw-bold">Airdrop 1</span>
                     </button>

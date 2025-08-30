@@ -67,10 +67,10 @@ export const ToolView: FC<ToolViewProps> = ({
       <div className="container">
         <div className="mb-10 flex items-end justify-between">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-medium capitalize text-whiet">
+            <h2 className="mb-4 text-3xl font-medium capitalize text-fg">
               Solana Powerful Tools
             </h2>
-            <p className="text-default-200 text-sm font-medium">
+            <p className="text-muted text-sm font-medium">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus
               semper faucibus erat, quis malesuada risus tempor ac. Quisque et
               erat elit. Curabitur mi enim, ornare mollis velit efficitur,
@@ -85,7 +85,7 @@ export const ToolView: FC<ToolViewProps> = ({
           {tools.map((tool, index) => (
             <div
               key={index}
-              className="bg-default-950/40 rounded-xl backdrop-blur-3xl"
+              className="bg-bg/40 rounded-xl backdrop-blur-3xl"
               onClick={() => tool.function(true)}
             >
               <div className="p-6">
@@ -106,7 +106,7 @@ export const ToolView: FC<ToolViewProps> = ({
                     {tool.icon}
                   </div>
 
-                  <h3 className="text-default-200 text-xl font-medium">
+                  <h3 className="text-muted text-xl font-medium">
                     {tool.name}
                   </h3>
                 </div>
@@ -122,7 +122,7 @@ export const ToolView: FC<ToolViewProps> = ({
         </div>
 
         <div className="mt-10 flex justify-center">
-          <a className="hover:bg-primary-hover bg-primary inline-flex items-center justify-center gap-2 rounded-full px-6 py-2 text-white transition-all duration-500">
+          <a className="hover:bg-primary-600 bg-primary inline-flex items-center justify-center gap-2 rounded-full px-6 py-2 text-bg transition-all duration-500">
             More Tools
             <i>
               <IoIosArrowRoundForward />

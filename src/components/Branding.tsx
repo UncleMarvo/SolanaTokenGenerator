@@ -16,15 +16,15 @@ export const Branding: FC<BrandingProps> = ({ image, title, message }) => {
           className="h-full w-full -scale-x-100 transform"
         />
 
-        <div className="bg-default-950/40 absolute inset-0">
+        <div className="bg-bg/40 absolute inset-0">
           <div className="flex h-full items-end justify-center">
             <div className="text-start p-6">
-              <h5 className="mb-3 text-xl font-bold text-white">
-                Solan Token Creator
+              <h5 className="mb-3 text-xl font-bold text-fg">
+                Solana Token Creator
                 <br/>
                 {title}
               </h5>
-              <p className="text-default-400 text-base font-medium">
+              <p className="text-muted text-base font-medium">
                 {message}
               </p>
             </div>

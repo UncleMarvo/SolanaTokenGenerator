@@ -3,6 +3,7 @@ import { MdGeneratingTokens } from "react-icons/md";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import pkg from "../../../package.json";
+import { heroCarouselImages } from "../../../config/brand";
 
 interface HomeViewProps {
   setOpenCreateModal: (value: boolean) => void;
@@ -25,11 +26,10 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                   </span>
 
                   <h1 className="md:text-5xl/tight my-4 max-w-lg text-4xl font-medium text-fg">
-                    Now Create Solana token without code
+                    Launch. Meme. Moon. In minutes.
                   </h1>
                   <p className="text-muted md:text-lg">
-                    Launch your solana token, all in one solana token
-                    development and deployment
+                    Mint the token, get the meme kit, and one-click add liquidity.
                   </p>
 
                   <div className="new_add_css">
@@ -40,7 +40,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                       <span className="bg-primary/20 text-primary me-2 flex h-11 w-11 items-center justify-center rounded-full group-hover:bg-muted/10 group-hover:text-fg">
                         <MdGeneratingTokens />
                       </span>
-                      Create
+                      Create your token
                     </a>
                     <a className="mt-8">
                       <WalletMultiButton />
@@ -52,12 +52,12 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                   <div className="marquee grid grid-cols-2 gap-6">
                     <div className="relative m-autp flex flex-col gap-6 overflow-hidden">
                       <div className="marquee-hero flex min-h-full flex-shrink-0 flex-col items-center justify-around gap-6">
-                        {["img-9", "img-14", "img-21", "img-22", "img-10"].map(
+                        {heroCarouselImages.map(
                           (image, index) => (
                             <img
                               key={index}
-                              src={`assets/images/ai/${image}.jpg`}
-                              alt=""
+                              src={image.src}
+                              alt={image.alt}
                               className="aspect-1 h-full w-60 rounded-xl object-cover"
                             />
                           )
@@ -68,12 +68,12 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                         aria-hidden="true"
                         className="marquee-hero flex min-h-full flex-shrink-0 flex-col items-center justify-around gap-6"
                       >
-                        {["img-9", "img-14", "img-21", "img-22", "img-10"].map(
+                        {heroCarouselImages.map(
                           (image, index) => (
                             <img
                               key={index}
-                              src={`assets/images/ai/${image}.jpg`}
-                              alt=""
+                              src={image.src}
+                              alt={image.alt}
                               className="aspect-1 h-full w-60 rounded-xl object-cover"
                             />
                           )
@@ -83,12 +83,12 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
 
                     <div className="marquee-reverse m-auto flex flex-col gap-6 overflow-hidden">
                       <div className="marquee-hero flex min-h-full flex-shrink-0 flex-col items-center justify-around gap-6">
-                        {["img-6", "img-10", "img-11", "img-12", "img-13"].map(
+                        {heroCarouselImages.map(
                           (image, index) => (
                             <img
                               key={index}
-                              src={`assets/images/ai/${image}.jpg`}
-                              alt=""
+                              src={image.src}
+                              alt={image.alt}
                               className="aspect-1 h-full w-60 rounded-xl object-cover"
                             />
                           )
@@ -99,12 +99,12 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                         aria-hidden="true"
                         className="marquee-hero flex min-h-full flex-shrink-0 flex-col items-center justify-around gap-6"
                       >
-                        {["img-6", "img-10", "img-11", "img-12", "img-13"].map(
+                        {heroCarouselImages.map(
                           (image, index) => (
                             <img
                               key={index}
-                              src={`assets/images/ai/${image}.jpg`}
-                              alt=""
+                              src={image.src}
+                              alt={image.alt}
                               className="aspect-1 h-full w-60 rounded-xl object-cover"
                             />
                           )
