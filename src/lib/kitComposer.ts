@@ -18,6 +18,7 @@ export interface Palette {
   bg: string;
   fg: string;
   accent: string;
+  accent2: string;
 }
 
 export interface ComposeOptions {
@@ -39,7 +40,8 @@ export interface FaviconOptions {
 const DEGEN_NEON_PALETTE: Palette = {
   bg: '#0F1115',
   fg: '#E6F1FF',
-  accent: '#8AFFEF'
+  accent: '#8AFFEF',
+  accent2: '#FF8A8A'
 };
 
 // Generate deterministic theme from ticker
@@ -68,6 +70,7 @@ export function paletteFromTicker(ticker: string): Palette {
   const hue1 = hashToRange(hash, 360);
   const hue2 = (hue1 + 180) % 360; // Complementary
   const hue3 = (hue1 + 120) % 360; // Triadic
+  const hue4 = (hue1 + 240) % 360; // Second accent (opposite to triadic)
   
   const saturation = 70 + hashToRange(hash >> 8, 30); // 70-100%
   const lightness = 45 + hashToRange(hash >> 16, 20); // 45-65%
@@ -76,8 +79,31 @@ export function paletteFromTicker(ticker: string): Palette {
   const bg = hslToHex(hue1, saturation, 15); // Dark background
   const fg = hslToHex(hue2, saturation, 90); // Light foreground
   const accent = hslToHex(hue3, saturation, lightness); // Accent color
+  const accent2 = hslToHex(hue4, saturation, lightness); // Second accent color
   
-  return { bg, fg, accent };
+  return { bg, fg, accent, accent2 };
+}
+
+// Simple luminance-based contrast check
+function contrastOK(fgHex: string, bgHex: string): boolean {
+  // Simple luminance calculation (approximate)
+  const getLuminance = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+  
+  const fgLum = getLuminance(fgHex);
+  const bgLum = getLuminance(bgHex);
+  const contrast = Math.abs(fgLum - bgLum);
+  
+  return contrast > 0.3; // Minimum contrast threshold
+}
+
+// Ensure text has good contrast against background
+function ensureContrast(fg: string, bg: string, fallback: string): string {
+  return contrastOK(fg, bg) ? fg : fallback;
 }
 
 // Create theme-specific background SVG
@@ -128,8 +154,8 @@ function createThemeBackground(w: number, h: number, palette: Palette, theme: Th
       return `
         <defs>
           <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:${palette.accent};stop-opacity:0.8"/>
-            <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0.3"/>
+            <stop offset="0%" style="stop-color:${palette.accent2};stop-opacity:0.8"/>
+            <stop offset="100%" style="stop-color:${palette.accent2};stop-opacity:0.3"/>
           </linearGradient>
         </defs>
         <rect width="100%" height="100%" fill="${palette.bg}"/>
@@ -154,6 +180,11 @@ function createTextSVG(options: ComposeOptions, rng: () => number): string {
   const subtextY = h / 2 + fontSize / 2;
   const badgeY = h - 40;
   
+  // Ensure text colors have good contrast
+  const mainTextColor = ensureContrast(palette.fg, palette.bg, "#FFFFFF");
+  const subTextColor = ensureContrast(palette.accent, palette.bg, "#FFFFFF");
+  const badgeColor = ensureContrast(palette.accent, palette.bg, "#FFFFFF");
+  
   return `
     <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -173,7 +204,7 @@ function createTextSVG(options: ComposeOptions, rng: () => number): string {
             font-size="${fontSize}" 
             font-weight="bold" 
             text-anchor="middle" 
-            fill="${palette.fg}"
+            fill="${mainTextColor}"
             filter="url(#glow)">
         ${text}
       </text>
@@ -183,7 +214,7 @@ function createTextSVG(options: ComposeOptions, rng: () => number): string {
               font-family="Arial, sans-serif" 
               font-size="${subFontSize}" 
               text-anchor="middle" 
-              fill="${palette.accent}"
+              fill="${subTextColor}"
               opacity="0.8">
           ${subtext}
         </text>
@@ -194,7 +225,7 @@ function createTextSVG(options: ComposeOptions, rng: () => number): string {
               font-family="Arial, sans-serif" 
               font-size="${badgeFontSize}" 
               text-anchor="middle" 
-              fill="${palette.accent}"
+              fill="${badgeColor}"
               filter="url(#glow)">
           ${badge}
         </text>
@@ -299,7 +330,8 @@ export async function composeSticker(text: string, palette: Palette, rng: () => 
       <defs>
         <linearGradient id="stickerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${palette.bg};stop-opacity:0.9" />
-          <stop offset="100%" style="stop-color:${palette.accent};stop-opacity:0.2" />
+          <stop offset="50%" style="stop-color:${palette.accent};stop-opacity:0.2" />
+          <stop offset="100%" style="stop-color:${palette.accent2};stop-opacity:0.1" />
         </linearGradient>
         <filter id="stickerGlow">
           <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -604,7 +636,10 @@ export async function composeLogoPixelMark(ticker: string, palette: Palette): Pr
     for (let x = 0; x < size / pixelSize; x++) {
       const pixelHash = hashString(`${ticker}${x}${y}`);
       if (hashToRange(pixelHash, 100) < 30) { // 30% chance of pixel
-        pixels.push(`<rect x="${x * pixelSize}" y="${y * pixelSize}" width="${pixelSize}" height="${pixelSize}" fill="${palette.accent}" opacity="0.6"/>`);
+        // Use accent2 for some pixels to add variety
+        const useAccent2 = hashToRange(pixelHash >> 8, 100) < 40; // 40% chance of accent2
+        const pixelColor = useAccent2 ? palette.accent2 : palette.accent;
+        pixels.push(`<rect x="${x * pixelSize}" y="${y * pixelSize}" width="${pixelSize}" height="${pixelSize}" fill="${pixelColor}" opacity="0.6"/>`);
       }
     }
   }
