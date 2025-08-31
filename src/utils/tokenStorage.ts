@@ -7,6 +7,7 @@ export interface StoredToken {
   image: string;
   description: string;
   preset: "honest" | "degen";
+  vibe: "funny" | "serious" | "degen";
   createdAt: number;
   links?: {
     tg?: string;

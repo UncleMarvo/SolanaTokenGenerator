@@ -13,6 +13,13 @@ interface MemeKitResult {
   twitterThreads: string[];
   copypastas: string[];
   roadmap: string[];
+  hashtags: string[];
+  schedule: {
+    t: string;
+    channel: string;
+    type: string;
+    ref: string;
+  }[];
 }
 
 const MemeKitPage: FC = () => {
@@ -257,6 +264,55 @@ const MemeKitPage: FC = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Hashtags */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
+                  <h2 className="text-2xl font-bold mb-4">Hashtag Pack</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {result.hashtags?.map((hashtag, index) => (
+                      <span
+                        key={index}
+                        className="bg-muted/20 hover:bg-muted/30 text-fg px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-all duration-300"
+                        onClick={() => handleCopy(hashtag, `hashtag-${index}`)}
+                      >
+                        {hashtag}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-muted text-sm mt-3">
+                    Click hashtags to copy them individually
+                  </p>
+                </div>
+
+                {/* Posting Schedule */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
+                  <h2 className="text-2xl font-bold mb-4">Posting Schedule</h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-muted/20">
+                          <th className="text-left py-2 px-3 text-muted">Time</th>
+                          <th className="text-left py-2 px-3 text-muted">Channel</th>
+                          <th className="text-left py-2 px-3 text-muted">Type</th>
+                          <th className="text-left py-2 px-3 text-muted">Content</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.schedule?.map((item, index) => (
+                          <tr key={index} className="border-b border-muted/10 hover:bg-muted/5">
+                            <td className="py-2 px-3 text-fg font-mono">{item.t}</td>
+                            <td className="py-2 px-3 text-fg capitalize">{item.channel}</td>
+                            <td className="py-2 px-3 text-fg capitalize">{item.type}</td>
+                            <td className="py-2 px-3 text-muted text-xs">{item.ref}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-muted text-sm mt-3">
+                    Schedule starts from kit generation time. Times are relative (+0h, +4h, etc.)
+                  </p>
                 </div>
 
                 {/* Download Buttons */}

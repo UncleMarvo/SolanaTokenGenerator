@@ -76,13 +76,15 @@ const TokenSharePage: FC = () => {
         <meta property="og:description" content={`${token.name} ($${token.symbol}) - A Solana token created with ${token.preset === "honest" ? "Honest Launch" : "Degen Mode"} preset.`} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={typeof window !== "undefined" ? window.location.href : ""} />
-        <meta property="og:image" content="/brand/og.png" />
+        <meta property="og:image" content={`/api/kits/${token.symbol}/og_1200x630.png?name=${encodeURIComponent(token.name)}&vibe=${token.vibe || 'degen'}&preset=${token.preset}`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         
         {/* Twitter Card Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${token.name} ($${token.symbol})`} />
         <meta name="twitter:description" content={`${token.name} ($${token.symbol}) - A Solana token created with ${token.preset === "honest" ? "Honest Launch" : "Degen Mode"} preset.`} />
-        <meta name="twitter:image" content="/brand/og.png" />
+        <meta name="twitter:image" content={`/api/kits/${token.symbol}/og_1200x630.png?name=${encodeURIComponent(token.name)}&vibe=${token.vibe || 'degen'}&preset=${token.preset}`} />
       </Head>
 
       <div className="min-h-screen bg-bg text-fg">

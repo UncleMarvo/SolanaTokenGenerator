@@ -54,6 +54,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
     image: "",
     description: "",
     preset: "honest" as "honest" | "degen",
+    vibe: "degen" as "funny" | "serious" | "degen",
   });
 
   const handleFormFieldChange = (fieldName, e) => {
@@ -177,6 +178,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           image: token.image,
           description: token.description,
           preset: token.preset,
+          vibe: token.vibe || "degen", // Default to degen if not specified
           createdAt: Date.now(),
         });
         
@@ -399,6 +401,72 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                               </div>
                               <p className="text-muted text-sm mt-1">
                                 No authority changes, maximum flexibility for rapid deployment
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Vibe Selector */}
+                      <div className="mb-6">
+                        <label className="block text-muted mb-3 font-semibold">
+                          Token Vibe
+                        </label>
+                        <div className="space-y-3">
+                          <label className="flex items-start space-x-3 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="vibe"
+                              value="funny"
+                              checked={token.vibe === "funny"}
+                              onChange={(e) => handleFormFieldChange("vibe", e)}
+                              className="text-primary focus:ring-primary mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-fg font-medium">Funny</span>
+                                <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-full">Humorous</span>
+                              </div>
+                              <p className="text-muted text-sm mt-1">
+                                Light-hearted and meme-worthy content with lots of emojis
+                              </p>
+                            </div>
+                          </label>
+                          <label className="flex items-start space-x-3 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="vibe"
+                              value="serious"
+                              checked={token.vibe === "serious"}
+                              onChange={(e) => handleFormFieldChange("vibe", e)}
+                              className="text-primary focus:ring-primary mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-fg font-medium">Serious</span>
+                                <span className="bg-secondary/20 text-secondary text-xs px-2 py-1 rounded-full">Professional</span>
+                              </div>
+                              <p className="text-muted text-sm mt-1">
+                                Business-focused with technical terms and professional tone
+                              </p>
+                            </div>
+                          </label>
+                          <label className="flex items-start space-x-3 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="vibe"
+                              value="degen"
+                              checked={token.vibe === "degen"}
+                              onChange={(e) => handleFormFieldChange("vibe", e)}
+                              className="text-primary focus:ring-primary mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-fg font-medium">Degen</span>
+                                <span className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full">Hype</span>
+                              </div>
+                              <p className="text-muted text-sm mt-1">
+                                Extremely hype with rocket emojis and moon references
                               </p>
                             </div>
                           </label>

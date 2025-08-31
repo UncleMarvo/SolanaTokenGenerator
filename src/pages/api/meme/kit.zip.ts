@@ -13,6 +13,8 @@ import {
   composeLogoPixelMark,
   composeSticker,
   makeQrPng,
+  generateHashtags,
+  generateSchedule,
   KitManifest 
 } from "../../../lib/kitComposer";
 import { hashString } from "../../../lib/hash";
@@ -253,6 +255,10 @@ export default async function handler(
            const totalStickerBytes = stickers.reduce((sum, sticker) => sum + sticker.length, 0);
      console.log(`Successfully generated ${ogImage.length + xHeader.length + tgHeader.length + favicon.length + qrCode.length + logoTextMark.length + logoBadgeMark.length + logoPixelMark.length + totalStickerBytes} bytes of image data`);
 
+     // Generate hashtags and schedule
+     const hashtags = generateHashtags(ticker as string, name as string, vibe as string);
+     const schedule = generateSchedule(memeContent.twitterThreads, memeContent.copypastas, "en");
+     
      // Create kit manifest
      const kitManifest: KitManifest = {
        name: name as string,
@@ -285,9 +291,11 @@ export default async function handler(
        content: {
          threads: memeContent.twitterThreads,
          copypastas: memeContent.copypastas,
-         roadmap: memeContent.roadmap
+         roadmap: memeContent.roadmap,
+         hashtags
        },
-              links: {
+       schedule,
+       links: {
          sharePage: shareUrl as string
        }
      };
@@ -324,6 +332,7 @@ export default async function handler(
      });
      
      archive.append(JSON.stringify(kitManifest, null, 2), { name: 'kit.json' });
+     archive.append(JSON.stringify(schedule, null, 2), { name: 'schedule.json' });
 
     // Finalize archive
     await archive.finalize();

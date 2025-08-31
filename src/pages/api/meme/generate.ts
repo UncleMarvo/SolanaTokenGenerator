@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { generateMemeContent } from "../../../lib/memeTemplates";
+import { generateHashtags, generateSchedule } from "../../../lib/kitComposer";
 
 interface MemeKitRequest {
   name: string;
@@ -12,6 +13,13 @@ interface MemeKitResponse {
   twitterThreads: string[];
   copypastas: string[];
   roadmap: string[];
+  hashtags: string[];
+  schedule: {
+    t: string;
+    channel: string;
+    type: string;
+    ref: string;
+  }[];
 }
 
 // Rate limiting store (in production, use Redis or similar)
@@ -139,11 +147,17 @@ Keep threads 6-8 lines each, copypastas short and punchy, roadmap 4 steps. Use e
      
      const parsed = JSON.parse(jsonContent);
     
+    // Generate hashtags and schedule
+    const hashtags = generateHashtags(ticker, name, vibe);
+    const schedule = generateSchedule(parsed.twitterThreads || [], parsed.copypastas || [], "en");
+    
     return {
       logoUrl: "/brand/meme-placeholder.png",
       twitterThreads: parsed.twitterThreads || [],
       copypastas: parsed.copypastas || [],
       roadmap: parsed.roadmap || [],
+      hashtags,
+      schedule,
     };
   } catch (error) {
     console.error("AI generation error:", error);
@@ -190,21 +204,29 @@ export default async function handler(
         console.error("AI generation failed, falling back to templates:", aiError);
         // Fallback to template generation
         const generatedContent = generateMemeContent(name, ticker, vibe);
+        const hashtags = generateHashtags(ticker, name, vibe);
+        const schedule = generateSchedule(generatedContent.twitterThreads, generatedContent.copypastas, "en");
         response = {
           logoUrl: "/brand/meme-placeholder.png",
           twitterThreads: generatedContent.twitterThreads,
           copypastas: generatedContent.copypastas,
           roadmap: generatedContent.roadmap,
+          hashtags,
+          schedule,
         };
       }
     } else {
       // Use template-based generation
       const generatedContent = generateMemeContent(name, ticker, vibe);
+      const hashtags = generateHashtags(ticker, name, vibe);
+      const schedule = generateSchedule(generatedContent.twitterThreads, generatedContent.copypastas, "en");
       response = {
         logoUrl: "/brand/meme-placeholder.png",
         twitterThreads: generatedContent.twitterThreads,
         copypastas: generatedContent.copypastas,
         roadmap: generatedContent.roadmap,
+        hashtags,
+        schedule,
       };
     }
 

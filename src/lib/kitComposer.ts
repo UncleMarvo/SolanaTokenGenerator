@@ -708,6 +708,92 @@ export async function makeQrPng(url: string): Promise<Buffer> {
   return Buffer.from(base64Data, 'base64');
 }
 
+// Generate hashtag pack based on chain, vibe, and ticker
+export function generateHashtags(ticker: string, name: string, vibe: string): string[] {
+  // Base hashtags for Solana meme coins
+  const baseHashtags = ["#Solana", "#memecoin", "#crypto", "#degen", "#airdrop", "#pump"];
+  
+  // Derived hashtags from ticker and name
+  const derivedHashtags = [
+    `#${ticker}`,
+    `#${name.replace(/\s+/g, '')}`,
+    `#${ticker.toLowerCase()}`
+  ];
+  
+  // Vibe-specific hashtags
+  const vibeHashtags: string[] = [];
+  const lowerVibe = vibe.toLowerCase();
+  
+  if (lowerVibe.includes('moon') || lowerVibe.includes('rocket')) {
+    vibeHashtags.push("#moon", "#rocket", "#lambo");
+  } else if (lowerVibe.includes('doge') || lowerVibe.includes('shib')) {
+    vibeHashtags.push("#doge", "#shib", "#wojak");
+  } else if (lowerVibe.includes('pepe') || lowerVibe.includes('frog')) {
+    vibeHashtags.push("#pepe", "#frog", "#rare");
+  } else if (lowerVibe.includes('cat') || lowerVibe.includes('kitty')) {
+    vibeHashtags.push("#cat", "#kitty", "#meow");
+  } else {
+    // Default vibe hashtags
+    vibeHashtags.push("#meme", "#token", "#community");
+  }
+  
+  // Combine and return 8-12 hashtags
+  const allHashtags = [...baseHashtags, ...derivedHashtags, ...vibeHashtags];
+  return allHashtags.slice(0, Math.min(12, allHashtags.length));
+}
+
+// Generate posting schedule based on content and language
+export function generateSchedule(
+  threads: string[], 
+  copypastas: string[], 
+  lang: string = "en"
+): { t: string; channel: string; type: string; ref: string }[] {
+  const schedule = [];
+  let hourOffset = 0;
+  
+  // Helper to get content reference
+  const getContentRef = (type: string, index: number, lang: string) => {
+    if (lang === "es") {
+      return `content.es.${type}[${index}]`;
+    }
+    return `content.en.${type}[${index}]`;
+  };
+  
+  // Add threads (spaced 4-6 hours apart)
+  for (let i = 0; i < Math.min(3, threads.length); i++) {
+    schedule.push({
+      t: `+${hourOffset}h`,
+      channel: "twitter",
+      type: "thread",
+      ref: getContentRef("threads", i, lang)
+    });
+    hourOffset += 4 + (i % 2); // 4-5 hours apart
+  }
+  
+  // Add copypastas (spaced 3-4 hours apart)
+  for (let i = 0; i < Math.min(4, copypastas.length); i++) {
+    schedule.push({
+      t: `+${hourOffset}h`,
+      channel: "twitter",
+      type: "copypastas",
+      ref: getContentRef("copypastas", i, lang)
+    });
+    hourOffset += 3 + (i % 2); // 3-4 hours apart
+  }
+  
+  // Add a final thread if we have more content
+  if (threads.length > 3) {
+    schedule.push({
+      t: `+${hourOffset}h`,
+      channel: "twitter",
+      type: "thread",
+      ref: getContentRef("threads", 3, lang)
+    });
+  }
+  
+  return schedule;
+}
+
 // Kit manifest interface
 export interface KitManifest {
   name: string;
@@ -734,7 +820,14 @@ export interface KitManifest {
     threads: string[];
     copypastas: string[];
     roadmap: string[];
+    hashtags: string[];
   };
+  schedule: {
+    t: string;
+    channel: string;
+    type: string;
+    ref: string;
+  }[];
   links: {
     sharePage: string;
   };
