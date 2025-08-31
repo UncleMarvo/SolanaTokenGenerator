@@ -16,6 +16,15 @@ import {
   KitManifest 
 } from "../../../lib/kitComposer";
 import { hashString } from "../../../lib/hash";
+import { getClientIp, makeBucket, makeDailyGate } from "../../../lib/rateLimit";
+import { updateAiUsageStats } from "./admin/ai-usage";
+
+// Rate limiting buckets (module-scoped singletons)
+const endpointBucket = makeBucket({ limit: 20, windowMs: 10 * 60_000 }); // 20 requests per 10 minutes
+const aiBucket = makeBucket({ limit: 5, windowMs: 10 * 60_000 }); // 5 AI requests per 10 minutes
+
+// Daily AI usage gate (module-scoped singleton)
+const dailyAiGate = makeDailyGate(() => Number(process.env.MEME_AI_DAILY_MAX || "0"));
 
 // Simple LRU Cache implementation
 class LRUCache<K, V> {
@@ -67,29 +76,7 @@ class LRUCache<K, V> {
 // Cache for kit outputs (max 100 entries, 10 minute TTL)
 const kitCache = new LRUCache<string, { manifest: KitManifest; buffers: Buffer[] }>(100, 10);
 
-// Rate limiting store (in production, use Redis or similar)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-// Rate limiting function
-function checkRateLimit(identifier: string): boolean {
-  const now = Date.now();
-  const windowMs = 10 * 60 * 1000; // 10 minutes
-  const maxRequests = 5;
-
-  const record = rateLimitStore.get(identifier);
-  
-  if (!record || now > record.resetTime) {
-    rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
-    return true;
-  }
-
-  if (record.count >= maxRequests) {
-    return false;
-  }
-
-  record.count++;
-  return true;
-}
 
 // Validation function
 function validateParams(params: any): { valid: boolean; error?: string } {
@@ -133,6 +120,12 @@ export default async function handler(
   }
 
   try {
+    // Rate limiting check
+    const ip = getClientIp(req);
+    if (!endpointBucket.take(ip)) {
+      return res.status(429).json({ error: "rate_limited" });
+    }
+
     const { name, ticker, vibe, preset, shareUrl } = req.query;
 
     // Validate parameters
@@ -141,13 +134,7 @@ export default async function handler(
       return res.status(400).json({ error: validation.error });
     }
 
-    // Rate limiting (using IP address)
-    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-    const identifier = Array.isArray(clientIP) ? clientIP[0] : clientIP;
-    
-    if (!checkRateLimit(identifier)) {
-      return res.status(429).json({ error: "Rate limit exceeded. Try again in 10 minutes." });
-    }
+
 
     // Create cache key
     const cacheKey = `${name}|${ticker}|${vibe}|${preset}|${shareUrl}`;
@@ -247,14 +234,23 @@ export default async function handler(
          ticker: ticker as string,
          palette
        }),
-       makeQrPng(shareUrl as string),
-       composeLogoTextMark(ticker as string, palette),
-       composeLogoBadgeMark(ticker as string, palette),
+               makeQrPng(shareUrl as string),
+        composeLogoTextMark(ticker as string, palette, name as string, vibe as string, { aiLimiter: aiBucket, aiDailyGate: dailyAiGate, ip }),
+        composeLogoBadgeMark(ticker as string, palette),
        composeLogoPixelMark(ticker as string, palette),
        ...stickerTexts.map(text => composeSticker(text, palette, rng))
-     ]);
-     
-          const totalStickerBytes = stickers.reduce((sum, sticker) => sum + sticker.length, 0);
+           ]);
+      
+      // Update AI usage stats for admin endpoint
+      try {
+        const stats = dailyAiGate.stats();
+        const max = Number(process.env.MEME_AI_DAILY_MAX || "0");
+        updateAiUsageStats(stats, max);
+      } catch (error) {
+        // Ignore errors in stats update
+      }
+      
+           const totalStickerBytes = stickers.reduce((sum, sticker) => sum + sticker.length, 0);
      console.log(`Successfully generated ${ogImage.length + xHeader.length + tgHeader.length + favicon.length + qrCode.length + logoTextMark.length + logoBadgeMark.length + logoPixelMark.length + totalStickerBytes} bytes of image data`);
 
      // Create kit manifest

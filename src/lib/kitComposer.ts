@@ -353,8 +353,79 @@ export async function composeSticker(text: string, palette: Palette, rng: () => 
   return result;
 }
 
+// Helper function to create a timeout promise
+function timeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout')), ms);
+  });
+}
+
+// Helper function to check for disallowed terms in name/ticker
+function containsDisallowedTerms(text: string): boolean {
+  const disallowedTerms = [
+    'nude', 'naked', 'sex', 'porn', 'adult', 'explicit', 'inappropriate',
+    'offensive', 'hate', 'violence', 'gore', 'blood', 'death', 'kill',
+    'terror', 'bomb', 'weapon', 'drug', 'illegal', 'criminal'
+  ];
+  
+  const lowerText = text.toLowerCase();
+  return disallowedTerms.some(term => lowerText.includes(term));
+}
+
+// Generate AI logo using OpenAI API
+async function generateAiLogo(opts: { name: string; ticker: string; vibe: string }): Promise<Buffer | null> {
+  const { name, ticker, vibe } = opts;
+  
+  // Safety check - skip AI if disallowed terms detected
+  if (containsDisallowedTerms(name) || containsDisallowedTerms(ticker)) {
+    console.log('Skipping AI logo generation due to disallowed terms');
+    return null;
+  }
+  
+  // Check if AI is enabled and API key is available
+  if (process.env.MEME_AI_LOGO !== "on" || !process.env.OPENAI_API_KEY) {
+    return null;
+  }
+  
+  try {
+    const prompt = `Create a bold, simple, high-contrast logo for a Solana meme token named "${name}" ($${ticker}). Neon palette, dark bg, crisp edges, flat style. Vibe: ${vibe}. No text other than ticker initials.`;
+    
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+        response_format: 'b64_json'
+      })
+    });
+    
+    if (!response.ok) {
+      console.log('OpenAI API request failed:', response.status, response.statusText);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (data.data && data.data[0] && data.data[0].b64_json) {
+      return Buffer.from(data.data[0].b64_json, 'base64');
+    }
+    
+    return null;
+  } catch (error) {
+    console.log('AI logo generation error:', error);
+    return null;
+  }
+}
+
 // Logo composition functions
-export async function composeLogoTextMark(ticker: string, palette: Palette): Promise<Buffer> {
+export async function composeLogoTextMarkSVG(ticker: string, palette: Palette): Promise<Buffer> {
   const size = 1024;
   const initials = ticker.slice(0, 2).toUpperCase();
   const fontSize = 320;
@@ -407,6 +478,56 @@ export async function composeLogoTextMark(ticker: string, palette: Palette): Pro
     .toBuffer();
     
   return result;
+}
+
+// New wrapper function that tries AI first, then falls back to SVG
+export async function composeLogoTextMark(
+  ticker: string, 
+  palette: Palette, 
+  name?: string, 
+  vibe?: string, 
+  options?: { 
+    aiLimiter?: { take(ip: string): boolean }, 
+    aiDailyGate?: { take(): boolean },
+    ip?: string 
+  }
+): Promise<Buffer> {
+  // Try AI logo generation if enabled and we have the required parameters
+  const aiOn = process.env.MEME_AI_LOGO === "on" && process.env.OPENAI_API_KEY && name && vibe;
+  
+  if (aiOn) {
+    // Check both AI rate limiting gates
+    const ipAllowed = options?.aiLimiter && options?.ip && options.aiLimiter.take(options.ip);
+    const dailyAllowed = options?.aiDailyGate?.take();
+    
+    if (!ipAllowed) {
+      console.log('AI rate limit exceeded for', options?.ip, '- falling back to SVG');
+      return await composeLogoTextMarkSVG(ticker, palette);
+    }
+    
+    if (!dailyAllowed) {
+      console.info('[ai] daily cap reached');
+      return await composeLogoTextMarkSVG(ticker, palette);
+    }
+    
+    try {
+      // Race between AI generation and timeout
+      const aiBuffer = await Promise.race([
+        generateAiLogo({ name, ticker, vibe }),
+        timeout(3500) // 3.5 second timeout
+      ]);
+      
+      if (aiBuffer && aiBuffer.length > 0) {
+        console.log('Successfully generated AI logo for', ticker);
+        return aiBuffer;
+      }
+    } catch (error) {
+      console.log('AI logo generation failed, falling back to SVG:', error);
+    }
+  }
+  
+  // Fallback to SVG logo
+  return await composeLogoTextMarkSVG(ticker, palette);
 }
 
 export async function composeLogoBadgeMark(ticker: string, palette: Palette): Promise<Buffer> {
