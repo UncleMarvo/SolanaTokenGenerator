@@ -32,7 +32,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import CreateSVG from "../../components/SVG/CreateSVG";
 import { Branding } from "../../components/Branding";
 import { PresetBadge } from "../../components/PresetBadge";
-import { HonestLaunchEnforcer } from "../../components/HonestLaunchEnforcer";
+import HonestLaunchEnforcer from "../../components/HonestLaunchEnforcer";
 import { InputView } from "../index";
 
 interface CreateViewProps {

@@ -64,9 +64,9 @@ export const LpTokenBurner: FC<LpTokenBurnerProps> = ({
       // Burn LP tokens
       const { txid } = await burnLpTokens({
         connection,
-        payer: walletAdapter,
-        lpMint: lpMintPubkey,
-        ownerTokenAccount: ownerTokenAccountPubkey,
+        wallet: walletAdapter,
+        lpMint: lpMint,
+        ownerTokenAccount: ownerTokenAccount,
         amount,
       });
 

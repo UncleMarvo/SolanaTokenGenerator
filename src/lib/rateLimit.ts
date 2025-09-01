@@ -9,8 +9,14 @@ export function getClientIp(req: NextApiRequest): string {
     return ips.split(',')[0].trim();
   }
   
-  // Fallback to req.ip or localhost
-  return req.ip || '127.0.0.1';
+  // Check x-real-ip header
+  const realIp = req.headers['x-real-ip'];
+  if (realIp) {
+    return Array.isArray(realIp) ? realIp[0] : realIp;
+  }
+  
+  // Fallback to localhost
+  return '127.0.0.1';
 }
 
 // Get current UTC day in YYYY-MM-DD format

@@ -1,156 +1,143 @@
-import {
-  Connection,
-  PublicKey,
-  Signer,
-  Keypair,
-  Transaction,
-  sendAndConfirmTransaction,
-  TransactionInstruction,
+import { 
+  Connection, 
+  PublicKey, 
+  Transaction, 
+  sendAndConfirmTransaction 
 } from "@solana/web3.js";
-import {
-  getMint,
-  getAccount,
-  AuthorityType,
+import { 
+  getMint, 
   createSetAuthorityInstruction,
-  burn,
-  getAssociatedTokenAddress,
   createBurnInstruction,
+  AuthorityType 
 } from "@solana/spl-token";
+import { WalletAdapter } from "@solana/wallet-adapter-base";
 
-// Types for wallet adapters
-export interface WalletAdapter {
-  publicKey: PublicKey;
-  signTransaction: (transaction: Transaction) => Promise<Transaction>;
-  signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
+export interface MintAuthorities {
+  mintAuthority: string | null;
+  freezeAuthority: string | null;
 }
 
-// Union type for different wallet types
-export type WalletSigner = Signer | Keypair | WalletAdapter;
+export interface RevokeResult {
+  txid: string;
+}
 
 /**
  * Revokes mint and freeze authorities from a token mint
- * This enforces the "Honest Launch" preset by removing control over the token
+ * This enforces the "Honest Launch" preset by making the token immutable
  */
 export async function revokeAuthorities({
   connection,
-  payer,
-  mintPubkey,
+  wallet,
+  mint,
 }: {
   connection: Connection;
-  payer: WalletSigner;
-  mintPubkey: PublicKey;
-}): Promise<{ txids: string[] }> {
-  try {
-    // Load current mint info to check existing authorities
-    const mintInfo = await getMint(connection, mintPubkey);
-    
-    const instructions: TransactionInstruction[] = [];
-    const txids: string[] = [];
+  wallet: { publicKey: PublicKey; signTransaction: (transaction: Transaction) => Promise<Transaction> };
+  mint: string;
+}): Promise<RevokeResult> {
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error("Wallet not connected or cannot sign transactions");
+  }
 
-    // Check if mint authority exists and needs to be revoked
-    if (mintInfo.mintAuthority !== null) {
-      console.log("Revoking mint authority...");
-      const revokeMintAuthInstruction = createSetAuthorityInstruction(
-        mintPubkey,
-        payer.publicKey,
+  const mintPk = new PublicKey(mint);
+  const walletPk = wallet.publicKey;
+
+  // Read current mint state
+  const mintInfo = await getMint(connection, mintPk);
+  
+  const instructions = [];
+
+  // Check if mint authority exists and needs to be revoked
+  if (mintInfo.mintAuthority) {
+    instructions.push(
+      createSetAuthorityInstruction(
+        mintPk,
+        walletPk,
         AuthorityType.MintTokens,
-        null // Set to null to revoke
-      );
-      instructions.push(revokeMintAuthInstruction);
-    }
+        null
+      )
+    );
+  }
 
-    // Check if freeze authority exists and needs to be revoked
-    if (mintInfo.freezeAuthority !== null) {
-      console.log("Revoking freeze authority...");
-      const revokeFreezeAuthInstruction = createSetAuthorityInstruction(
-        mintPubkey,
-        payer.publicKey,
+  // Check if freeze authority exists and needs to be revoked
+  if (mintInfo.freezeAuthority) {
+    instructions.push(
+      createSetAuthorityInstruction(
+        mintPk,
+        walletPk,
         AuthorityType.FreezeAccount,
-        null // Set to null to revoke
-      );
-      instructions.push(revokeFreezeAuthInstruction);
-    }
+        null
+      )
+    );
+  }
 
-    if (instructions.length === 0) {
-      console.log("No authorities to revoke - already honest launch enforced");
-      return { txids: [] };
-    }
+  // If no instructions, authorities are already revoked
+  if (instructions.length === 0) {
+    throw new Error("Mint and freeze authorities are already revoked");
+  }
 
-    // Create and send transaction
-    const transaction = new Transaction();
-    instructions.forEach(instruction => transaction.add(instruction));
-    
+  // Create and send transaction
+  const transaction = new Transaction().add(...instructions);
+  
+  try {
     // Get recent blockhash
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    transaction.feePayer = payer.publicKey;
+    transaction.feePayer = walletPk;
 
     // Sign and send transaction
-    if ('signTransaction' in payer) {
-      // Wallet adapter case
-      const signedTx = await payer.signTransaction(transaction);
-      const txid = await connection.sendRawTransaction(signedTx.serialize());
-      await connection.confirmTransaction(txid);
-      txids.push(txid);
-    } else {
-      // Keypair case
-      const txid = await sendAndConfirmTransaction(connection, transaction, [payer as Keypair]);
-      txids.push(txid);
-    }
+    const signedTx = await wallet.signTransaction(transaction);
+    const txid = await connection.sendRawTransaction(signedTx.serialize());
+    await connection.confirmTransaction(txid);
 
-    console.log(`Successfully revoked ${instructions.length} authorities. Transaction ID: ${txids[0]}`);
-    return { txids };
-
+    return { txid };
   } catch (error) {
-    console.error("Error revoking authorities:", error);
-    throw new Error(`Failed to revoke authorities: ${error.message}`);
+    console.error("Transaction failed:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Transaction failed"
+    );
   }
 }
 
 /**
- * Reads the current mint and freeze authorities from a token mint
- * Returns base58 encoded public keys or null if no authority
+ * Reads the current mint and freeze authorities for a token
  */
 export async function readMintAuthorities({
   connection,
-  mintPubkey,
+  mint,
 }: {
   connection: Connection;
-  mintPubkey: PublicKey;
-}): Promise<{ mintAuthority: string | null; freezeAuthority: string | null }> {
+  mint: string;
+}): Promise<MintAuthorities> {
   try {
-    const mintInfo = await getMint(connection, mintPubkey);
-    
+    const mintPk = new PublicKey(mint);
+    const mintInfo = await getMint(connection, mintPk);
+
     return {
       mintAuthority: mintInfo.mintAuthority?.toBase58() || null,
       freezeAuthority: mintInfo.freezeAuthority?.toBase58() || null,
     };
   } catch (error) {
-    console.error("Error reading mint authorities:", error);
-    throw new Error(`Failed to read mint authorities: ${error.message}`);
+    console.error("Failed to read mint authorities:", error);
+    throw new Error("Failed to read mint authorities from blockchain");
   }
 }
 
 /**
- * Verifies if a mint is honestly launched (both authorities are null)
- * Returns true if the mint has no mint or freeze authority
+ * Verifies if a mint has honest launch (no mint or freeze authorities)
  */
 export async function verifyHonestMint({
   connection,
-  mintPubkey,
+  mint,
 }: {
   connection: Connection;
-  mintPubkey: PublicKey;
+  mint: string;
 }): Promise<boolean> {
   try {
-    const authorities = await readMintAuthorities({ connection, mintPubkey });
-    const isHonest = authorities.mintAuthority === null && authorities.freezeAuthority === null;
-    
-    console.log(`Mint verification: mintAuthority=${authorities.mintAuthority}, freezeAuthority=${authorities.freezeAuthority}, isHonest=${isHonest}`);
-    return isHonest;
+    const authorities = await readMintAuthorities({ connection, mint });
+    return !authorities.mintAuthority && !authorities.freezeAuthority;
   } catch (error) {
-    console.error("Error verifying honest mint:", error);
-    throw new Error(`Failed to verify honest mint: ${error.message}`);
+    console.error("Failed to verify honest mint:", error);
+    return false;
   }
 }
 
@@ -160,60 +147,52 @@ export async function verifyHonestMint({
  */
 export async function burnLpTokens({
   connection,
-  payer,
+  wallet,
   lpMint,
   ownerTokenAccount,
   amount,
 }: {
   connection: Connection;
-  payer: WalletSigner;
-  lpMint: PublicKey;
-  ownerTokenAccount: PublicKey;
+  wallet: { publicKey: PublicKey; signTransaction: (transaction: Transaction) => Promise<Transaction> };
+  lpMint: string;
+  ownerTokenAccount: string;
   amount: bigint;
 }): Promise<{ txid: string }> {
-  try {
-    // Verify the token account exists and has sufficient balance
-    const tokenAccount = await getAccount(connection, ownerTokenAccount);
-    
-    if (tokenAccount.amount < amount) {
-      throw new Error(`Insufficient LP token balance. Required: ${amount}, Available: ${tokenAccount.amount}`);
-    }
+  if (!wallet.publicKey || !wallet.signTransaction) {
+    throw new Error("Wallet not connected or cannot sign transactions");
+  }
 
+  const lpMintPk = new PublicKey(lpMint);
+  const ownerTokenAccountPk = new PublicKey(ownerTokenAccount);
+  const walletPk = wallet.publicKey;
+
+  try {
     // Create burn instruction
     const burnInstruction = createBurnInstruction(
-      ownerTokenAccount,
-      lpMint,
-      payer.publicKey,
+      ownerTokenAccountPk,
+      lpMintPk,
+      walletPk,
       amount
     );
 
     // Create and send transaction
-    const transaction = new Transaction();
-    transaction.add(burnInstruction);
+    const transaction = new Transaction().add(burnInstruction);
     
     // Get recent blockhash
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    transaction.feePayer = payer.publicKey;
-
-    let txid: string;
+    transaction.feePayer = walletPk;
 
     // Sign and send transaction
-    if ('signTransaction' in payer) {
-      // Wallet adapter case
-      const signedTx = await payer.signTransaction(transaction);
-      txid = await connection.sendRawTransaction(signedTx.serialize());
-      await connection.confirmTransaction(txid);
-    } else {
-      // Keypair case
-      txid = await sendAndConfirmTransaction(connection, transaction, [payer as Keypair]);
-    }
+    const signedTx = await wallet.signTransaction(transaction);
+    const txid = await connection.sendRawTransaction(signedTx.serialize());
+    await connection.confirmTransaction(txid);
 
-    console.log(`Successfully burned ${amount} LP tokens. Transaction ID: ${txid}`);
     return { txid };
-
   } catch (error) {
-    console.error("Error burning LP tokens:", error);
-    throw new Error(`Failed to burn LP tokens: ${error.message}`);
+    console.error("Transaction failed:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Transaction failed"
+    );
   }
 }

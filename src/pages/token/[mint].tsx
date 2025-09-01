@@ -3,8 +3,8 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { tokenStorage, StoredToken } from "../../utils/tokenStorage";
 import { PresetBadge } from "../../components/PresetBadge";
-import { HonestLaunchEnforcer } from "../../components/HonestLaunchEnforcer";
-import { TokenStats } from "../../components/TokenStats";
+import HonestLaunchEnforcer from "../../components/HonestLaunchEnforcer";
+import TokenStats from "../../components/TokenStats";
 import { AiOutlineCopy, AiOutlineLink } from "react-icons/ai";
 import { FaTelegram, FaTwitter } from "react-icons/fa";
 

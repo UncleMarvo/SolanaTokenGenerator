@@ -1,87 +1,109 @@
 import { useState, useEffect, useCallback } from "react";
-import { useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
-import { verifyHonestMint } from "../lib/solanaToken";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { 
+  revokeAuthorities, 
+  verifyHonestMint, 
+  readMintAuthorities 
+} from "../lib/solanaToken";
 
-interface UseHonestLaunchVerificationProps {
-  mintAddress: string | null;
-  preset: "honest" | "degen";
-  autoCheck?: boolean; // Whether to automatically check verification on mount
+export interface HonestLaunchStatus {
+  isVerified: boolean;
+  mintAuthority: string | null;
+  freezeAuthority: string | null;
+  lastChecked: number | null;
 }
 
-export const useHonestLaunchVerification = ({
-  mintAddress,
-  preset,
-  autoCheck = true,
-}: UseHonestLaunchVerificationProps) => {
+export const useHonestLaunchVerification = (mintAddress: string | null) => {
   const { connection } = useConnection();
-  const [isVerified, setIsVerified] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const wallet = useWallet();
+  
+  const [status, setStatus] = useState<HonestLaunchStatus>({
+    isVerified: false,
+    mintAuthority: null,
+    freezeAuthority: null,
+    lastChecked: null,
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check verification status
-  const checkVerification = useCallback(async () => {
-    if (!mintAddress || !connection || preset !== "honest") {
-      return false;
-    }
+  // Verify honest launch status from blockchain
+  const verifyStatus = useCallback(async () => {
+    if (!mintAddress || !connection) return;
 
     try {
-      setIsChecking(true);
       setError(null);
+      const authorities = await readMintAuthorities({ connection, mint: mintAddress });
+      const isVerified = !authorities.mintAuthority && !authorities.freezeAuthority;
       
-      const mintPubkey = new PublicKey(mintAddress);
-      const isHonest = await verifyHonestMint({ connection, mintPubkey });
-      
-      setIsVerified(isHonest);
-      setLastChecked(new Date());
-      
-      return isHonest;
+      setStatus({
+        isVerified,
+        mintAuthority: authorities.mintAuthority,
+        freezeAuthority: authorities.freezeAuthority,
+        lastChecked: Date.now(),
+      });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to verify honest launch";
+      console.error("Failed to verify honest launch status:", err);
+      setError("Failed to verify on-chain status");
+    }
+  }, [mintAddress, connection]);
+
+  // Revoke authorities to enforce honest launch
+  const enforceHonestLaunch = useCallback(async () => {
+    if (!mintAddress || !connection || !wallet.publicKey || !wallet.signTransaction) {
+      throw new Error("Wallet not connected or cannot sign transactions");
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Revoke authorities
+      const result = await revokeAuthorities({
+        connection,
+        wallet,
+        mint: mintAddress,
+      });
+
+      // Verify the revocation was successful
+      const isVerified = await verifyHonestMint({ connection, mint: mintAddress });
+      
+      if (isVerified) {
+        // Update status to reflect successful revocation
+        setStatus(prev => ({
+          ...prev,
+          isVerified: true,
+          mintAuthority: null,
+          freezeAuthority: null,
+          lastChecked: Date.now(),
+        }));
+        
+        return { success: true, txid: result.txid };
+      } else {
+        throw new Error("Authorities were not properly revoked");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to revoke authorities";
       setError(errorMessage);
-      console.error("Error checking honest launch verification:", err);
-      return false;
+      throw err;
     } finally {
-      setIsChecking(false);
+      setIsLoading(false);
     }
-  }, [mintAddress, connection, preset]);
+  }, [mintAddress, connection, wallet]);
 
-  // Auto-check verification on mount and when dependencies change
+  // Check status on mount and when dependencies change
   useEffect(() => {
-    if (autoCheck && mintAddress && connection && preset === "honest") {
-      checkVerification();
+    if (mintAddress && connection) {
+      verifyStatus();
     }
-  }, [autoCheck, mintAddress, connection, preset, checkVerification]);
-
-  // Manual verification check
-  const refreshVerification = useCallback(async () => {
-    return await checkVerification();
-  }, [checkVerification]);
-
-  // Reset verification state
-  const resetVerification = useCallback(() => {
-    setIsVerified(false);
-    setIsChecking(false);
-    setLastChecked(null);
-    setError(null);
-  }, []);
-
-  // Update verification status (useful for parent components)
-  const updateVerificationStatus = useCallback((status: boolean) => {
-    setIsVerified(status);
-    setLastChecked(new Date());
-    setError(null);
-  }, []);
+  }, [mintAddress, connection, verifyStatus]);
 
   return {
-    isVerified,
-    isChecking,
-    lastChecked,
+    status,
+    isLoading,
     error,
-    checkVerification,
-    refreshVerification,
-    resetVerification,
-    updateVerificationStatus,
+    verifyStatus,
+    enforceHonestLaunch,
+    clearError: () => setError(null),
   };
 };

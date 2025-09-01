@@ -19,7 +19,7 @@ import {
 } from "../../../lib/kitComposer";
 import { hashString } from "../../../lib/hash";
 import { getClientIp, makeBucket, makeDailyGate } from "../../../lib/rateLimit";
-import { updateAiUsageStats } from "./admin/ai-usage";
+import { updateAiUsageStats } from "../admin/ai-usage";
 
 // Rate limiting buckets (module-scoped singletons)
 const endpointBucket = makeBucket({ limit: 20, windowMs: 10 * 60_000 }); // 20 requests per 10 minutes

@@ -1,5 +1,5 @@
 import { FC, useState, useEffect } from "react";
-import { TokenStats } from "../lib/analytics";
+import { TokenStats as TokenStatsType } from "../lib/analytics";
 
 interface TokenStatsProps {
   mint: string;
@@ -8,7 +8,7 @@ interface TokenStatsProps {
 }
 
 const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
-  const [stats, setStats] = useState<TokenStats | null>(null);
+  const [stats, setStats] = useState<TokenStatsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);

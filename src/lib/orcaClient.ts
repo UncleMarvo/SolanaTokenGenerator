@@ -64,8 +64,8 @@ export async function getOrcaQuote(request: OrcaQuoteRequest): Promise<OrcaQuote
       pool: poolAddress,
       priceImpact: Math.round(priceImpact * 100) / 100, // Round to 2 decimals
       lpFee: Math.round(lpFee * 10000) / 10000, // Round to 4 decimals
-      expectedLpTokens: Math.round(expectedLpTokens * 100) / 100, // Round to 2 decimals
-      minOut: Math.round(minOut * 100) / 100 // Round to 2 decimals
+      expectedLpTokens: (Math.round(expectedLpTokens * 100) / 100).toString(), // Round to 2 decimals
+      minOut: (Math.round(minOut * 100) / 100).toString() // Round to 2 decimals
     };
     
   } catch (error) {
