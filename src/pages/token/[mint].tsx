@@ -4,6 +4,7 @@ import Head from "next/head";
 import { tokenStorage, StoredToken } from "../../utils/tokenStorage";
 import { PresetBadge } from "../../components/PresetBadge";
 import { HonestLaunchEnforcer } from "../../components/HonestLaunchEnforcer";
+import { TokenStats } from "../../components/TokenStats";
 import { AiOutlineCopy, AiOutlineLink } from "react-icons/ai";
 import { FaTelegram, FaTwitter } from "react-icons/fa";
 
@@ -155,6 +156,16 @@ const TokenSharePage: FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Live Analytics */}
+            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
+              <h2 className="text-xl font-bold mb-6">Live Analytics</h2>
+              <TokenStats 
+                mint={token.mintAddress} 
+                tokenName={token.name}
+                tokenSymbol={token.symbol}
+              />
             </div>
 
             {/* Action Buttons */}
