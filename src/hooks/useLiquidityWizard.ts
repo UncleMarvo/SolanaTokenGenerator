@@ -16,6 +16,13 @@ export interface LiquidityQuote {
   expectedLpTokens: string;
   minOut: string;
   quoteId: string;
+  source: "Raydium" | "DexScreener" | "Orca"; // Source of the quote data
+}
+
+export interface LiquidityError {
+  error: string;
+  message?: string;
+  details?: string[];
 }
 
 export interface LiquidityCommit {
@@ -33,6 +40,7 @@ export const useLiquidityWizard = () => {
     quoteAmount: ""
   });
   const [quote, setQuote] = useState<LiquidityQuote | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [commitResult, setCommitResult] = useState<LiquidityCommit | null>(null);
@@ -73,6 +81,13 @@ export const useLiquidityWizard = () => {
 
   const getQuote = async () => {
     setIsLoading(true);
+    setErrorMsg(null);
+    setQuote(null);
+    
+    // Create AbortController with 15 second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
     try {
       const response = await fetch("/api/liquidity/quote", {
         method: "POST",
@@ -80,11 +95,53 @@ export const useLiquidityWizard = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(form),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        let errorMessage = "Quote failed";
+        
+        // Handle specific error types
+        if (errorData.error === "InvalidRequest") {
+          if (errorData.details && errorData.details.length > 0) {
+            errorMessage = `Invalid request: ${errorData.details.join(", ")}`;
+          } else {
+            errorMessage = errorData.message || "Invalid request";
+          }
+        } else if (errorData.error === "NoPool") {
+          errorMessage = errorData.message || "No pool available for this pair";
+        } else if (errorData.error === "ProviderError") {
+          errorMessage = errorData.message || "DEX API error";
+        } else if (errorData.error === "Timeout") {
+          errorMessage = errorData.message || "Request timeout";
+        } else if (errorData.error === "ResponseTooLarge") {
+          errorMessage = errorData.message || "Response too large";
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+        
+        setErrorMsg(errorMessage);
+        return;
+      }
 
       const data = await response.json();
       setQuote(data);
     } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          setErrorMsg("Timeout fetching quote");
+        } else {
+          setErrorMsg("Network error - please check your connection");
+        }
+      } else {
+        setErrorMsg("Unexpected error occurred");
+      }
+      
       console.error("Error getting quote:", error);
     } finally {
       setIsLoading(false);
@@ -120,14 +177,22 @@ export const useLiquidityWizard = () => {
   const resetWizard = () => {
     setCurrentStep(1);
     setQuote(null);
+    setErrorMsg(null);
     setCommitResult(null);
     setShowConfirmModal(false);
+  };
+
+  const goBackFromQuote = () => {
+    setQuote(null);
+    setErrorMsg(null);
+    prevStep();
   };
 
   return {
     currentStep,
     form,
     quote,
+    errorMsg,
     isLoading,
     showConfirmModal,
     commitResult,
@@ -137,6 +202,7 @@ export const useLiquidityWizard = () => {
     getQuote,
     commitLiquidity,
     setShowConfirmModal,
-    resetWizard
+    resetWizard,
+    goBackFromQuote
   };
 };

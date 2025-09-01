@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { useLiquidityWizard } from "../hooks/useLiquidityWizard";
 import { AiOutlineClose } from "react-icons/ai";
+import { Spinner } from "../components/ui/Spinner";
 
 const LiquidityPage: FC = () => {
   const router = useRouter();
@@ -10,6 +11,7 @@ const LiquidityPage: FC = () => {
     currentStep,
     form,
     quote,
+    errorMsg,
     isLoading,
     showConfirmModal,
     commitResult,
@@ -19,7 +21,8 @@ const LiquidityPage: FC = () => {
     getQuote,
     commitLiquidity,
     setShowConfirmModal,
-    resetWizard
+    resetWizard,
+    goBackFromQuote
   } = useLiquidityWizard();
 
   const renderStep1 = () => (
@@ -27,27 +30,45 @@ const LiquidityPage: FC = () => {
       <div>
         <h3 className="text-xl font-bold mb-4">Step 1: Choose DEX</h3>
         <div className="space-y-3">
-          <label className="flex items-center space-x-3 cursor-pointer">
+          <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
+            isLoading 
+              ? "opacity-50 cursor-not-allowed" 
+              : "cursor-pointer"
+          } ${
+            form.dex === "Raydium" 
+              ? "bg-primary/5 border border-primary/20" 
+              : "hover:bg-muted/20"
+          }`}>
             <input
               type="radio"
               name="dex"
               value="Raydium"
               checked={form.dex === "Raydium"}
               onChange={(e) => updateForm("dex", e.target.value)}
-              className="text-primary focus:ring-primary"
+              disabled={isLoading}
+              className="text-primary focus:ring-primary w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className="text-fg">Raydium</span>
+            <span className="text-fg font-medium">Raydium</span>
           </label>
-          <label className="flex items-center space-x-3 cursor-pointer">
+          <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
+            isLoading 
+              ? "opacity-50 cursor-not-allowed" 
+              : "cursor-pointer"
+          } ${
+            form.dex === "Orca" 
+              ? "bg-accent/5 border border-accent/20" 
+              : "hover:bg-muted/20"
+          }`}>
             <input
               type="radio"
               name="dex"
               value="Orca"
               checked={form.dex === "Orca"}
               onChange={(e) => updateForm("dex", e.target.value)}
-              className="text-primary focus:ring-primary"
+              disabled={isLoading}
+              className="text-primary focus:ring-primary w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className="text-fg">Orca</span>
+            <span className="text-fg font-medium">Orca</span>
           </label>
         </div>
       </div>
@@ -60,7 +81,8 @@ const LiquidityPage: FC = () => {
           type="text"
           value={form.tokenMint}
           onChange={(e) => updateForm("tokenMint", e.target.value)}
-          className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+          disabled={isLoading}
+          className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="Enter token mint address"
           required
         />
@@ -69,7 +91,7 @@ const LiquidityPage: FC = () => {
       <div className="flex justify-end">
         <button
           onClick={nextStep}
-          disabled={!form.tokenMint}
+          disabled={!form.tokenMint || isLoading}
           className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
         >
           Next
@@ -83,27 +105,45 @@ const LiquidityPage: FC = () => {
       <div>
         <h3 className="text-xl font-bold mb-4">Step 2: Select Pair</h3>
         <div className="space-y-3">
-          <label className="flex items-center space-x-3 cursor-pointer">
+          <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
+            isLoading 
+              ? "opacity-50 cursor-not-allowed" 
+              : "cursor-pointer"
+          } ${
+            form.pair === "SOL/TOKEN" 
+              ? "bg-primary/5 border border-primary/20" 
+              : "hover:bg-muted/20"
+          }`}>
             <input
               type="radio"
               name="pair"
               value="SOL/TOKEN"
               checked={form.pair === "SOL/TOKEN"}
               onChange={(e) => updateForm("pair", e.target.value)}
-              className="text-primary focus:ring-primary"
+              disabled={isLoading}
+              className="text-primary focus:ring-primary w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className="text-fg">SOL/TOKEN</span>
+            <span className="text-fg font-medium">SOL/TOKEN</span>
           </label>
-          <label className="flex items-center space-x-3 cursor-pointer">
+          <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
+            isLoading 
+              ? "opacity-50 cursor-not-allowed" 
+              : "cursor-pointer"
+          } ${
+            form.pair === "USDC/TOKEN" 
+              ? "bg-secondary/5 border border-secondary/20" 
+              : "hover:bg-muted/20"
+          }`}>
             <input
               type="radio"
               name="pair"
               value="USDC/TOKEN"
               checked={form.pair === "USDC/TOKEN"}
               onChange={(e) => updateForm("pair", e.target.value)}
-              className="text-primary focus:ring-primary"
+              disabled={isLoading}
+              className="text-primary focus:ring-primary w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className="text-fg">USDC/TOKEN</span>
+            <span className="text-fg font-medium">USDC/TOKEN</span>
           </label>
         </div>
       </div>
@@ -111,13 +151,15 @@ const LiquidityPage: FC = () => {
       <div className="flex justify-between">
         <button
           onClick={prevStep}
-          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300"
+          disabled={isLoading}
+          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
         <button
           onClick={nextStep}
-          className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300"
+          disabled={isLoading}
+          className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
         >
           Next
         </button>
@@ -138,7 +180,8 @@ const LiquidityPage: FC = () => {
               type="number"
               value={form.baseAmount}
               onChange={(e) => updateForm("baseAmount", e.target.value)}
-              className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+              disabled={isLoading}
+              className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="0.0"
               step="0.01"
               min="0"
@@ -153,7 +196,8 @@ const LiquidityPage: FC = () => {
               type="number"
               value={form.quoteAmount}
               onChange={(e) => updateForm("quoteAmount", e.target.value)}
-              className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+              disabled={isLoading}
+              className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="0.0"
               step="0.01"
               min="0"
@@ -166,7 +210,8 @@ const LiquidityPage: FC = () => {
       <div className="flex justify-between">
         <button
           onClick={prevStep}
-          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300"
+          disabled={isLoading}
+          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
@@ -175,7 +220,14 @@ const LiquidityPage: FC = () => {
           disabled={!form.baseAmount || !form.quoteAmount || isLoading}
           className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
         >
-          {isLoading ? "Getting Quote..." : "Get Quote"}
+          {isLoading ? (
+            <>
+              <Spinner className="mr-2" />
+              <span>Getting quote…</span>
+            </>
+          ) : (
+            "Get Quote"
+          )}
         </button>
       </div>
     </div>
@@ -183,6 +235,26 @@ const LiquidityPage: FC = () => {
 
   const renderQuote = () => (
     <div className="space-y-6">
+      {/* Visual Feedback Area */}
+      <div className="bg-success/20 border border-success/30 rounded-lg p-4 text-center">
+        <p className="text-success text-sm font-medium">
+          ✅ Quote from {form.dex} fetched.
+        </p>
+        {/* Show source information and DexScreener note */}
+        {quote?.source && (
+          <div className="mt-2 space-y-1">
+            <p className="text-success/70 text-xs">
+              Source: {quote.source}
+            </p>
+            {quote.source === "DexScreener" && (
+              <p className="text-warning/80 text-xs font-medium">
+                ⚠️ Estimated via DexScreener
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      
       <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
         <h3 className="text-xl font-bold mb-4">Quote Summary</h3>
         <div className="space-y-3">
@@ -211,10 +283,7 @@ const LiquidityPage: FC = () => {
 
       <div className="flex justify-between">
         <button
-          onClick={() => {
-            setQuote(null);
-            setCurrentStep(3);
-          }}
+          onClick={goBackFromQuote}
           className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300"
         >
           Back
@@ -308,6 +377,27 @@ const LiquidityPage: FC = () => {
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {errorMsg && (
+              <div className="bg-error/20 border border-error/30 rounded-lg p-4 mb-6 text-center">
+                <p className="text-error text-sm font-medium">
+                  ❌ {errorMsg}
+                </p>
+              </div>
+            )}
+            
+            {/* Loading Status Feedback */}
+            {isLoading && currentStep === 3 && (
+              <div className="bg-info/20 border border-info/30 rounded-lg p-4 mb-6 text-center">
+                <div className="flex items-center justify-center space-x-2">
+                  <Spinner size={16} />
+                  <p className="text-info text-sm font-medium">
+                    Fetching from {form.dex}… this can take a few seconds.
+                  </p>
                 </div>
               </div>
             )}
