@@ -34,7 +34,7 @@
   z-index: 111;
   width: 100%;
   margin: 0 auto;
-  top: 35%;
+  top: 15%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
@@ -84,6 +84,14 @@
 .custum-file-upload input {
   display: none;
 }
+
+.token-styles {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  top: 5%;
+}
+
 /* ??SWITCH */
 #checkbox {
   display: none;

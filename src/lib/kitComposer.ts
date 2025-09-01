@@ -115,7 +115,7 @@ function createThemeBackground(w: number, h: number, palette: Palette, theme: Th
       return `
         <defs>
           <pattern id="gridPattern" x="${gridOffset}" y="${gridOffset}" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="${palette.accent}" stroke-width="1" opacity="0.3"/>
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="${palette.accent}" strokeWidth="1" opacity="0.3"/>
           </pattern>
           <radialGradient id="cornerGlow" cx="0%" cy="0%" r="50%">
             <stop offset="0%" style="stop-color:${palette.accent};stop-opacity:0.6"/>
@@ -350,7 +350,7 @@ export async function composeSticker(text: string, palette: Palette, rng: () => 
       <!-- Accent shape (random diagonal line) -->
       <line x1="0" y1="${size}" x2="${size * (0.25 + rng() * 0.1)}" y2="0" 
             stroke="${palette.accent}" 
-            stroke-width="${6 + Math.floor(rng() * 4)}" 
+            strokeWidth="${6 + Math.floor(rng() * 4)}" 
             opacity="${0.5 + rng() * 0.3}"/>
       
       <text x="50%" y="50%" 
@@ -588,7 +588,7 @@ export async function composeLogoBadgeMark(ticker: string, palette: Palette): Pr
       <circle cx="${size * 0.5}" cy="${size * 0.5}" r="${size * 0.4}" 
               fill="url(#badgeGradient)" 
               stroke="${palette.accent}" 
-              stroke-width="8"
+              strokeWidth="8"
               filter="url(#badgeGlow)"/>
       
       <text x="50%" y="50%" 

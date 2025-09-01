@@ -32,6 +32,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import CreateSVG from "../../components/SVG/CreateSVG";
 import { Branding } from "../../components/Branding";
 import { PresetBadge } from "../../components/PresetBadge";
+import { HonestLaunchEnforcer } from "../../components/HonestLaunchEnforcer";
 import { InputView } from "../index";
 
 interface CreateViewProps {
@@ -46,6 +47,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
   const [tokenUri, setTokenUri] = useState("");
   const [tokenMintAddress, setTokenMintAddress] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isOnChainVerified, setIsOnChainVerified] = useState(false);
   const [token, setToken] = useState({
     name: "",
     symbol: "",
@@ -61,6 +63,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
     setToken({ ...token, [fieldName]: e.target.value });
   };
 
+  // Handle honest launch verification status changes
+  const handleVerificationChange = (isVerified: boolean) => {
+    setIsOnChainVerified(isVerified);
+  };
+
+
+
   // CREATE TOKEN FUNCTION
   const createToken = useCallback(
     async (token) => {
@@ -74,10 +83,19 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
       }
 
       // Validate required fields
-      if (!token.name || !token.symbol || !token.decimals || !token.amount || !token.image || !token.description || !token.preset) {
+      if (
+        !token.name ||
+        !token.symbol ||
+        !token.decimals ||
+        !token.amount ||
+        !token.image ||
+        !token.description ||
+        !token.preset
+      ) {
         notify({
           type: "error",
-          message: "Please fill in all required fields (name, symbol, decimals, amount, image, description, and preset)",
+          message:
+            "Please fill in all required fields (name, symbol, decimals, amount, image, description, and preset)",
         });
         return;
       }
@@ -167,7 +185,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
 
         const mintAddress = mintKeypair.publicKey.toString();
         setTokenMintAddress(mintAddress);
-        
+
         // Store token data locally
         tokenStorage.storeToken({
           mintAddress,
@@ -181,7 +199,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           vibe: token.vibe || "degen", // Default to degen if not specified
           createdAt: Date.now(),
         });
-        
+
         notify({
           type: "success",
           message: "Token was created successfully",
@@ -219,7 +237,9 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         const formData = new FormData();
         formData.append("file", file);
 
-        console.log(`***** src/views/create: uploadImagePinata: formData: ${formData[file]}`);
+        console.log(
+          `***** src/views/create: uploadImagePinata: formData: ${formData[file]}`
+        );
 
         const response = await axios({
           method: "POST",
@@ -268,7 +288,8 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         data: data,
         headers: {
           pinata_api_key: "25ef6fe8484ca7a0ab7d",
-          pinata_secret_api_key: "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe",
+          pinata_secret_api_key:
+            "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe",
           "Content-Type": "application/json",
         },
       });
@@ -294,7 +315,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
           <div className="container">
             <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
-              <div className="grid gap-10 lg:grid-cols-2">
+              <div className="grid gap-5 lg:grid-cols-2">
                 <div className="ps-4 hidden py-4 pt-10 lg:block">
                   <div className="upload relative w-full overflow-hidden rounded-xl">
                     {token.image ? (
@@ -316,15 +337,181 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                     )}
                   </div>
 
-                  <textarea
-                    rows={6}
-                    onChange={(e) => handleFormFieldChange("description", e)}
-                    className="border-muted relative mt-48 block w-full rounded border-muted/10 bg-transparent py-1.5 px-3 text-fg/80 focus:border-muted/25 focus:ring-transparent"
-                    placeholder="Description of your token"
-                  ></textarea>
+                  <div className="token-styles relative">
+                    {/* Preset Selector */}
+                    <div className="mt-6">
+                      <label className="block text-muted mb-3 font-semibold">
+                        Launch Preset
+                      </label>
+                      <div className="space-y-3">
+                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                          token.preset === "honest" 
+                            ? "bg-primary/5 border border-primary/20" 
+                            : "hover:bg-muted/20"
+                        }`}>
+                          <input
+                            type="radio"
+                            name="preset"
+                            value="honest"
+                            checked={token.preset === "honest"}
+                            onChange={(e) => handleFormFieldChange("preset", e)}
+                            className="text-primary focus:ring-primary mt-1 w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-fg font-medium">
+                                Honest Launch
+                              </span>
+                              <span className="bg-success/20 text-success text-xs px-2 py-1 rounded-full">
+                                Recommended
+                              </span>
+                            </div>
+                            <p className="text-muted text-sm mt-1">
+                              Revoke mint/freeze authority, plan LP lock for
+                              community trust
+                            </p>
+                          </div>
+                        </label>
+                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                          token.preset === "degen" 
+                            ? "bg-accent/5 border border-accent/20" 
+                            : "hover:bg-muted/20"
+                        }`}>
+                          <input
+                            type="radio"
+                            name="preset"
+                            value="degen"
+                            checked={token.preset === "degen"}
+                            onChange={(e) => handleFormFieldChange("preset", e)}
+                            className="text-primary focus:ring-primary mt-1 w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-fg font-medium">
+                                Degen Mode
+                              </span>
+                              <span className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full">
+                                No Safeguards
+                              </span>
+                            </div>
+                            <p className="text-muted text-sm mt-1">
+                              No authority changes, maximum flexibility for
+                              rapid deployment
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Vibe Selector */}
+                    <div className="mt-6">
+                      <label className="block text-muted mb-3 font-semibold">
+                        Token Vibe
+                      </label>
+                      <div className="space-y-3">
+                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                          token.vibe === "funny" 
+                            ? "bg-primary/5 border border-primary/20" 
+                            : "hover:bg-muted/20"
+                        }`}>
+                          <input
+                            type="radio"
+                            name="vibe"
+                            value="funny"
+                            checked={token.vibe === "funny"}
+                            onChange={(e) => handleFormFieldChange("vibe", e)}
+                            className="text-primary focus:ring-primary mt-1 w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-fg font-medium">Funny</span>
+                              <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-full">
+                                Humorous
+                              </span>
+                            </div>
+                            <p className="text-muted text-sm mt-1">
+                              Light-hearted and meme-worthy content with lots of
+                              emojis
+                            </p>
+                          </div>
+                        </label>
+                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                          token.vibe === "serious" 
+                            ? "bg-secondary/5 border border-secondary/20" 
+                            : "hover:bg-muted/20"
+                        }`}>
+                          <input
+                            type="radio"
+                            name="vibe"
+                            value="serious"
+                            checked={token.vibe === "serious"}
+                            onChange={(e) => handleFormFieldChange("vibe", e)}
+                            className="text-primary focus:ring-primary mt-1 w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-fg font-medium">
+                                Serious
+                              </span>
+                              <span className="bg-secondary/20 text-secondary text-xs px-2 py-1 rounded-full">
+                                Professional
+                              </span>
+                            </div>
+                            <p className="text-muted text-sm mt-1">
+                              Business-focused with technical terms and
+                              professional tone
+                            </p>
+                          </div>
+                        </label>
+                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                          token.vibe === "degen" 
+                            ? "bg-accent/5 border border-accent/20" 
+                            : "hover:bg-muted/20"
+                        }`}>
+                          <input
+                            type="radio"
+                            name="vibe"
+                            value="degen"
+                            checked={token.vibe === "degen"}
+                            onChange={(e) => handleFormFieldChange("vibe", e)}
+                            className="text-primary focus:ring-primary mt-1 w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-fg font-medium">Degen</span>
+                              <span className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full">
+                                Hype
+                              </span>
+                            </div>
+                            <p className="text-muted text-sm mt-1">
+                              Extremely hype with rocket emojis and moon
+                              references
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="lg:ps-0 flex flex-col p-10">
+                <div className="lg:ps-0 flex flex-col p-10 pb-0">
+                  <div className="">
+                    <div className="text-center text-right">
+                      <ul className="flex flex-wrap gap-2 justify-end">
+                        <li>
+                          <a
+                            onClick={() => setOpenCreateModal(false)}
+                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
+                          >
+                            <i className="text-xl text-fg group-hover:text-fg">
+                              <AiOutlineClose />
+                            </i>
+                          </a>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
                   <div className="pb-6 my-auto">
                     <h4 className="mb-4 text-2xl font-bold text-fg">
                       Solana Token Creator
@@ -360,166 +547,55 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         clickhandle={(e) => handleFormFieldChange("amount", e)}
                       />
 
-                      {/* Preset Selector */}
-                      <div className="mb-6">
-                        <label className="block text-muted mb-3 font-semibold">
-                          Launch Preset
-                        </label>
-                        <div className="space-y-3">
-                          <label className="flex items-start space-x-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="preset"
-                              value="honest"
-                              checked={token.preset === "honest"}
-                              onChange={(e) => handleFormFieldChange("preset", e)}
-                              className="text-primary focus:ring-primary mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-fg font-medium">Honest Launch</span>
-                                <span className="bg-success/20 text-success text-xs px-2 py-1 rounded-full">Recommended</span>
-                              </div>
-                              <p className="text-muted text-sm mt-1">
-                                Revoke mint/freeze authority, plan LP lock for community trust
-                              </p>
-                            </div>
-                          </label>
-                          <label className="flex items-start space-x-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="preset"
-                              value="degen"
-                              checked={token.preset === "degen"}
-                              onChange={(e) => handleFormFieldChange("preset", e)}
-                              className="text-primary focus:ring-primary mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-fg font-medium">Degen Mode</span>
-                                <span className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full">No Safeguards</span>
-                              </div>
-                              <p className="text-muted text-sm mt-1">
-                                No authority changes, maximum flexibility for rapid deployment
-                              </p>
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Vibe Selector */}
-                      <div className="mb-6">
-                        <label className="block text-muted mb-3 font-semibold">
-                          Token Vibe
-                        </label>
-                        <div className="space-y-3">
-                          <label className="flex items-start space-x-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="vibe"
-                              value="funny"
-                              checked={token.vibe === "funny"}
-                              onChange={(e) => handleFormFieldChange("vibe", e)}
-                              className="text-primary focus:ring-primary mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-fg font-medium">Funny</span>
-                                <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-full">Humorous</span>
-                              </div>
-                              <p className="text-muted text-sm mt-1">
-                                Light-hearted and meme-worthy content with lots of emojis
-                              </p>
-                            </div>
-                          </label>
-                          <label className="flex items-start space-x-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="vibe"
-                              value="serious"
-                              checked={token.vibe === "serious"}
-                              onChange={(e) => handleFormFieldChange("vibe", e)}
-                              className="text-primary focus:ring-primary mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-fg font-medium">Serious</span>
-                                <span className="bg-secondary/20 text-secondary text-xs px-2 py-1 rounded-full">Professional</span>
-                              </div>
-                              <p className="text-muted text-sm mt-1">
-                                Business-focused with technical terms and professional tone
-                              </p>
-                            </div>
-                          </label>
-                          <label className="flex items-start space-x-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="vibe"
-                              value="degen"
-                              checked={token.vibe === "degen"}
-                              onChange={(e) => handleFormFieldChange("vibe", e)}
-                              className="text-primary focus:ring-primary mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-fg font-medium">Degen</span>
-                                <span className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full">Hype</span>
-                              </div>
-                              <p className="text-muted text-sm mt-1">
-                                Extremely hype with rocket emojis and moon references
-                              </p>
-                            </div>
-                          </label>
-                        </div>
-                      </div>
+                      <textarea
+                        rows={6}
+                        onChange={(e) =>
+                          handleFormFieldChange("description", e)
+                        }
+                        className="border-muted relative mt-6 mb-6 block w-full rounded border-muted/10 bg-transparent py-1.5 px-3 text-fg/80 focus:border-muted/25 focus:ring-transparent"
+                        placeholder="Description of your token"
+                      ></textarea>
 
                       {/* Wallet Connection Status */}
                       <div className="mb-4 text-center">
                         {!publicKey ? (
                           <div className="bg-danger/20 border border-danger/30 rounded-lg p-3 mb-4">
-                            <p className="text-danger text-sm mb-2">Wallet not connected</p>
+                            <p className="text-danger text-sm mb-2">
+                              Wallet not connected
+                            </p>
                             <WalletMultiButton className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300" />
                           </div>
                         ) : (
                           <div className="bg-success/20 border border-success/30 rounded-lg p-3 mb-4">
-                            <p className="text-success text-sm">✅ Wallet connected: {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}</p>
+                            <p className="text-success text-sm">
+                              ✅ Wallet connected:{" "}
+                              {publicKey.toString().slice(0, 4)}...
+                              {publicKey.toString().slice(-4)}
+                            </p>
                           </div>
                         )}
                       </div>
 
-                      <div className="mb-6 text-center">
+                      <div className="text-center">
                         <button
                           type="submit"
                           onClick={() => createToken(token)}
                           disabled={!publicKey || isLoading}
                           className={`group mt-5 inline-flex w-full items-center justify-center rounded-lg px-6 py-2 backdrop-blur-2xl transition-all duration-500 ${
-                            !publicKey 
-                              ? 'bg-muted/50 text-muted cursor-not-allowed' 
-                              : 'bg-primary-600/90 hover:bg-primary-600 text-bg'
+                            !publicKey
+                              ? "bg-muted/50 text-muted cursor-not-allowed"
+                              : "bg-primary-600/90 text-white hover:bg-primary-600 hover:text-bg"
                           }`}
                         >
                           <span className="fw-bold">
-                            {!publicKey ? 'Connect Wallet First' : isLoading ? 'Creating Token...' : 'Create Token'}
+                            {!publicKey
+                              ? "Connect Wallet First"
+                              : isLoading
+                              ? "Creating Token..."
+                              : "Create Token"}
                           </span>
                         </button>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="">
-                    <div className="text-center">
-                      <ul className="flex flex-wrap items-center justify-center gap-2">
-                        <li>
-                          <a
-                            onClick={() => setOpenCreateModal(false)}
-                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
-                          >
-                            <i className="text-2xl text-fg group-hover:text-fg">
-                              <AiOutlineClose />
-                            </i>
-                          </a>
-                        </li>
-                      </ul>
                     </div>
                   </div>
                 </div>
@@ -570,8 +646,22 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
 
                     {/* Preset Badge */}
                     <div className="mt-4 text-center">
-                      <PresetBadge preset={token.preset} />
+                      <PresetBadge
+                        preset={token.preset}
+                        isOnChainVerified={isOnChainVerified}
+                      />
                     </div>
+
+                    {/* Honest Launch Enforcer - only show for honest preset */}
+                    {token.preset === "honest" && (
+                      <div className="mt-4">
+                        <HonestLaunchEnforcer
+                          mintAddress={tokenMintAddress}
+                          preset={token.preset}
+                          onVerificationChange={handleVerificationChange}
+                        />
+                      </div>
+                    )}
 
                     <div className="mt-5 w-full text-center">
                       <p className="text-muted text-base font-medium leading-6">
@@ -598,21 +688,25 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         >
                           <span className="fw-bold">View on Solana</span>
                         </a>
-                        
+
                         <a
-                          href={`/meme-kit?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}`}
+                          href={`/meme-kit?name=${encodeURIComponent(
+                            token.name
+                          )}&ticker=${encodeURIComponent(token.symbol)}`}
                           className="bg-secondary hover:bg-secondary-600 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">Get Your Meme Kit</span>
                         </a>
-                        
+
                         <a
-                          href={`/liquidity?tokenMint=${encodeURIComponent(tokenMintAddress)}&dex=Raydium&pair=SOL/TOKEN`}
+                          href={`/liquidity?tokenMint=${encodeURIComponent(
+                            tokenMintAddress
+                          )}&dex=Raydium&pair=SOL/TOKEN`}
                           className="bg-accent hover:bg-accent/80 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
                         >
                           <span className="fw-bold">Add Liquidity</span>
                         </a>
-                        
+
                         <a
                           href={`/token/${tokenMintAddress}`}
                           className="bg-muted/20 hover:bg-muted/30 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-fg backdrop-blur-2xl transition-all duration-500"
@@ -622,7 +716,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                       </div>
                     </div>
                   </div>
-                
+
                   <div className="">
                     <div className="text-center">
                       <ul className="flex flex-wrap items-center justify-center gap-2">
@@ -638,7 +732,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         </li>
                       </ul>
                     </div>
-                  </div>                
+                  </div>
                 </div>
               </div>
             </div>

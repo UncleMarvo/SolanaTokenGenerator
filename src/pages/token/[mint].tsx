@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { tokenStorage, StoredToken } from "../../utils/tokenStorage";
 import { PresetBadge } from "../../components/PresetBadge";
+import { HonestLaunchEnforcer } from "../../components/HonestLaunchEnforcer";
 import { AiOutlineCopy, AiOutlineLink } from "react-icons/ai";
 import { FaTelegram, FaTwitter } from "react-icons/fa";
 
@@ -12,6 +13,7 @@ const TokenSharePage: FC = () => {
   const [token, setToken] = useState<StoredToken | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isOnChainVerified, setIsOnChainVerified] = useState(false);
 
   useEffect(() => {
     if (mint && typeof mint === "string") {
@@ -35,6 +37,11 @@ const TokenSharePage: FC = () => {
     if (token) {
       window.open(`https://dexscreener.com/solana/${token.mintAddress}`, "_blank");
     }
+  };
+
+  // Handle honest launch verification status changes
+  const handleVerificationChange = (isVerified: boolean) => {
+    setIsOnChainVerified(isVerified);
   };
 
   if (isLoading) {
@@ -111,9 +118,16 @@ const TokenSharePage: FC = () => {
                     {token.description}
                   </p>
                   
-                  {/* Preset Badge */}
-                  <div className="mb-4">
-                    <PresetBadge preset={token.preset} />
+                  {/* Preset Badge and Honest Launch Status */}
+                  <div className="mb-4 space-y-3">
+                    <PresetBadge preset={token.preset} isOnChainVerified={isOnChainVerified} />
+                    
+                    {/* Honest Launch Enforcer - shows verification status or enforcement button */}
+                    <HonestLaunchEnforcer 
+                      mintAddress={token.mintAddress}
+                      preset={token.preset}
+                      onVerificationChange={handleVerificationChange}
+                    />
                   </div>
 
                   {/* Token Details */}
@@ -232,6 +246,44 @@ const TokenSharePage: FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Advanced Section - LP Burn (Hidden by default) */}
+            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
+              <details className="group">
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-muted">Advanced Tools</h2>
+                    <div className="text-muted group-open:text-fg transition-colors">
+                      <svg className="w-5 h-5 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </summary>
+                
+                <div className="mt-6 space-y-4">
+                  <div className="text-muted text-sm">
+                    <p className="mb-4">
+                      <strong>⚠️ Advanced Features:</strong> These tools are for experienced users only. 
+                      Use with extreme caution as some actions are irreversible.
+                    </p>
+                  </div>
+                  
+                  {/* LP Token Burner - requires LP mint and owner token account */}
+                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-3">LP Token Management</h3>
+                    <p className="text-muted text-sm mb-4">
+                      To use LP burn functionality, you need to provide the LP mint address and your LP token account address.
+                    </p>
+                    
+                    <div className="text-xs text-muted bg-muted/20 p-3 rounded border border-muted/30">
+                      <strong>Note:</strong> LP burn functionality requires specific LP token addresses. 
+                      This is typically used after adding liquidity to DEX pairs like Raydium or Orca.
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { getOrcaQuote } from "../../../lib/orcaClient";
+import { getRaydiumQuote } from "../../../lib/raydiumClient";
 
 interface LiquidityQuoteRequest {
   dex: "Raydium" | "Orca";
@@ -17,7 +19,7 @@ interface LiquidityQuoteResponse {
   quoteId: string;
 }
 
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<LiquidityQuoteResponse | { error: string }>
 ) {
@@ -32,28 +34,64 @@ export default function handler(
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Generate deterministic mock data based on input
-    const baseAmountNum = parseFloat(baseAmount);
-    const quoteAmountNum = parseFloat(quoteAmount);
-    
-    // Create deterministic values based on inputs
-    const poolAddress = `ExamplePool${tokenMint.slice(0, 8)}${dex.slice(0, 3)}`;
-    const priceImpactBp = Math.floor((baseAmountNum + quoteAmountNum) % 100) + 10; // 10-109 bps
-    const lpFeeBp = dex === "Raydium" ? 30 : 25; // Raydium 30bps, Orca 25bps
-    const expectedLpTokens = (baseAmountNum * quoteAmountNum * 0.1).toFixed(2);
-    const minOut = (Math.min(baseAmountNum, quoteAmountNum) * 0.95).toFixed(2);
-    const quoteId = `quote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Determine quote mint based on pair
+    const quoteMint = pair === "SOL/TOKEN" 
+      ? "So11111111111111111111111111111111111111112" // SOL
+      : "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // USDC
 
-    const mockResponse: LiquidityQuoteResponse = {
-      poolAddress,
-      priceImpactBp,
-      lpFeeBp,
-      expectedLpTokens,
-      minOut,
-      quoteId
-    };
+    try {
+      let quote;
+      let quoteId;
 
-    res.status(200).json(mockResponse);
+      if (dex === "Orca") {
+        // Get Orca quote
+        quote = await getOrcaQuote({
+          tokenMint,
+          baseAmount,
+          quoteMint
+        });
+        quoteId = `orca_quote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      } else if (dex === "Raydium") {
+        // Get Raydium quote
+        quote = await getRaydiumQuote({
+          tokenMint,
+          baseAmount,
+          quoteMint
+        });
+        quoteId = `raydium_quote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      } else {
+        return res.status(400).json({ error: "Unsupported DEX" });
+      }
+
+      // Convert response to expected format
+      const response: LiquidityQuoteResponse = {
+        poolAddress: quote.pool,
+        priceImpactBp: Math.round(quote.priceImpact * 100), // Convert percentage to basis points
+        lpFeeBp: Math.round(quote.lpFee * 10000), // Convert decimal to basis points
+        expectedLpTokens: quote.expectedLpTokens.toString(),
+        minOut: quote.minOut.toString(),
+        quoteId
+      };
+
+      res.status(200).json(response);
+    } catch (quoteError) {
+      console.error(`${dex} quote error:`, quoteError);
+      
+      // Handle specific error cases
+      if (quoteError instanceof Error) {
+        if (quoteError.message === 'No pool available') {
+          return res.status(400).json({ error: "No pool available" });
+        } else if (quoteError.message === 'No Raydium pool available') {
+          return res.status(400).json({ error: "No Raydium pool available" });
+        } else if (quoteError.message.includes('Invalid token mint address')) {
+          return res.status(400).json({ error: "Invalid token mint address" });
+        }
+      }
+      
+      // For other errors, return generic error
+      return res.status(500).json({ error: `Failed to get quote from ${dex}` });
+    }
+
   } catch (error) {
     console.error("Error generating liquidity quote:", error);
     res.status(500).json({ error: "Internal server error" });
