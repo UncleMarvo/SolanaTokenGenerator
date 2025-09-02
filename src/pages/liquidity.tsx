@@ -216,9 +216,12 @@ const LiquidityPage: FC = () => {
             <div className="flex items-center space-x-3">
               <input
                 type="number"
-                value="100"
-                disabled
-                className="w-24 p-3 rounded-lg border border-muted/10 bg-muted/20 text-fg text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                value={form.slippageBp || 100}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 100;
+                  updateForm("slippageBp", value);
+                }}
+                className="w-24 p-3 rounded-lg border border-muted/10 bg-transparent text-fg text-center focus:border-muted/25 focus:ring-transparent"
                 placeholder="100"
                 min="10"
                 max="500"
@@ -230,8 +233,13 @@ const LiquidityPage: FC = () => {
               </span>
             </div>
             <p className="text-xs text-muted mt-1">
-              Range: 10-500 basis points (0.1%-5.0%)
+              Slippage 0.10%–5.00% (default 1.00%)
             </p>
+            {form.slippageBp && (form.slippageBp < 10 || form.slippageBp > 500) && (
+              <p className="text-xs text-error mt-1">
+                ⚠️ Slippage must be between 10-500 basis points
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -246,7 +254,7 @@ const LiquidityPage: FC = () => {
         </button>
         <button
           onClick={getQuote}
-          disabled={!form.baseAmount || !form.quoteAmount || isLoading}
+          disabled={!form.baseAmount || !form.quoteAmount || isLoading || (form.slippageBp && (form.slippageBp < 10 || form.slippageBp > 500))}
           className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
         >
           {isLoading ? (

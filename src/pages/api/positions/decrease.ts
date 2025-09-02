@@ -2,6 +2,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { buildDecreaseTx, DecreaseParams } from "../../../lib/orcaActions.decrease";
 import { preflightPositionOperation, getFriendlyErrorMessage } from "../../../lib/preflight";
+import { getTokenBalanceUi } from "../../../lib/balances";
+import { isWSOL } from "../../../lib/wsol";
+import { clampSlippageBp } from "../../../lib/slippage";
+import { mapDexError } from "../../../lib/errors";
+import { flags } from "../../../lib/flags";
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,12 +16,20 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // Check if Orca actions are enabled
+  if (!flags.orcaActions) {
+    return res.status(503).json({ 
+      error: "Disabled", 
+      message: "Orca actions temporarily disabled" 
+    });
+  }
+
   try {
     // Parse JSON body
     const body = req.body as Partial<DecreaseParams>;
     
     // Validate required fields
-    const requiredFields = ['walletPubkey', 'whirlpool', 'positionPda', 'positionMint', 'tickLower', 'tickUpper', 'percent'];
+    const requiredFields = ['walletPubkey', 'whirlpool', 'positionPda', 'positionMint', 'tickLower', 'tickUpper', 'tokenA', 'tokenB', 'percent'];
     for (const field of requiredFields) {
       if (!body[field as keyof DecreaseParams]) {
         return res.status(400).json({ 
@@ -34,12 +47,13 @@ export default async function handler(
       });
     }
 
-    // Validate slippageBp (optional, default 100)
+    // Validate slippageBp (optional, default 100) using centralized helper
     if (body.slippageBp !== undefined) {
-      if (typeof body.slippageBp !== 'number' || body.slippageBp < 10 || body.slippageBp > 500) {
+      const clamped = clampSlippageBp(body.slippageBp);
+      if (clamped !== body.slippageBp) {
         return res.status(400).json({ 
           error: "Invalid slippageBp", 
-          message: "slippageBp must be between 10 and 500 basis points" 
+          message: `slippageBp must be between 10 and 500 basis points, got ${body.slippageBp}` 
         });
       }
     }
@@ -75,6 +89,20 @@ export default async function handler(
       });
     }
 
+    // Additional balance check: verify user has sufficient tokens for the decrease
+    // For decrease operations, we mainly need to check if the position exists and user has SOL for fees
+    // The actual token amounts will be determined by the SDK when building the transaction
+    
+    // WSOL unwrap warning: if decreasing 100% and one side is WSOL, warn about unwrapping
+    const isTokenAWSOL = isWSOL(body.tokenA!);
+    const isTokenBWSOL = isWSOL(body.tokenB!);
+    const isFullClose = body.percent! >= 100;
+    
+    let wsolWarning = null;
+    if (isFullClose && (isTokenAWSOL || isTokenBWSOL)) {
+      wsolWarning = "Note: Decreasing 100% will unwrap WSOL back to SOL";
+    }
+
     // Call the builder
     const result = await buildDecreaseTx({
       connection,
@@ -84,6 +112,8 @@ export default async function handler(
       positionMint: body.positionMint!,
       tickLower: body.tickLower!,
       tickUpper: body.tickUpper!,
+      tokenA: body.tokenA!,
+      tokenB: body.tokenB!,
       percent: body.percent!,
       slippageBp: body.slippageBp || 100
     });
@@ -91,16 +121,15 @@ export default async function handler(
     // Return success response
     return res.status(200).json({
       txBase64: result.txBase64,
-      summary: result.summary
+      summary: result.summary,
+      warning: wsolWarning
     });
 
   } catch (error) {
     console.error("Error building decrease liquidity transaction:", error);
     
-    // Return error response
-    return res.status(400).json({ 
-      error: "Failed to build transaction", 
-      message: error instanceof Error ? error.message : "Unknown error occurred" 
-    });
+    // Map error to clean code and message
+    const { code, message } = mapDexError(error);
+    return res.status(400).json({ error: code, message });
   }
 }

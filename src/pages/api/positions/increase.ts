@@ -2,6 +2,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { buildIncreaseTx, IncreaseParams } from "../../../lib/orcaActions.increase";
 import { preflightPositionOperation, getFriendlyErrorMessage } from "../../../lib/preflight";
+import { getTokenBalanceUi } from "../../../lib/balances";
+import { clampSlippageBp } from "../../../lib/slippage";
+import { mapDexError } from "../../../lib/errors";
+import { flags } from "../../../lib/flags";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,6 +13,14 @@ export default async function handler(
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Check if Orca actions are enabled
+  if (!flags.orcaActions) {
+    return res.status(503).json({ 
+      error: "Disabled", 
+      message: "Orca actions temporarily disabled" 
+    });
   }
 
   try {
@@ -42,12 +54,13 @@ export default async function handler(
       });
     }
 
-    // Validate slippageBp (optional, default 100)
+    // Validate slippageBp (optional, default 100) using centralized helper
     if (body.slippageBp !== undefined) {
-      if (typeof body.slippageBp !== 'number' || body.slippageBp < 10 || body.slippageBp > 500) {
+      const clamped = clampSlippageBp(body.slippageBp);
+      if (clamped !== body.slippageBp) {
         return res.status(400).json({ 
           error: "Invalid slippageBp", 
-          message: "slippageBp must be between 10 and 500 basis points" 
+          message: `slippageBp must be between 10 and 500 basis points, got ${body.slippageBp}` 
         });
       }
     }
@@ -97,6 +110,18 @@ export default async function handler(
       });
     }
 
+    // Additional balance check: verify user has sufficient tokens for the increase
+    const currentBalance = await getTokenBalanceUi(connection, owner, inputMint, inputDecimals);
+    const requiredAmountUi = body.amountUi!;
+    
+    if (currentBalance < requiredAmountUi) {
+      const tokenSymbol = body.inputMint === "A" ? "Token A" : "Token B";
+      return res.status(400).json({
+        error: "InsufficientFunds",
+        message: `Need ${requiredAmountUi.toFixed(4)} ${tokenSymbol}, have ${currentBalance.toFixed(4)}`
+      });
+    }
+
     // Call the builder
     const result = await buildIncreaseTx({
       connection,
@@ -122,10 +147,8 @@ export default async function handler(
   } catch (error) {
     console.error("Error building increase liquidity transaction:", error);
     
-    // Return error response
-    return res.status(400).json({ 
-      error: "Failed to build transaction", 
-      message: error instanceof Error ? error.message : "Unknown error occurred" 
-    });
+    // Map error to clean code and message
+    const { code, message } = mapDexError(error);
+    return res.status(400).json({ error: code, message });
   }
 }

@@ -1,6 +1,9 @@
 import { decreaseLiquidityInstructions, closePositionInstructions } from "@orca-so/whirlpools";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { WSOL_MINT, isWSOL, wrapWSOLIx, unwrapWSOLIx } from "./wsol";
+import { ensureAtaIx } from "./atas";
+import { clampSlippageBp } from "./slippage";
 
 // Orca Whirlpool Program ID
 const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
@@ -13,6 +16,8 @@ export type DecreaseParams = {
   positionMint: string;
   tickLower: number;
   tickUpper: number;
+  tokenA: string;     // Token A mint address
+  tokenB: string;     // Token B mint address
   percent: number;    // 0..100
   slippageBp: number; // default 100
 };
@@ -30,35 +35,55 @@ export async function buildDecreaseTx(p: DecreaseParams) {
   // Clamp percent between 0-100
   const pct = Math.max(0, Math.min(100, p.percent));
   
-  // Clamp slippage between 10-500 basis points
-  const slippageBp = Math.max(10, Math.min(500, p.slippageBp || 100));
-
-  // Get associated token accounts
-  const ownerAtaA = getAssociatedTokenAddressSync(new PublicKey("11111111111111111111111111111111"), owner); // Placeholder
-  const ownerAtaB = getAssociatedTokenAddressSync(new PublicKey("11111111111111111111111111111111"), owner); // Placeholder
-  const posTokenAta = getAssociatedTokenAddressSync(new PublicKey(p.positionMint), owner);
+  // Clamp slippage between 10-500 basis points using centralized helper
+  const slippageBp = clampSlippageBp(p.slippageBp);
 
   // Build instructions array
   const ixs: any[] = [];
 
-  // Create ATAs if they don't exist (using placeholder mints for now)
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ownerAtaA, owner, new PublicKey("11111111111111111111111111111111")));
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ownerAtaB, owner, new PublicKey("11111111111111111111111111111111")));
+  // Ensure ATAs exist (only create if missing) - using placeholder mints for now
+  // In production, these would come from pool data
+  const placeholderMintA = new PublicKey("11111111111111111111111111111111");
+  const placeholderMintB = new PublicKey("11111111111111111111111111111111");
+  
+  const { ata: ownerAtaA, ix: ataAIx } = await ensureAtaIx(p.connection, owner, placeholderMintA);
+  const { ata: ownerAtaB, ix: ataBIx } = await ensureAtaIx(p.connection, owner, placeholderMintB);
+  const posTokenAta = getAssociatedTokenAddressSync(new PublicKey(p.positionMint), owner);
+  
+  // Add ATA creation instructions only if needed
+  if (ataAIx) ixs.push(ataAIx);
+  if (ataBIx) ixs.push(ataBIx);
+  
+  // WSOL handling: Check if either token is WSOL for unwrapping after decrease
+  const isTokenAWSOL = isWSOL(p.tokenA);
+  const isTokenBWSOL = isWSOL(p.tokenB);
 
   // TODO: Integrate with @orca-so/whirlpools SDK when RPC interface compatibility is resolved
   // The SDK expects a different RPC interface than @solana/web3.js Connection
   
-  // For now, create placeholder instructions
-  console.log("Will decrease liquidity by", pct + "%");
-  if (pct >= 100) {
-    console.log("Will close position completely");
-  }
+               // For now, create placeholder instructions
+             console.log("Will decrease liquidity by", pct + "%");
+             if (pct >= 100) {
+               console.log("Will close position completely");
+             }
+             
+             // WSOL handling: Unwrap WSOL after decrease operation
+             if (isTokenAWSOL || isTokenBWSOL) {
+               console.log("Will unwrap WSOL after decrease operation");
+               // Add unwrap instruction for WSOL
+               if (isTokenAWSOL) {
+                 ixs.push(unwrapWSOLIx(owner));
+               }
+               if (isTokenBWSOL) {
+                 ixs.push(unwrapWSOLIx(owner));
+               }
+             }
 
-  // Create and configure transaction
-  const tx = new Transaction();
-  ixs.forEach(ix => tx.add(ix));
-  tx.feePayer = owner;
-  tx.recentBlockhash = (await p.connection.getLatestBlockhash()).blockhash;
+             // Create and configure transaction
+             const tx = new Transaction();
+             ixs.forEach(ix => tx.add(ix));
+             tx.feePayer = owner;
+             tx.recentBlockhash = (await p.connection.getLatestBlockhash()).blockhash;
 
   return {
     txBase64: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64"),

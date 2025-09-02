@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { buildCollectTx, CollectParams } from "../../../lib/orcaActions.collect";
 import { preflightPositionOperation, getFriendlyErrorMessage } from "../../../lib/preflight";
+import { mapDexError } from "../../../lib/errors";
+import { flags } from "../../../lib/flags";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,6 +11,14 @@ export default async function handler(
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Check if Orca actions are enabled
+  if (!flags.orcaActions) {
+    return res.status(503).json({ 
+      error: "Disabled", 
+      message: "Orca actions temporarily disabled" 
+    });
   }
 
   try {
@@ -75,10 +85,8 @@ export default async function handler(
   } catch (error) {
     console.error("Error building collect fees transaction:", error);
     
-    // Return error response
-    return res.status(400).json({ 
-      error: "Failed to build transaction", 
-      message: error instanceof Error ? error.message : "Unknown error occurred" 
-    });
+    // Map error to clean code and message
+    const { code, message } = mapDexError(error);
+    return res.status(400).json({ error: code, message });
   }
 }

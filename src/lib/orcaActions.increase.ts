@@ -1,6 +1,9 @@
 import { increaseLiquidityInstructions } from "@orca-so/whirlpools";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { WSOL_MINT, isWSOL, wrapWSOLIx, unwrapWSOLIx } from "./wsol";
+import { ensureAtaIx } from "./atas";
+import { clampSlippageBp } from "./slippage";
 
 // Orca Whirlpool Program ID
 const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
@@ -41,20 +44,42 @@ export async function buildIncreaseTx(p: IncreaseParams) {
   // Convert UI amount to raw amount
   const amount = BigInt(Math.floor(p.amountUi * Math.pow(10, inDec)));
   
-  // Clamp slippage between 10-500 basis points
-  const slippageBp = Math.max(10, Math.min(500, p.slippageBp || 100));
+  // Clamp slippage between 10-500 basis points using centralized helper
+  const slippageBp = clampSlippageBp(p.slippageBp);
   
-  // Get associated token accounts
-  const ownerAtaA = getAssociatedTokenAddressSync(mintA, owner);
-  const ownerAtaB = getAssociatedTokenAddressSync(mintB, owner);
-  const posTokenAta = getAssociatedTokenAddressSync(new PublicKey(p.positionMint), owner);
-
+  // WSOL validation: For MVP, gate to USDC pairs if unsure
+  const isTokenAWSOL = isWSOL(p.tokenA);
+  const isTokenBWSOL = isWSOL(p.tokenB);
+  
+  if ((isTokenAWSOL || isTokenBWSOL) && p.amountUi <= 0) {
+    throw new Error("Specify amount for SOL side");
+  }
+  
   // Build instructions array
   const ixs: any[] = [];
   
-  // Create ATAs if they don't exist
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ownerAtaA, owner, mintA));
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ownerAtaB, owner, mintB));
+  // Ensure ATAs exist (only create if missing)
+  const { ata: ownerAtaA, ix: ataAIx } = await ensureAtaIx(p.connection, owner, mintA);
+  const { ata: ownerAtaB, ix: ataBIx } = await ensureAtaIx(p.connection, owner, mintB);
+  const posTokenAta = getAssociatedTokenAddressSync(new PublicKey(p.positionMint), owner);
+  
+  // Add ATA creation instructions only if needed
+  if (ataAIx) ixs.push(ataAIx);
+  if (ataBIx) ixs.push(ataBIx);
+  
+  // WSOL handling: Wrap SOL if input mint is WSOL
+  let wsolAta: PublicKey | null = null;
+  if (isTokenAWSOL && p.inputMint === "A") {
+    const lamports = Math.floor(p.amountUi * Math.pow(10, 9)); // SOL has 9 decimals
+    const { ata, ixs: wrapIxs } = wrapWSOLIx(owner, lamports);
+    wsolAta = ata;
+    ixs.push(...wrapIxs);
+  } else if (isTokenBWSOL && p.inputMint === "B") {
+    const lamports = Math.floor(p.amountUi * Math.pow(10, 9)); // SOL has 9 decimals
+    const { ata, ixs: wrapIxs } = wrapWSOLIx(owner, lamports);
+    wsolAta = ata;
+    ixs.push(...wrapIxs);
+  }
 
   // For now, create a simplified increase liquidity instruction
   // In production, you would use the full SDK with proper RPC interface

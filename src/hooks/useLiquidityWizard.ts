@@ -8,6 +8,7 @@ export interface LiquidityForm {
   pair: "SOL/TOKEN" | "USDC/TOKEN";
   baseAmount: string;
   quoteAmount: string;
+  slippageBp?: number;
 }
 
 export interface LiquidityQuote {
@@ -53,7 +54,8 @@ export const useLiquidityWizard = () => {
     dex: "Raydium",
     pair: "SOL/TOKEN",
     baseAmount: "",
-    quoteAmount: ""
+    quoteAmount: "",
+    slippageBp: 100
   });
   const [quote, setQuote] = useState<LiquidityQuote | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,7 +82,7 @@ export const useLiquidityWizard = () => {
     }
   }, [router.isReady, router.query.tokenMint, router.query.dex, router.query.pair]);
 
-  const updateForm = (field: keyof LiquidityForm, value: string) => {
+  const updateForm = (field: keyof LiquidityForm, value: string | number) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 

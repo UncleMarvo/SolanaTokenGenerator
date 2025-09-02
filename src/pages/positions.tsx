@@ -104,6 +104,47 @@ const PositionsPage: FC = () => {
     }
   };
 
+  // Helper function to handle API errors with new error codes
+  const handleApiError = (error: any, defaultMessage: string) => {
+    console.error("API Error:", error);
+    
+    // Check if it's an API error with code
+    if (error?.error && error?.message) {
+      const { error: errorCode, message } = error;
+      
+      // Map error codes to user-friendly messages with suggested fixes
+      switch (errorCode) {
+        case "BlockhashExpired":
+          setActionError(`${message} Try refreshing and retry.`);
+          break;
+        case "InsufficientFunds":
+          setActionError(`${message} Check your wallet balance.`);
+          break;
+        case "UserRejected":
+          setActionError(`${message} No action needed.`);
+          break;
+        case "Slippage":
+          setActionError(`${message} Try increasing slippage tolerance.`);
+          break;
+        default:
+          setActionError(message);
+      }
+    } else {
+      // Fallback to old error handling
+      const errorMessage = error instanceof Error ? error.message : defaultMessage;
+      
+      if (errorMessage.includes("User rejected")) {
+        setActionError("Transaction was rejected by user");
+      } else if (errorMessage.includes("insufficient funds")) {
+        setActionError("Insufficient funds for transaction");
+      } else if (errorMessage.includes("no position")) {
+        setActionError("Position not found or invalid");
+      } else {
+        setActionError(errorMessage);
+      }
+    }
+  };
+
   // Position action handlers
   const onIncrease = async (position: OrcaPosition, params: { amountUi: number; inputMint: "A" | "B"; slippageBp?: number }) => {
     if (!walletAddress || !window.solana?.isPhantom) return;
@@ -125,7 +166,11 @@ const PositionsPage: FC = () => {
       });
       
       const j = await r.json();
-      if (!r.ok) throw new Error(j.message || "Failed to build increase transaction");
+      if (!r.ok) {
+        // Handle API errors with new error codes
+        handleApiError(j, "Failed to build increase transaction");
+        return;
+      }
       
       // Deserialize and sign transaction
       const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
@@ -141,19 +186,8 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      console.error("Error increasing liquidity:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to increase liquidity";
-      
-      // Handle specific error cases
-      if (errorMessage.includes("User rejected")) {
-        setActionError("Transaction was rejected by user");
-      } else if (errorMessage.includes("insufficient funds")) {
-        setActionError("Insufficient funds for transaction");
-      } else if (errorMessage.includes("no position")) {
-        setActionError("Position not found or invalid");
-      } else {
-        setActionError(errorMessage);
-      }
+      // Handle transaction signing/confirmation errors
+      handleApiError(error, "Failed to increase liquidity");
     } finally {
       setIsActionLoading(false);
     }
@@ -179,7 +213,11 @@ const PositionsPage: FC = () => {
       });
       
       const j = await r.json();
-      if (!r.ok) throw new Error(j.message || "Failed to build decrease transaction");
+      if (!r.ok) {
+        // Handle API errors with new error codes
+        handleApiError(j, "Failed to build decrease transaction");
+        return;
+      }
       
       // Deserialize and sign transaction
       const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
@@ -196,19 +234,8 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      console.error("Error decreasing liquidity:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to decrease liquidity";
-      
-      // Handle specific error cases
-      if (errorMessage.includes("User rejected")) {
-        setActionError("Transaction was rejected by user");
-      } else if (errorMessage.includes("insufficient funds")) {
-        setActionError("Insufficient funds for transaction");
-      } else if (errorMessage.includes("no position")) {
-        setActionError("Position not found or invalid");
-      } else {
-        setActionError(errorMessage);
-      }
+      // Handle transaction signing/confirmation errors
+      handleApiError(error, "Failed to decrease liquidity");
     } finally {
       setIsActionLoading(false);
     }
@@ -233,7 +260,11 @@ const PositionsPage: FC = () => {
       });
       
       const j = await r.json();
-      if (!r.ok) throw new Error(j.message || "Failed to build collect transaction");
+      if (!r.ok) {
+        // Handle API errors with new error codes
+        handleApiError(j, "Failed to build collect transaction");
+        return;
+      }
       
       // Deserialize and sign transaction
       const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
@@ -249,51 +280,71 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      console.error("Error collecting fees:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to collect fees";
-      
-      // Handle specific error cases
-      if (errorMessage.includes("User rejected")) {
-        setActionError("Transaction was rejected by user");
-      } else if (errorMessage.includes("insufficient funds")) {
-        setActionError("Insufficient funds for transaction");
-      } else if (errorMessage.includes("no position")) {
-        setActionError("Position not found or invalid");
-      } else {
-        setActionError(errorMessage);
-      }
+      // Handle transaction signing/confirmation errors
+      handleApiError(error, "Failed to collect fees");
     } finally {
       setIsActionLoading(false);
     }
   };
 
-  // Legacy handlers for backward compatibility (can be removed later)
-  const handleIncreaseLiquidity = async (position: OrcaPosition) => {
-    // For now, use a simple modal approach
-    const amountUi = prompt("Enter amount to increase (e.g., 100):");
-    const inputMint = prompt("Enter input mint (A or B):") as "A" | "B";
-    const slippageBp = prompt("Enter slippage in basis points (10-500, default 100):");
+  // Modal state
+  const [showIncreaseModal, setShowIncreaseModal] = useState(false);
+  const [showDecreaseModal, setShowDecreaseModal] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<OrcaPosition | null>(null);
+  const [modalForm, setModalForm] = useState({
+    amountUi: "",
+    inputMint: "A" as "A" | "B",
+    percent: "",
+    slippageBp: "100"
+  });
+  const [preflightData, setPreflightData] = useState<any>(null);
+  const [isPreflightLoading, setIsPreflightLoading] = useState(false);
+
+  // Preflight check function
+  const runPreflightCheck = async (action: "increase" | "decrease" | "collect", position: OrcaPosition, params?: any) => {
+    if (!walletAddress) return;
     
-    if (amountUi && inputMint && (inputMint === "A" || inputMint === "B")) {
-      await onIncrease(position, {
-        amountUi: parseFloat(amountUi),
-        inputMint,
-        slippageBp: slippageBp ? parseInt(slippageBp) : 100
+    setIsPreflightLoading(true);
+    try {
+      const response = await fetch("/api/preflight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletPubkey: walletAddress,
+          action,
+          tokenA: position.tokenA,
+          tokenB: position.tokenB,
+          ...params
+        })
       });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreflightData(data);
+      } else {
+        setPreflightData(null);
+      }
+    } catch (error) {
+      console.error("Preflight check failed:", error);
+      setPreflightData(null);
+    } finally {
+      setIsPreflightLoading(false);
     }
   };
 
-  const handleDecreaseLiquidity = async (position: OrcaPosition) => {
-    // For now, use a simple modal approach
-    const percent = prompt("Enter percentage to decrease (0-100):");
-    const slippageBp = prompt("Enter slippage in basis points (10-500, default 100):");
-    
-    if (percent) {
-      await onDecrease(position, {
-        percent: parseFloat(percent),
-        slippageBp: slippageBp ? parseInt(slippageBp) : 100
-      });
-    }
+  // Enhanced handlers with modals
+  const handleIncreaseLiquidity = (position: OrcaPosition) => {
+    setSelectedPosition(position);
+    setModalForm({ amountUi: "", inputMint: "A", percent: "", slippageBp: "100" });
+    setPreflightData(null);
+    setShowIncreaseModal(true);
+  };
+
+  const handleDecreaseLiquidity = (position: OrcaPosition) => {
+    setSelectedPosition(position);
+    setModalForm({ amountUi: "", percent: "", inputMint: "A", slippageBp: "100" });
+    setPreflightData(null);
+    setShowDecreaseModal(true);
   };
 
   const handleCollectFees = async (position: OrcaPosition) => {
@@ -570,14 +621,285 @@ const PositionsPage: FC = () => {
                </div>
              )}
 
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
-              {!walletAddress ? renderConnectWallet() : renderPositions()}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
+                         <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
+               {!walletAddress ? renderConnectWallet() : renderPositions()}
+             </div>
+           </div>
+         </div>
+       </div>
+
+       {/* Increase Liquidity Modal */}
+       {showIncreaseModal && selectedPosition && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/[.3] backdrop-blur-[10px]">
+           <div className="bg-bg/90 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 max-w-md w-full mx-4">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold">Increase Liquidity</h3>
+               <button
+                 onClick={() => setShowIncreaseModal(false)}
+                 className="text-muted hover:text-fg"
+               >
+                 ✕
+               </button>
+             </div>
+             
+             <div className="space-y-4">
+               <div>
+                 <label className="block text-muted mb-2 font-semibold">Amount</label>
+                 <input
+                   type="number"
+                   value={modalForm.amountUi}
+                   onChange={(e) => {
+                     const value = e.target.value;
+                     setModalForm(prev => ({ ...prev, amountUi: value }));
+                     if (value && modalForm.inputMint) {
+                       runPreflightCheck("increase", selectedPosition, {
+                         amountUi: parseFloat(value),
+                         inputMint: modalForm.inputMint
+                       });
+                     }
+                   }}
+                   className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+                   placeholder="0.0"
+                   step="0.01"
+                   min="0"
+                 />
+               </div>
+               
+               <div>
+                 <label className="block text-muted mb-2 font-semibold">Input Token</label>
+                 <select
+                   value={modalForm.inputMint}
+                   onChange={(e) => {
+                     const value = e.target.value as "A" | "B";
+                     setModalForm(prev => ({ ...prev, inputMint: value }));
+                     if (modalForm.amountUi && value) {
+                       runPreflightCheck("increase", selectedPosition, {
+                         amountUi: parseFloat(modalForm.amountUi),
+                         inputMint: value
+                       });
+                     }
+                   }}
+                   className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+                 >
+                   <option value="A">Token A ({selectedPosition.symbolA || "Unknown"})</option>
+                   <option value="B">Token B ({selectedPosition.symbolB || "Unknown"})</option>
+                 </select>
+               </div>
+               
+               <div>
+                 <label className="block text-muted mb-2 font-semibold">Slippage (basis points)</label>
+                 <input
+                   type="number"
+                   value={modalForm.slippageBp}
+                   onChange={(e) => setModalForm(prev => ({ ...prev, slippageBp: e.target.value }))}
+                   className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+                   placeholder="100"
+                   min="10"
+                   max="500"
+                   step="10"
+                 />
+                 <p className="text-xs text-muted mt-1">Slippage 0.10%–5.00% (default 1.00%)</p>
+               </div>
+
+               {/* Preflight Results */}
+               {isPreflightLoading && (
+                 <div className="bg-info/20 border border-info/30 rounded-lg p-4 text-center">
+                   <div className="flex items-center justify-center space-x-2">
+                     <Spinner size={16} />
+                     <p className="text-info text-sm">Checking balances...</p>
+                   </div>
+                 </div>
+               )}
+
+               {preflightData && (
+                 <div className="space-y-3">
+                   <div className="bg-muted/10 rounded-lg p-4">
+                     <h4 className="font-semibold mb-2">Balance Check</h4>
+                     <div className="space-y-2 text-sm">
+                       <div className="flex justify-between">
+                         <span>Token A Balance:</span>
+                         <span className={preflightData.balances.A < preflightData.need.A ? "text-error" : "text-success"}>
+                           {preflightData.balances.A.toFixed(4)}
+                         </span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span>Token B Balance:</span>
+                         <span className={preflightData.balances.B < preflightData.need.B ? "text-error" : "text-success"}>
+                           {preflightData.balances.B.toFixed(4)}
+                         </span>
+                       </div>
+                       {preflightData.need.A > 0 && (
+                         <div className="flex justify-between">
+                           <span>Need Token A:</span>
+                           <span className="text-warning">{preflightData.need.A.toFixed(4)}</span>
+                         </div>
+                       )}
+                       {preflightData.need.B > 0 && (
+                         <div className="flex justify-between">
+                           <span>Need Token B:</span>
+                           <span className="text-warning">{preflightData.need.B.toFixed(4)}</span>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+
+                   {preflightData.warnings.length > 0 && (
+                     <div className="bg-warning/20 border border-warning/30 rounded-lg p-4">
+                       <h4 className="font-semibold mb-2 text-warning">Warnings</h4>
+                       <ul className="space-y-1 text-sm">
+                         {preflightData.warnings.map((warning: string, index: number) => (
+                           <li key={index} className="text-warning">• {warning}</li>
+                         ))}
+                       </ul>
+                     </div>
+                   )}
+
+                   {!preflightData.canProceed && (
+                     <div className="bg-error/20 border border-error/30 rounded-lg p-4">
+                       <p className="text-error text-sm font-medium">
+                         ❌ Insufficient balance to proceed
+                       </p>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
+
+             <div className="flex space-x-3 mt-6">
+               <button
+                 onClick={() => setShowIncreaseModal(false)}
+                 className="flex-1 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300"
+               >
+                 Cancel
+               </button>
+               <button
+                 onClick={async () => {
+                   if (selectedPosition && preflightData?.canProceed) {
+                     await onIncrease(selectedPosition, {
+                       amountUi: parseFloat(modalForm.amountUi),
+                       inputMint: modalForm.inputMint,
+                       slippageBp: parseInt(modalForm.slippageBp)
+                     });
+                     setShowIncreaseModal(false);
+                   }
+                 }}
+                 disabled={!preflightData?.canProceed || isPreflightLoading}
+                 className="flex-1 bg-success hover:bg-success/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                 {isPreflightLoading ? "Checking..." : "Confirm Increase"}
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Decrease Liquidity Modal */}
+       {showDecreaseModal && selectedPosition && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/[.3] backdrop-blur-[10px]">
+           <div className="bg-bg/90 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 max-w-md w-full mx-4">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold">Decrease Liquidity</h3>
+               <button
+                 onClick={() => setShowDecreaseModal(false)}
+                 className="text-muted hover:text-fg"
+               >
+                 ✕
+               </button>
+             </div>
+             
+             <div className="space-y-4">
+               <div>
+                 <label className="block text-muted mb-2 font-semibold">Percentage to Decrease</label>
+                 <input
+                   type="number"
+                   value={modalForm.percent}
+                   onChange={(e) => {
+                     const value = e.target.value;
+                     setModalForm(prev => ({ ...prev, percent: value }));
+                     if (value) {
+                       runPreflightCheck("decrease", selectedPosition, {
+                         percent: parseFloat(value)
+                       });
+                     }
+                   }}
+                   className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+                   placeholder="0"
+                   min="0"
+                   max="100"
+                   step="1"
+                 />
+                 <p className="text-xs text-muted mt-1">Enter 0-100 (100 = close position completely)</p>
+               </div>
+               
+               <div>
+                 <label className="block text-muted mb-2 font-semibold">Slippage (basis points)</label>
+                 <input
+                   type="number"
+                   value={modalForm.slippageBp}
+                   onChange={(e) => setModalForm(prev => ({ ...prev, slippageBp: e.target.value }))}
+                   className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+                   placeholder="100"
+                   min="10"
+                   max="500"
+                   step="10"
+                 />
+                 <p className="text-xs text-muted mt-1">Slippage 0.10%–5.00% (default 1.00%)</p>
+               </div>
+
+               {/* Preflight Results */}
+               {isPreflightLoading && (
+                 <div className="bg-info/20 border border-info/30 rounded-lg p-4 text-center">
+                   <div className="flex items-center justify-center space-x-2">
+                     <Spinner size={16} />
+                     <p className="text-sm">Checking position...</p>
+                   </div>
+                 </div>
+               )}
+
+               {preflightData && (
+                 <div className="space-y-3">
+                   {preflightData.warnings.length > 0 && (
+                     <div className="bg-warning/20 border border-warning/30 rounded-lg p-4">
+                       <h4 className="font-semibold mb-2 text-warning">Warnings</h4>
+                       <ul className="space-y-1 text-sm">
+                         {preflightData.warnings.map((warning: string, index: number) => (
+                           <li key={index} className="text-warning">• {warning}</li>
+                         ))}
+                       </ul>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
+
+             <div className="flex space-x-3 mt-6">
+               <button
+                 onClick={() => setShowDecreaseModal(false)}
+                 className="flex-1 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300"
+               >
+                 Cancel
+               </button>
+               <button
+                 onClick={async () => {
+                   if (selectedPosition) {
+                     await onDecrease(selectedPosition, {
+                       percent: parseFloat(modalForm.percent),
+                       slippageBp: parseInt(modalForm.slippageBp)
+                     });
+                     setShowDecreaseModal(false);
+                   }
+                 }}
+                 disabled={!modalForm.percent || parseFloat(modalForm.percent) <= 0 || parseFloat(modalForm.percent) > 100}
+                 className="flex-1 bg-warning hover:bg-warning/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                 Confirm Decrease
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+     </>
+   );
+ };
 
 export default PositionsPage;

@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { buildCommitTx } from "../../../lib/orcaCommit";
+import { flags } from "../../../lib/flags";
 
 interface LiquidityCommitRequest {
   dex: "Raydium" | "Orca";
@@ -33,7 +34,7 @@ interface LiquidityCommitResponse {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<LiquidityCommitResponse | { error: string }>
+  res: NextApiResponse<LiquidityCommitResponse | { error: string; message?: string }>
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -66,6 +67,14 @@ export default async function handler(
 
     // Handle Orca (real implementation)
     if (dex === "Orca") {
+      // Check if Orca commit functionality is enabled
+      if (!flags.orcaCommit) {
+        return res.status(503).json({ 
+          error: "Disabled", 
+          message: "Orca liquidity commit temporarily disabled" 
+        });
+      }
+
       if (!whirlpool) {
         return res.status(400).json({ error: "Whirlpool address required for Orca" });
       }

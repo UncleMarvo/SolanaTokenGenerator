@@ -1,6 +1,8 @@
 import { harvestPositionInstructions } from "@orca-so/whirlpools";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { ensureAtaIx } from "./atas";
+import { clampSlippageBp } from "./slippage";
 
 // Orca Whirlpool Program ID
 const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
@@ -22,23 +24,21 @@ export async function buildCollectTx(p: CollectParams) {
   console.log("Building collect fees transaction for position:", p.positionMint);
   console.log("Will collect accumulated fees and rewards");
 
-  // Get associated token accounts
-  const posTokenAta = getAssociatedTokenAddressSync(new PublicKey(p.positionMint), owner);
-  
-  // For now, use placeholder token mints since we can't fetch pool data without SDK
+  // Build instructions array
+  const ixs: any[] = [];
+
+  // Ensure ATAs exist (only create if missing) - using placeholder mints for now
   // In production, these would come from poolData.tokenMintA and poolData.tokenMintB
   const placeholderMintA = new PublicKey("11111111111111111111111111111111");
   const placeholderMintB = new PublicKey("11111111111111111111111111111111");
   
-  const ownerAtaA = getAssociatedTokenAddressSync(placeholderMintA, owner);
-  const ownerAtaB = getAssociatedTokenAddressSync(placeholderMintB, owner);
-
-  // Build instructions array
-  const ixs: any[] = [];
-
-  // Create ATAs if they don't exist
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ownerAtaA, owner, placeholderMintA));
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ownerAtaB, owner, placeholderMintB));
+  const { ata: ownerAtaA, ix: ataAIx } = await ensureAtaIx(p.connection, owner, placeholderMintA);
+  const { ata: ownerAtaB, ix: ataBIx } = await ensureAtaIx(p.connection, owner, placeholderMintB);
+  const posTokenAta = getAssociatedTokenAddressSync(new PublicKey(p.positionMint), owner);
+  
+  // Add ATA creation instructions only if needed
+  if (ataAIx) ixs.push(ataAIx);
+  if (ataBIx) ixs.push(ataBIx);
 
   // TODO: Integrate with @orca-so/whirlpools SDK when RPC interface compatibility is resolved
   // The SDK expects a different RPC interface than @solana/web3.js Connection
