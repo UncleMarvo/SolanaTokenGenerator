@@ -12,6 +12,8 @@
     "@formspree/react": "^2.5.1",
     "@heroicons/react": "^1.0.5",
     "@metaplex-foundation/mpl-token-metadata": "^2.3.3",
+    "@orca-so/whirlpool-sdk": "^0.4.2",
+    "@orca-so/whirlpools": "^3.0.0",
     "@solana/spl-token": "^0.4.13",
     "@solana/spl-token-metadata": "^0.1.6",
     "@solana/wallet-adapter-base": "^0.9.3",

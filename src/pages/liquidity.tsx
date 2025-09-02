@@ -13,6 +13,7 @@ const LiquidityPage: FC = () => {
     quote,
     errorMsg,
     isLoading,
+    isCommitting,
     showConfirmModal,
     commitResult,
     updateForm,
@@ -205,6 +206,34 @@ const LiquidityPage: FC = () => {
             />
           </div>
         </div>
+        
+        {/* Slippage input for Orca */}
+        {form.dex === "Orca" && (
+          <div className="mt-4">
+            <label className="block text-muted mb-2 font-semibold">
+              Slippage Tolerance
+            </label>
+            <div className="flex items-center space-x-3">
+              <input
+                type="number"
+                value="100"
+                disabled
+                className="w-24 p-3 rounded-lg border border-muted/10 bg-muted/20 text-fg text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="100"
+                min="10"
+                max="500"
+                step="10"
+              />
+              <span className="text-muted">basis points (1.0%)</span>
+              <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">
+                Default: 100 bps = 1.0%
+              </span>
+            </div>
+            <p className="text-xs text-muted mt-1">
+              Range: 10-500 basis points (0.1%-5.0%)
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between">
@@ -300,21 +329,127 @@ const LiquidityPage: FC = () => {
 
   const renderSuccess = () => (
     <div className="text-center space-y-6">
-      <div className="bg-success/20 border border-success/30 rounded-lg p-6">
-        <h3 className="text-xl font-bold mb-2 text-success">Liquidity Added Successfully!</h3>
-        <p className="text-muted mb-4">Your liquidity has been added to the pool.</p>
-        <div className="bg-bg/40 rounded-lg p-4">
-          <p className="text-fg font-mono text-sm">Transaction ID: {commitResult?.txid}</p>
+      <div className="space-y-4">
+        <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto">
+          <svg className="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        
+        <div>
+          <h3 className="text-2xl font-bold mb-2">
+            {form.dex === "Raydium" ? "Liquidity Added Successfully!" : "Transaction Built Successfully!"}
+          </h3>
+          <p className="text-muted">
+            {form.dex === "Raydium" 
+              ? "Your liquidity has been added to the Raydium pool."
+              : "Your Orca transaction has been built and is ready for signing."
+            }
+          </p>
         </div>
       </div>
 
+      <div className="bg-muted/10 rounded-lg p-6 space-y-4">
+        {form.dex === "Raydium" && commitResult?.txid && (
+          <div className="text-center">
+            <p className="text-muted text-sm mb-2">Transaction ID</p>
+            <p className="text-xs text-muted font-mono bg-muted/20 p-2 rounded">
+              {commitResult.txid}
+            </p>
+          </div>
+        )}
+        
+        {form.dex === "Orca" && commitResult?.txBase64 && (
+          <div className="text-center">
+            <p className="text-muted text-sm mb-2">Orca Transaction Built</p>
+            <p className="text-xs text-muted font-mono bg-muted/20 p-2 rounded">
+              Transaction ready for wallet signing
+            </p>
+          </div>
+        )}
+        
+        {commitResult?.summary && (
+          <div className="text-left space-y-3">
+            <p className="text-muted text-sm font-medium">Transaction Summary:</p>
+            <div className="text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted">Whirlpool:</span>
+                <span className="text-fg font-mono">{commitResult.summary.whirlpool.slice(0, 8)}...{commitResult.summary.whirlpool.slice(-8)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Input Token:</span>
+                <span className="text-fg">{commitResult.summary.inputMint === "A" ? "Token A" : "Token B"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Input Amount:</span>
+                <span className="text-fg">{commitResult.summary.inputAmountUi}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Expected Output:</span>
+                <span className="text-fg">{commitResult.summary.expectedOutputAmountUi}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Slippage:</span>
+                <span className="text-fg">{(commitResult.summary.slippageBp / 100).toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Tick Range:</span>
+                <span className="text-fg">{commitResult.summary.tickLower} to {commitResult.summary.tickUpper}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Current Tick:</span>
+                <span className="text-fg">{commitResult.summary.currentTick}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Tick Spacing:</span>
+                <span className="text-fg">{commitResult.summary.tickSpacing}</span>
+              </div>
+              {commitResult.summary.signature && (
+                <div className="flex justify-between">
+                  <span className="text-muted">Signature:</span>
+                  <span className="text-fg font-mono">{commitResult.summary.signature.slice(0, 8)}...{commitResult.summary.signature.slice(-8)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-3">
-        <a
-          href="#"
-          className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
+        {form.dex === "Orca" && (
+          <a
+            href={`https://app.orca.so/pools/${commitResult?.summary?.whirlpool || ""}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
+          >
+            View on Orca
+          </a>
+        )}
+        {form.dex === "Raydium" && (
+          <a
+            href="#"
+            className="bg-secondary hover:bg-secondary/600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
+          >
+            View on DEX
+          </a>
+        )}
+        {commitResult?.summary?.signature && (
+          <a
+            href={`https://solscan.io/tx/${commitResult.summary.signature}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
+          >
+            View on Solscan
+          </a>
+        )}
+        <button
+          onClick={() => router.push('/positions')}
+          className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
         >
-          View on DEX
-        </a>
+          View My Positions
+        </button>
         <button
           onClick={resetWizard}
           className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300 block w-full"
@@ -402,6 +537,18 @@ const LiquidityPage: FC = () => {
               </div>
             )}
             
+            {/* Transaction Building Status */}
+            {isCommitting && (
+              <div className="bg-accent/20 border border-accent/30 rounded-lg p-4 mb-6 text-center">
+                <div className="flex items-center justify-center space-x-2">
+                  <Spinner size={16} />
+                  <p className="text-accent text-sm font-medium">
+                    Building {form.dex} transaction… please wait.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
               {renderCurrentStep()}
             </div>
@@ -441,6 +588,12 @@ const LiquidityPage: FC = () => {
                     <span className="text-muted">Quote Amount:</span>
                     <span className="text-fg">{form.quoteAmount}</span>
                   </div>
+                  {form.dex === "Orca" && (
+                    <div className="flex justify-between">
+                      <span className="text-muted">Slippage:</span>
+                      <span className="text-fg">1.0% (default)</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -453,10 +606,10 @@ const LiquidityPage: FC = () => {
                 </button>
                 <button
                   onClick={commitLiquidity}
-                  disabled={isLoading}
+                  disabled={isCommitting}
                   className="flex-1 bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50"
                 >
-                  {isLoading ? "Confirming..." : "Confirm"}
+                  {isCommitting ? "Building Transaction..." : "Confirm"}
                 </button>
               </div>
             </div>

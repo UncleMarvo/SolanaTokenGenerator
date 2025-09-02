@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { Connection, Transaction, PublicKey } from "@solana/web3.js";
 
 export interface LiquidityForm {
   tokenMint: string;
@@ -26,7 +27,22 @@ export interface LiquidityError {
 }
 
 export interface LiquidityCommit {
-  txid: string;
+  txid?: string; // For Raydium (mocked)
+  txBase64?: string; // For Orca (base64 encoded)
+  summary?: {
+    whirlpool: string;
+    tokenMintA: string;
+    tokenMintB: string;
+    inputMint: "A" | "B";
+    inputAmountUi: string;
+    expectedOutputAmountUi: string;
+    slippageBp: number;
+    tickLower: number;
+    tickUpper: number;
+    currentTick: number;
+    tickSpacing: number;
+    signature?: string; // Transaction signature after confirmation
+  };
 }
 
 export const useLiquidityWizard = () => {
@@ -44,6 +60,7 @@ export const useLiquidityWizard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [commitResult, setCommitResult] = useState<LiquidityCommit | null>(null);
+  const [isCommitting, setIsCommitting] = useState(false);
 
   // Update form when URL parameters are available
   useEffect(() => {
@@ -151,26 +168,110 @@ export const useLiquidityWizard = () => {
   const commitLiquidity = async () => {
     if (!quote) return;
     
-    setIsLoading(true);
+    setIsCommitting(true);
+    setErrorMsg(null);
+    
     try {
+      // Add whirlpool info for Orca
+      const requestBody = {
+        ...form,
+        quoteId: quote.quoteId,
+        ...(form.dex === "Orca" && {
+          whirlpool: quote.poolAddress,
+          slippageBp: 100 // Default 1% slippage
+        })
+      };
+
       const response = await fetch("/api/liquidity/commit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...form,
-          quoteId: quote.quoteId
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to commit liquidity");
+      }
+
       const data = await response.json();
-      setCommitResult(data);
-      setShowConfirmModal(false);
+      
+      if (form.dex === "Orca" && data.txBase64) {
+        // For Orca, we need to sign and send the transaction
+        await signAndSendOrcaTransaction(data.txBase64, data.summary);
+      } else if (form.dex === "Raydium" && data.txid) {
+        // For Raydium, just show the result
+        setCommitResult(data);
+        setShowConfirmModal(false);
+      } else {
+        throw new Error("Invalid response format");
+      }
     } catch (error) {
       console.error("Error committing liquidity:", error);
+      setErrorMsg(error instanceof Error ? error.message : "Failed to commit liquidity");
     } finally {
-      setIsLoading(false);
+      setIsCommitting(false);
+    }
+  };
+
+  const signAndSendOrcaTransaction = async (txBase64: string, summary: any) => {
+    try {
+      // Check if wallet is available
+      if (typeof window === 'undefined' || !window.solana?.isPhantom) {
+        throw new Error("Phantom wallet not found. Please install Phantom wallet.");
+      }
+
+      const wallet = window.solana;
+      
+      // Connect wallet if not connected
+      if (!wallet.isConnected) {
+        await wallet.connect();
+      }
+
+      // Initialize connection
+      const connection = new Connection(
+        process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+      );
+
+      // Deserialize transaction
+      const transaction = Transaction.from(Buffer.from(txBase64, 'base64'));
+      
+      // Set fee payer and recent blockhash
+      transaction.feePayer = wallet.publicKey;
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      // Sign and send transaction
+      const signedTx = await wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, "confirmed");
+      
+      // Show success result
+      setCommitResult({
+        txBase64,
+        summary: {
+          ...summary,
+          signature
+        }
+      });
+      setShowConfirmModal(false);
+      
+    } catch (error) {
+      console.error("Error signing/sending Orca transaction:", error);
+      if (error instanceof Error) {
+        if (error.message.includes("User rejected")) {
+          setErrorMsg("Transaction was rejected by user");
+        } else if (error.message.includes("insufficient funds")) {
+          setErrorMsg("Insufficient funds for transaction");
+        } else {
+          setErrorMsg(error.message);
+        }
+      } else {
+        setErrorMsg("Failed to sign and send transaction");
+      }
     }
   };
 
@@ -194,6 +295,7 @@ export const useLiquidityWizard = () => {
     quote,
     errorMsg,
     isLoading,
+    isCommitting,
     showConfirmModal,
     commitResult,
     updateForm,
