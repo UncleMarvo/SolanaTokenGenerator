@@ -7,8 +7,8 @@ const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 // Cache configuration
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-const MAX_RESPONSE_SIZE = 8 * 1024 * 1024; // 8 MB in bytes
-const REQUEST_TIMEOUT = 8000; // 8 seconds in milliseconds
+const MAX_RESPONSE_SIZE = 50 * 1024 * 1024; // 50 MB in bytes (increased for large pool data)
+const REQUEST_TIMEOUT = 15000; // 15 seconds in milliseconds (increased timeout)
 
 // In-memory cache for Raydium API responses
 const raydiumCache = new Map<string, { ts: number; json: any }>();
@@ -337,6 +337,9 @@ export async function getRaydiumQuote(request: RaydiumQuoteRequest): Promise<Ray
       const bestPool = findBestPool(allPools, tokenMint, quoteMint);
       
       if (!bestPool) {
+        console.warn(`No Raydium pool found for ${tokenMint.slice(0, 8)}...${tokenMint.slice(-8)} vs ${quoteMint.slice(0, 8)}...${quoteMint.slice(-8)}`);
+        console.warn(`Total pools available: ${allPools.length} (${ammPools.length} AMM, ${clmmPools.length} CLMM)`);
+        console.warn(`Sample pools:`, allPools.slice(0, 3).map(p => `${p.baseMint.slice(0, 8)}...${p.baseMint.slice(-8)}/${p.quoteMint.slice(0, 8)}...${p.quoteMint.slice(-8)}`));
         throw new Error('No Raydium pool available');
       }
       
@@ -415,8 +418,12 @@ export async function getRaydiumQuote(request: RaydiumQuoteRequest): Promise<Ray
         };
       }
       
-      // If both Raydium and DexScreener fail, throw the original error
-      throw raydiumError;
+      // If both Raydium and DexScreener fail, provide a helpful error message
+      console.error('Both Raydium and DexScreener failed to provide quote');
+      console.error('Raydium error:', raydiumError);
+      console.error('Token pair:', { tokenMint, quoteMint, baseAmount });
+      
+      throw new Error(`Unable to get quote for ${tokenMint.slice(0, 8)}...${tokenMint.slice(-8)} vs ${quoteMint.slice(0, 8)}...${quoteMint.slice(-8)}. This token may not have sufficient liquidity on Raydium or other DEXes.`);
     }
     
   } catch (error) {

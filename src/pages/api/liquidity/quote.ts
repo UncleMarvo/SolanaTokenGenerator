@@ -144,6 +144,8 @@ export default async function handler(
               return res.status(408).json({ error: "Timeout", message: "Request timeout - please try again" });
             } else if (raydiumError.message.includes('too large')) {
               return res.status(413).json({ error: "ResponseTooLarge", message: "Response too large - using fallback data" });
+            } else if (raydiumError.message.includes('Unable to get quote')) {
+              return res.status(404).json({ error: "NoLiquidity", message: raydiumError.message });
             }
           }
           return res.status(502).json({ error: "ProviderError", message: "Raydium API error" });

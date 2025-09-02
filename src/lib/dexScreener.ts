@@ -99,16 +99,27 @@ export async function getDexScreenerPair({
     }
 
     // Find a pair where either base or quote matches our quoteMint
+    // Also look for pairs with USDC or WSOL as the quote token
     const suitablePair = data.pairs.find(pair => {
       const baseAddress = pair.baseToken.address.toLowerCase();
       const quoteAddress = pair.quoteToken.address.toLowerCase();
       const targetMint = quoteMint.toLowerCase();
       
-      return baseAddress === targetMint || quoteAddress === targetMint;
+      // Check if this pair matches our target quote mint
+      if (baseAddress === targetMint || quoteAddress === targetMint) {
+        return true;
+      }
+      
+      // Also check if this pair has USDC or WSOL as quote (common stable pairs)
+      const isUSDCPair = quoteAddress === USDC_MINT.toLowerCase() || baseAddress === USDC_MINT.toLowerCase();
+      const isWSOLPair = quoteAddress === WSOL_MINT.toLowerCase() || baseAddress === WSOL_MINT.toLowerCase();
+      
+      return isUSDCPair || isWSOLPair;
     });
 
     if (!suitablePair) {
       console.log(`No suitable pair found for ${quoteMint} in DexScreener data`);
+      console.log(`Available pairs:`, data.pairs.map(p => `${p.baseToken.symbol}/${p.quoteToken.symbol}`));
       return null;
     }
 
