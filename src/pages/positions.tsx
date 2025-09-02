@@ -12,11 +12,8 @@ interface OrcaPosition {
   liquidity: string;
   tokenA: string;
   tokenB: string;
-  tokenABalance: string;
-  tokenBBalance: string;
-  feeGrowthCheckpointA: string;
-  feeGrowthCheckpointB: string;
-  owner: string;
+  symbolA?: string;
+  symbolB?: string;
 }
 
 interface PositionsData {
@@ -30,6 +27,11 @@ const PositionsPage: FC = () => {
   const [positions, setPositions] = useState<PositionsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Position action states
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   // Check for wallet connection on mount
   useEffect(() => {
@@ -84,6 +86,78 @@ const PositionsPage: FC = () => {
       setError("Failed to fetch positions");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Position action handlers
+  const handleIncreaseLiquidity = async (position: OrcaPosition) => {
+    if (!walletAddress) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // For now, show a placeholder - in production you'd open a modal with inputs
+      console.log("Increase liquidity for position:", position.positionMint);
+      setActionSuccess("Increase liquidity functionality coming soon!");
+      
+      // TODO: Implement modal with amount inputs and slippage
+      // TODO: Call /api/positions/increase
+      // TODO: Handle wallet signing and transaction confirmation
+      
+    } catch (error) {
+      console.error("Error increasing liquidity:", error);
+      setActionError("Failed to increase liquidity");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleDecreaseLiquidity = async (position: OrcaPosition) => {
+    if (!walletAddress) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // For now, show a placeholder - in production you'd open a modal with slider
+      console.log("Decrease liquidity for position:", position.positionMint);
+      setActionSuccess("Decrease liquidity functionality coming soon!");
+      
+      // TODO: Implement modal with percent slider and slippage
+      // TODO: Call /api/positions/decrease
+      // TODO: Handle wallet signing and transaction confirmation
+      
+    } catch (error) {
+      console.error("Error decreasing liquidity:", error);
+      setActionError("Failed to decrease liquidity");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleCollectFees = async (position: OrcaPosition) => {
+    if (!walletAddress) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // For now, show a placeholder - in production you'd call the API directly
+      console.log("Collect fees for position:", position.positionMint);
+      setActionSuccess("Collect fees functionality coming soon!");
+      
+      // TODO: Call /api/positions/collect
+      // TODO: Handle wallet signing and transaction confirmation
+      
+    } catch (error) {
+      console.error("Error collecting fees:", error);
+      setActionError("Failed to collect fees");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -163,9 +237,12 @@ const PositionsPage: FC = () => {
             <div key={index} className="bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h4 className="font-semibold text-fg">
-                    {getTokenSymbol(position.tokenA)} / {getTokenSymbol(position.tokenB)}
-                  </h4>
+                                   <h4 className="font-semibold text-fg">
+                   {position.symbolA && position.symbolB 
+                     ? `${position.symbolA} / ${position.symbolB}`
+                     : `${getTokenSymbol(position.tokenA)} / ${getTokenSymbol(position.tokenB)}`
+                   }
+                 </h4>
                   <p className="text-sm text-muted">Position #{index + 1}</p>
                 </div>
                 <div className="text-right">
@@ -174,43 +251,65 @@ const PositionsPage: FC = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                <div>
-                  <p className="text-muted">Tick Range</p>
-                  <p className="text-fg font-mono">{position.lowerTick} → {position.upperTick}</p>
-                </div>
-                <div>
-                  <p className="text-muted">Token A Balance</p>
-                  <p className="text-fg">{position.tokenABalance}</p>
-                </div>
-                <div>
-                  <p className="text-muted">Token B Balance</p>
-                  <p className="text-fg">{position.tokenBBalance}</p>
-                </div>
-                <div>
-                  <p className="text-muted">Position Mint</p>
-                  <p className="text-fg font-mono text-xs">{position.positionMint.slice(0, 8)}...{position.positionMint.slice(-8)}</p>
-                </div>
-              </div>
+                             <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                 <div>
+                   <p className="text-muted">Tick Range</p>
+                   <p className="text-fg font-mono">{position.lowerTick} → {position.upperTick}</p>
+                 </div>
+                 <div>
+                   <p className="text-muted">Token A</p>
+                   <p className="text-fg">{position.symbolA || getTokenSymbol(position.tokenA)}</p>
+                 </div>
+                 <div>
+                   <p className="text-muted">Token B</p>
+                   <p className="text-fg">{position.symbolB || getTokenSymbol(position.tokenB)}</p>
+                 </div>
+                 <div>
+                   <p className="text-muted">Position Mint</p>
+                   <p className="text-fg font-mono text-xs">{position.positionMint.slice(0, 8)}...{position.positionMint.slice(-8)}</p>
+                 </div>
+               </div>
               
-              <div className="flex space-x-3">
-                <a
-                  href={`https://app.orca.so/pools/${position.whirlpool}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
-                >
-                  View on Orca
-                </a>
-                <a
-                  href={`https://solscan.io/account/${position.positionMint}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
-                >
-                  View on Solscan
-                </a>
-              </div>
+                             <div className="flex space-x-3">
+                 <a
+                   href={`https://app.orca.so/pools/${position.whirlpool}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                 >
+                   View on Orca
+                 </a>
+                 <a
+                   href={`https://solscan.io/account/${position.positionMint}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                 >
+                   View on Solscan
+                 </a>
+               </div>
+               
+               {/* Position Management Actions */}
+               <div className="flex space-x-2 mt-4 pt-4 border-t border-muted/20">
+                 <button
+                   onClick={() => handleIncreaseLiquidity(position)}
+                   className="bg-success hover:bg-success/80 text-bg font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs"
+                 >
+                   Increase
+                 </button>
+                 <button
+                   onClick={() => handleDecreaseLiquidity(position)}
+                   className="bg-warning hover:bg-warning/80 text-bg font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs"
+                 >
+                   Decrease
+                 </button>
+                 <button
+                   onClick={() => handleCollectFees(position)}
+                   className="bg-info hover:bg-info/80 text-bg font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs"
+                 >
+                   Collect Fees
+                 </button>
+               </div>
             </div>
           ))}
         </div>
@@ -283,13 +382,39 @@ const PositionsPage: FC = () => {
                <p className="text-muted">View your Orca Whirlpool LP positions</p>
              </div>
 
-            {walletAddress && (
-              <div className="bg-success/20 border border-success/30 rounded-lg p-4 mb-6 text-center">
-                <p className="text-success text-sm">
-                  ✅ Connected: <strong>{walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}</strong>
-                </p>
-              </div>
-            )}
+                         {walletAddress && (
+               <div className="bg-success/20 border border-success/30 rounded-lg p-4 mb-6 text-center">
+                 <p className="text-success text-sm">
+                   ✅ Connected: <strong>{walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}</strong>
+                 </p>
+               </div>
+             )}
+
+             {/* Action Status Messages */}
+             {actionError && (
+               <div className="bg-error/20 border border-error/30 rounded-lg p-4 mb-6 text-center">
+                 <p className="text-error text-sm">
+                   ❌ {actionError}
+                 </p>
+               </div>
+             )}
+
+             {actionSuccess && (
+               <div className="bg-success/20 border border-success/30 rounded-lg p-4 mb-6 text-center">
+                 <p className="text-success text-sm">
+                   ✅ {actionSuccess}
+                 </p>
+               </div>
+             )}
+
+             {isActionLoading && (
+               <div className="bg-info/20 border border-info/30 rounded-lg p-4 mb-6 text-center">
+                 <div className="flex items-center justify-center space-x-2">
+                   <Spinner size={16} />
+                   <p className="text-info text-sm">Processing position action...</p>
+                 </div>
+               </div>
+             )}
 
             <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
               {!walletAddress ? renderConnectWallet() : renderPositions()}

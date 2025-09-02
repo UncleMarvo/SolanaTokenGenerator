@@ -1,0 +1,56 @@
+import { NextApiRequest, NextApiResponse } from "next";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { buildCollectFeesTx } from "../../../lib/orcaActions";
+
+interface CollectFeesRequest {
+  positionMint: string;
+  walletPubkey: string;
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const { positionMint, walletPubkey } = req.body as CollectFeesRequest;
+
+    // Validate required fields
+    if (!positionMint || !walletPubkey) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Create connection
+    const connection = new Connection(
+      process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+    );
+
+    // For now, we'll use a mock position since we don't have the full position data
+    // In production, you would fetch the actual position data from the blockchain
+    const mockPosition = {
+      positionMint,
+      whirlpool: "mock_whirlpool_address",
+      lowerTick: -1000,
+      upperTick: 1000,
+      liquidity: "1000000",
+      tokenA: "So11111111111111111111111111111111111111112", // WSOL
+      tokenB: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+    };
+
+    // Build the transaction
+    const result = await buildCollectFeesTx({
+      connection,
+      walletPubkey: new PublicKey(walletPubkey),
+      position: mockPosition,
+    });
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error("Error building collect fees transaction:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
