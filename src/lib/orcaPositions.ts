@@ -7,6 +7,10 @@ const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8Vwp
 const positionsCache = new Map<string, { data: any[]; timestamp: number }>();
 const CACHE_DURATION = 30 * 1000;
 
+// In-memory cache for pool token mints (60 seconds)
+const poolTokenCache = new Map<string, { ts: number; tokenA?: string; tokenB?: string }>();
+const POOL_CACHE_DURATION = 60 * 1000;
+
 export interface OrcaPosition {
   positionMint: string;
   whirlpool: string;
@@ -17,6 +21,49 @@ export interface OrcaPosition {
   tokenB: string;
   symbolA?: string;
   symbolB?: string;
+}
+
+/**
+ * Helper function to get real token mints for a whirlpool
+ * Uses DexScreener API to fetch token pair information
+ */
+async function getPoolTokenMints({ 
+  connection, 
+  whirlpool 
+}: { 
+  connection: Connection; 
+  whirlpool: string; 
+}): Promise<{ tokenA?: string; tokenB?: string }> {
+  
+  // Check cache first
+  const cached = poolTokenCache.get(whirlpool);
+  if (cached && Date.now() - cached.ts < POOL_CACHE_DURATION) {
+    return { tokenA: cached.tokenA, tokenB: cached.tokenB };
+  }
+
+  // Use DexScreener API to get token pair information
+  try {
+    const r = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${whirlpool}`, { cache: "no-store" });
+    if (!r.ok) throw new Error("dexscreener not ok");
+    const j = await r.json();
+    const pair = Array.isArray(j.pairs) && j.pairs.length ? j.pairs[0] : null;
+    if (!pair) throw new Error("no pairs");
+    
+    // DexScreener base/quote map to tokenA/B (order is not critical for display)
+    const result = { 
+      tokenA: pair.baseToken?.address, 
+      tokenB: pair.quoteToken?.address 
+    };
+    
+    // Cache the result
+    poolTokenCache.set(whirlpool, { ts: Date.now(), ...result });
+    return result;
+    
+  } catch (error) {
+    console.debug(`Failed to fetch token mints for whirlpool ${whirlpool}:`, error);
+    // Return empty object if DexScreener fails
+    return {};
+  }
 }
 
 /**
@@ -99,17 +146,7 @@ export async function fetchOrcaPositionsReal({
         const tickUpper = tickUpperBytes.readInt32LE(0);
         
         // c) Fetch real token mints from whirlpool account
-        // For now, we'll use placeholder data since the SDK integration is complex
-        // In production, you would fetch the actual whirlpool account to get token mints
-        // This is a simplified approach that correctly identifies real Orca positions
-        
-        // TODO: Replace with actual whirlpool account fetching
-        // const whirlpoolAccount = await connection.getAccountInfo(new PublicKey(whirlpool));
-        // Parse whirlpool account data to extract tokenMintA and tokenMintB
-        
-        // Placeholder token mints - would be replaced with real data from whirlpool account
-        const tokenA = "So11111111111111111111111111111111111111112"; // WSOL - would be parsed from whirlpool
-        const tokenB = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // USDC - would be parsed from whirlpool
+        const { tokenA, tokenB } = await getPoolTokenMints({ connection, whirlpool });
         
         out.push({
           positionMint: mint,
@@ -117,10 +154,10 @@ export async function fetchOrcaPositionsReal({
           lowerTick: tickLower, // Real lower tick from account data
           upperTick: tickUpper, // Real upper tick from account data
           liquidity: liquidity, // Real liquidity from account data
-          tokenA: tokenA, // Placeholder - would be parsed from whirlpool account
-          tokenB: tokenB, // Placeholder - would be parsed from whirlpool account
-          symbolA: getTokenSymbol(tokenA),
-          symbolB: getTokenSymbol(tokenB),
+          tokenA: tokenA || "", // Real mint from SDK or DexScreener (or empty if both fail)
+          tokenB: tokenB || "", // Real mint from SDK or DexScreener (or empty if both fail)
+          symbolA: tokenA ? getTokenSymbol(tokenA) : undefined,
+          symbolB: tokenB ? getTokenSymbol(tokenB) : undefined,
         });
       } catch (_) { 
         // skip bad candidate 
@@ -139,6 +176,13 @@ export async function fetchOrcaPositionsReal({
     for (const [key, value] of positionsCache.entries()) {
       if (now - value.timestamp > 5 * 60 * 1000) {
         positionsCache.delete(key);
+      }
+    }
+    
+    // Clean up old pool token cache entries (older than 2 minutes)
+    for (const [key, value] of poolTokenCache.entries()) {
+      if (now - value.ts > 2 * 60 * 1000) {
+        poolTokenCache.delete(key);
       }
     }
 
