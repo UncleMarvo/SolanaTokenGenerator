@@ -7,6 +7,7 @@ interface PhantomProvider {
   connect(): Promise<void>;
   signTransaction(transaction: any): Promise<any>;
   signAllTransactions(transactions: any[]): Promise<any[]>;
+  signAndSendTransaction(transaction: any): Promise<string>;
 }
 
 declare global {

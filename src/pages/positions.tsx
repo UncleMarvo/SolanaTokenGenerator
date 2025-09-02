@@ -1,7 +1,7 @@
 import { FC, useState, useEffect } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction, Connection } from "@solana/web3.js";
 import { Spinner } from "../components/ui/Spinner";
 
 interface OrcaPosition {
@@ -32,6 +32,11 @@ const PositionsPage: FC = () => {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  
+  // Connection for transaction confirmation
+  const [connection] = useState(() => new Connection(
+    process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+  ));
 
   // Check for wallet connection on mount
   useEffect(() => {
@@ -89,76 +94,210 @@ const PositionsPage: FC = () => {
     }
   };
 
+  // Toast notification function
+  const showToast = (message: string, action?: { label: string; onClick: () => void }) => {
+    // Simple toast implementation - in production you'd use a proper toast library
+    setActionSuccess(message);
+    if (action) {
+      // Store action for later use
+      console.log("Toast action:", action.label);
+    }
+  };
+
   // Position action handlers
-  const handleIncreaseLiquidity = async (position: OrcaPosition) => {
-    if (!walletAddress) return;
+  const onIncrease = async (position: OrcaPosition, params: { amountUi: number; inputMint: "A" | "B"; slippageBp?: number }) => {
+    if (!walletAddress || !window.solana?.isPhantom) return;
     
     setIsActionLoading(true);
     setActionError(null);
     setActionSuccess(null);
 
     try {
-      // For now, show a placeholder - in production you'd open a modal with inputs
-      console.log("Increase liquidity for position:", position.positionMint);
-      setActionSuccess("Increase liquidity functionality coming soon!");
+      // Call the increase API
+      const r = await fetch("/api/positions/increase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...position,
+          ...params,
+          walletPubkey: walletAddress
+        })
+      });
       
-      // TODO: Implement modal with amount inputs and slippage
-      // TODO: Call /api/positions/increase
-      // TODO: Handle wallet signing and transaction confirmation
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Failed to build increase transaction");
+      
+      // Deserialize and sign transaction
+      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
+      const sig = await window.solana.signAndSendTransaction(tx);
+      await connection.confirmTransaction(sig, "confirmed");
+      
+      showToast("Increased ✓", { 
+        label: "View", 
+        onClick: () => window.open(`https://solscan.io/tx/${sig}`)
+      });
+      
+      // Refresh positions
+      fetchPositions();
       
     } catch (error) {
       console.error("Error increasing liquidity:", error);
-      setActionError("Failed to increase liquidity");
+      const errorMessage = error instanceof Error ? error.message : "Failed to increase liquidity";
+      
+      // Handle specific error cases
+      if (errorMessage.includes("User rejected")) {
+        setActionError("Transaction was rejected by user");
+      } else if (errorMessage.includes("insufficient funds")) {
+        setActionError("Insufficient funds for transaction");
+      } else if (errorMessage.includes("no position")) {
+        setActionError("Position not found or invalid");
+      } else {
+        setActionError(errorMessage);
+      }
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  const onDecrease = async (position: OrcaPosition, params: { percent: number; slippageBp?: number }) => {
+    if (!walletAddress || !window.solana?.isPhantom) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // Call the decrease API
+      const r = await fetch("/api/positions/decrease", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...position,
+          ...params,
+          walletPubkey: walletAddress
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Failed to build decrease transaction");
+      
+      // Deserialize and sign transaction
+      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
+      const sig = await window.solana.signAndSendTransaction(tx);
+      await connection.confirmTransaction(sig, "confirmed");
+      
+      const action = params.percent >= 100 ? "Closed" : "Decreased";
+      showToast(`${action} ✓`, { 
+        label: "View", 
+        onClick: () => window.open(`https://solscan.io/tx/${sig}`)
+      });
+      
+      // Refresh positions
+      fetchPositions();
+      
+    } catch (error) {
+      console.error("Error decreasing liquidity:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to decrease liquidity";
+      
+      // Handle specific error cases
+      if (errorMessage.includes("User rejected")) {
+        setActionError("Transaction was rejected by user");
+      } else if (errorMessage.includes("insufficient funds")) {
+        setActionError("Insufficient funds for transaction");
+      } else if (errorMessage.includes("no position")) {
+        setActionError("Position not found or invalid");
+      } else {
+        setActionError(errorMessage);
+      }
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const onCollect = async (position: OrcaPosition) => {
+    if (!walletAddress || !window.solana?.isPhantom) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // Call the collect API
+      const r = await fetch("/api/positions/collect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...position,
+          walletPubkey: walletAddress
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Failed to build collect transaction");
+      
+      // Deserialize and sign transaction
+      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
+      const sig = await window.solana.signAndSendTransaction(tx);
+      await connection.confirmTransaction(sig, "confirmed");
+      
+      showToast("Fees collected ✓", { 
+        label: "View", 
+        onClick: () => window.open(`https://solscan.io/tx/${sig}`)
+      });
+      
+      // Refresh positions
+      fetchPositions();
+      
+    } catch (error) {
+      console.error("Error collecting fees:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to collect fees";
+      
+      // Handle specific error cases
+      if (errorMessage.includes("User rejected")) {
+        setActionError("Transaction was rejected by user");
+      } else if (errorMessage.includes("insufficient funds")) {
+        setActionError("Insufficient funds for transaction");
+      } else if (errorMessage.includes("no position")) {
+        setActionError("Position not found or invalid");
+      } else {
+        setActionError(errorMessage);
+      }
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Legacy handlers for backward compatibility (can be removed later)
+  const handleIncreaseLiquidity = async (position: OrcaPosition) => {
+    // For now, use a simple modal approach
+    const amountUi = prompt("Enter amount to increase (e.g., 100):");
+    const inputMint = prompt("Enter input mint (A or B):") as "A" | "B";
+    const slippageBp = prompt("Enter slippage in basis points (10-500, default 100):");
+    
+    if (amountUi && inputMint && (inputMint === "A" || inputMint === "B")) {
+      await onIncrease(position, {
+        amountUi: parseFloat(amountUi),
+        inputMint,
+        slippageBp: slippageBp ? parseInt(slippageBp) : 100
+      });
     }
   };
 
   const handleDecreaseLiquidity = async (position: OrcaPosition) => {
-    if (!walletAddress) return;
+    // For now, use a simple modal approach
+    const percent = prompt("Enter percentage to decrease (0-100):");
+    const slippageBp = prompt("Enter slippage in basis points (10-500, default 100):");
     
-    setIsActionLoading(true);
-    setActionError(null);
-    setActionSuccess(null);
-
-    try {
-      // For now, show a placeholder - in production you'd open a modal with slider
-      console.log("Decrease liquidity for position:", position.positionMint);
-      setActionSuccess("Decrease liquidity functionality coming soon!");
-      
-      // TODO: Implement modal with percent slider and slippage
-      // TODO: Call /api/positions/decrease
-      // TODO: Handle wallet signing and transaction confirmation
-      
-    } catch (error) {
-      console.error("Error decreasing liquidity:", error);
-      setActionError("Failed to decrease liquidity");
-    } finally {
-      setIsActionLoading(false);
+    if (percent) {
+      await onDecrease(position, {
+        percent: parseFloat(percent),
+        slippageBp: slippageBp ? parseInt(slippageBp) : 100
+      });
     }
   };
 
   const handleCollectFees = async (position: OrcaPosition) => {
-    if (!walletAddress) return;
-    
-    setIsActionLoading(true);
-    setActionError(null);
-    setActionSuccess(null);
-
-    try {
-      // For now, show a placeholder - in production you'd call the API directly
-      console.log("Collect fees for position:", position.positionMint);
-      setActionSuccess("Collect fees functionality coming soon!");
-      
-      // TODO: Call /api/positions/collect
-      // TODO: Handle wallet signing and transaction confirmation
-      
-    } catch (error) {
-      console.error("Error collecting fees:", error);
-      setActionError("Failed to collect fees");
-    } finally {
-      setIsActionLoading(false);
-    }
+    await onCollect(position);
   };
 
   const formatLiquidity = (liquidity: string): string => {
@@ -289,27 +428,42 @@ const PositionsPage: FC = () => {
                  </a>
                </div>
                
-               {/* Position Management Actions */}
-               <div className="flex space-x-2 mt-4 pt-4 border-t border-muted/20">
-                 <button
-                   onClick={() => handleIncreaseLiquidity(position)}
-                   className="bg-success hover:bg-success/80 text-bg font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs"
-                 >
-                   Increase
-                 </button>
-                 <button
-                   onClick={() => handleDecreaseLiquidity(position)}
-                   className="bg-warning hover:bg-warning/80 text-bg font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs"
-                 >
-                   Decrease
-                 </button>
-                 <button
-                   onClick={() => handleCollectFees(position)}
-                   className="bg-info hover:bg-info/80 text-bg font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs"
-                 >
-                   Collect Fees
-                 </button>
-               </div>
+                               {/* Position Management Actions */}
+                <div className="flex space-x-2 mt-4 pt-4 border-t border-muted/20">
+                  <button
+                    onClick={() => handleIncreaseLiquidity(position)}
+                    disabled={isActionLoading}
+                    className={`font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs ${
+                      isActionLoading 
+                        ? "bg-muted/50 text-muted cursor-not-allowed" 
+                        : "bg-success hover:bg-success/80 text-bg"
+                    }`}
+                  >
+                    {isActionLoading ? "Loading..." : "Increase"}
+                  </button>
+                  <button
+                    onClick={() => handleDecreaseLiquidity(position)}
+                    disabled={isActionLoading}
+                    className={`font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs ${
+                      isActionLoading 
+                        ? "bg-muted/50 text-muted cursor-not-allowed" 
+                        : "bg-warning hover:bg-warning/80 text-bg"
+                    }`}
+                  >
+                    {isActionLoading ? "Loading..." : "Decrease"}
+                  </button>
+                  <button
+                    onClick={() => handleCollectFees(position)}
+                    disabled={isActionLoading}
+                    className={`font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs ${
+                      isActionLoading 
+                        ? "bg-muted/50 text-muted cursor-not-allowed" 
+                        : "bg-info hover:bg-info/80 text-bg"
+                    }`}
+                  >
+                    {isActionLoading ? "Loading..." : "Collect Fees"}
+                  </button>
+                </div>
             </div>
           ))}
         </div>
