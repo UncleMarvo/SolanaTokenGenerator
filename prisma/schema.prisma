@@ -21,6 +21,11 @@ model PositionsClmm {
   lastLiquidity String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([wallet])
+  @@index([tokenA])
+  @@index([tokenB])
+  @@index([updatedAt])
 }
 
 model TxEvent {

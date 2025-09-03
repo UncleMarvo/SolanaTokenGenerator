@@ -8,7 +8,9 @@ export type LpChips = {
   inRange?: boolean|null;   // true/false/null if unknown
   honest?: boolean;         // on-chain verify
   lastTx?: string;          // tx signature
+  lpPresent?: boolean;      // LP presence (from database or chain)
   source?: "orca"|"raydium"|"dexscreener";
+  dbSource?: "database"|"chain"|"none"; // Data source for LP presence
 };
 
 /**
@@ -87,7 +89,9 @@ export async function fetchLpChips({ mint }: { mint: string }): Promise<LpChips>
     inRange, 
     honest, 
     lastTx, 
-    source: result.source || "dexscreener" 
+    lpPresent: lpUsd ? true : false, // LP present if we have USD data
+    source: result.source || "dexscreener",
+    dbSource: "chain" // Default to chain since this function fetches from chain
   };
 }
 
