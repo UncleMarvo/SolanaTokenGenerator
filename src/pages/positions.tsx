@@ -298,7 +298,7 @@ const PositionsPage: FC = () => {
     }
   };
 
-  const onCollect = async (position: OrcaPosition) => {
+    const onCollect = async (position: OrcaPosition) => {
     if (!walletAddress || !window.solana?.isPhantom) return;
     
     setIsActionLoading(true);
@@ -356,6 +356,170 @@ const PositionsPage: FC = () => {
     } catch (error) {
       // Handle transaction signing/confirmation errors
       handleApiError(error, "Failed to collect fees");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Raydium CLMM action handlers
+  const onRaydiumIncrease = async (position: RaydiumPosition, params: { amountUi: number; inputMint: "TOKEN" | "USDC"; slippageBp?: number }) => {
+    if (!walletAddress || !window.solana?.isPhantom) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // Validate position has required tick data for CLMM
+      if (!position.tickLower || !position.tickUpper) {
+        setActionError("Position missing tick data. Cannot increase liquidity.");
+        return;
+      }
+
+      // Call the Raydium increase API
+      const r = await fetch("/api/raydium/increase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          walletPubkey: walletAddress,
+          clmmPoolId: position.poolId,
+          positionNftMint: position.poolId, // For MVP, using poolId as position NFT
+          tokenAMint: position.tokenA,
+          tokenBMint: position.tokenB,
+          inputMint: params.inputMint,
+          amountUi: params.amountUi,
+          slippageBp: params.slippageBp || 100,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) {
+        handleApiError(j, "Failed to build Raydium increase transaction");
+        return;
+      }
+      
+      // Deserialize and sign transaction
+      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
+      const sig = await window.solana.signAndSendTransaction(tx);
+      await connection.confirmTransaction(sig, "confirmed");
+      
+      showToast("Raydium liquidity increased ✓", { 
+        label: "View", 
+        onClick: () => window.open(`https://solscan.io/tx/${sig}`)
+      });
+      
+      // Refresh positions
+      fetchPositions();
+      
+    } catch (error) {
+      handleApiError(error, "Failed to increase Raydium liquidity");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const onRaydiumDecrease = async (position: RaydiumPosition, params: { percent: number; slippageBp?: number }) => {
+    if (!walletAddress || !window.solana?.isPhantom) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // Validate position has required tick data for CLMM
+      if (!position.tickLower || !position.tickUpper) {
+        setActionError("Position missing tick data. Cannot decrease liquidity.");
+        return;
+      }
+
+      // Call the Raydium decrease API
+      const r = await fetch("/api/raydium/decrease", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          walletPubkey: walletAddress,
+          clmmPoolId: position.poolId,
+          positionNftMint: position.poolId, // For MVP, using poolId as position NFT
+          tokenAMint: position.tokenA,
+          tokenBMint: position.tokenB,
+          percent: params.percent,
+          slippageBp: params.slippageBp || 100,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) {
+        handleApiError(j, "Failed to build Raydium decrease transaction");
+        return;
+      }
+      
+      // Deserialize and sign transaction
+      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
+      const sig = await window.solana.signAndSendTransaction(tx);
+      await connection.confirmTransaction(sig, "confirmed");
+      
+      const action = params.percent >= 100 ? "Closed" : "Decreased";
+      showToast(`Raydium position ${action.toLowerCase()} ✓`, { 
+        label: "View", 
+        onClick: () => window.open(`https://solscan.io/tx/${sig}`)
+      });
+      
+      // Refresh positions
+      fetchPositions();
+      
+    } catch (error) {
+      handleApiError(error, "Failed to decrease Raydium liquidity");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const onRaydiumCollect = async (position: RaydiumPosition) => {
+    if (!walletAddress || !window.solana?.isPhantom) return;
+    
+    setIsActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      // Call the Raydium collect API
+      const r = await fetch("/api/raydium/collect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          walletPubkey: walletAddress,
+          clmmPoolId: position.poolId,
+          positionNftMint: position.poolId, // For MVP, using poolId as position NFT
+          tokenAMint: position.tokenA,
+          tokenBMint: position.tokenB
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) {
+        handleApiError(j, "Failed to build Raydium collect transaction");
+        return;
+      }
+      
+      // Deserialize and sign transaction
+      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
+      const sig = await window.solana.signAndSendTransaction(tx);
+      await connection.confirmTransaction(sig, "confirmed");
+      
+      showToast("Raydium fees collected ✓", { 
+        label: "View", 
+        onClick: () => window.open(`https://solscan.io/tx/${sig}`)
+      });
+      
+      // Refresh positions
+      fetchPositions();
+      
+    } catch (error) {
+      handleApiError(error, "Failed to collect Raydium fees");
     } finally {
       setIsActionLoading(false);
     }
@@ -444,6 +608,19 @@ const PositionsPage: FC = () => {
     };
     
     return commonTokens[mint] || mint.slice(0, 4) + '...';
+  };
+
+  // Helper function to determine which token is USDC in a Raydium position
+  const getRaydiumUsdcToken = (position: RaydiumPosition): "TOKEN" | "USDC" => {
+    const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+    return position.tokenA === USDC_MINT ? "USDC" : "TOKEN";
+  };
+
+  // Helper function to get the non-USDC token symbol
+  const getRaydiumTokenSymbol = (position: RaydiumPosition): string => {
+    const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+    const nonUsdcMint = position.tokenA === USDC_MINT ? position.tokenB : position.tokenA;
+    return getTokenSymbol(nonUsdcMint);
   };
 
   const renderConnectWallet = () => (
@@ -744,6 +921,60 @@ const PositionsPage: FC = () => {
                   </a>
                 )}
               </div>
+              
+              {/* Action buttons for CLMM positions */}
+              {position.kind === 'CLMM' && (
+                <div className="mt-4 pt-4 border-t border-muted/20">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onRaydiumIncrease(position, { 
+                        amountUi: 100, 
+                        inputMint: getRaydiumUsdcToken(position), 
+                        slippageBp: 100 
+                      })}
+                      disabled={isActionLoading}
+                      className={`font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs ${
+                        isActionLoading 
+                          ? "bg-muted/50 text-muted cursor-not-allowed" 
+                          : "bg-success hover:bg-success/80 text-bg"
+                      }`}
+                      title={`Add 100 ${getRaydiumUsdcToken(position)} to position`}
+                    >
+                      {isActionLoading ? "Loading..." : `+100 ${getRaydiumUsdcToken(position)}`}
+                    </button>
+                    <button
+                      onClick={() => onRaydiumDecrease(position, { percent: 50, slippageBp: 100 })}
+                      disabled={isActionLoading}
+                      className={`font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs ${
+                        isActionLoading 
+                          ? "bg-muted/50 text-muted cursor-not-allowed" 
+                          : "bg-warning hover:bg-warning/80 text-bg"
+                      }`}
+                      title="Remove 50% of liquidity"
+                    >
+                      {isActionLoading ? "Loading..." : "-50%"}
+                    </button>
+                    <button
+                      onClick={() => onRaydiumCollect(position)}
+                      disabled={isActionLoading}
+                      className={`font-bold py-2 px-3 rounded-lg transition-all duration-300 text-xs ${
+                        isActionLoading 
+                          ? "bg-muted/50 text-muted cursor-not-allowed" 
+                          : "bg-info hover:bg-info/80 text-bg"
+                      }`}
+                      title="Collect accumulated trading fees"
+                    >
+                      {isActionLoading ? "Loading..." : "Collect Fees"}
+                    </button>
+                  </div>
+                  <div className="mt-2 text-xs text-muted">
+                    <p>• Increase: Add 100 {getRaydiumUsdcToken(position)} to position</p>
+                    <p>• Decrease: Remove 50% of liquidity</p>
+                    <p>• Collect: Realize trading fees earned</p>
+                    <p className="mt-1 text-orange-400">Note: MVP implementation with simplified parameters</p>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
