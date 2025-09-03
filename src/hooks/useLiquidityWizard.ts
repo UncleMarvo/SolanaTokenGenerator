@@ -322,21 +322,32 @@ export const useLiquidityWizard = () => {
       // Wait for confirmation
       await connection.confirmTransaction(signature, "confirmed");
       
-      // Save transaction metadata for LP chips
+      // Notify transaction to database
       try {
-        await fetch("/api/positions/saveTx", {
+        await fetch("/api/tx/notify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            txSig: signature,
+            wallet: wallet.publicKey.toString(),
             mint: form.tokenMint,
-            txid: signature,
-            whirlpool: summary.whirlpool,
-            tickLower: summary.tickLower,
-            tickUpper: summary.tickUpper
+            dex: "orca",
+            context: {
+              poolId: summary.whirlpool,
+              positionMint: summary.whirlpool, // For Orca, using whirlpool as position identifier
+              tickLower: summary.tickLower,
+              tickUpper: summary.tickUpper,
+              tokenA: form.tokenMint,
+              tokenB: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC mint
+              decA: 6, // Default token decimals (adjust as needed)
+              decB: 6, // USDC decimals
+              lastLiquidity: "0", // New position
+              action: "commit"
+            }
           })
         });
       } catch (error) {
-        console.warn("Failed to save transaction metadata:", error);
+        console.warn("Failed to notify transaction:", error);
       }
       
       // Show success result
@@ -397,21 +408,32 @@ export const useLiquidityWizard = () => {
       // Wait for confirmation
       await connection.confirmTransaction(signature, "confirmed");
       
-      // Save transaction metadata for LP chips (using CLMM pool ID)
+      // Notify transaction to database
       try {
-        await fetch("/api/positions/saveTx", {
+        await fetch("/api/tx/notify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            txSig: signature,
+            wallet: wallet.publicKey.toString(),
             mint: form.tokenMint,
-            txid: signature,
-            whirlpool: summary.clmmPoolId, // Use CLMM pool ID instead of whirlpool
-            tickLower: summary.tickLower,
-            tickUpper: summary.tickUpper
+            dex: "raydium",
+            context: {
+              poolId: summary.clmmPoolId,
+              positionMint: summary.clmmPoolId, // For MVP, using poolId as position NFT
+              tickLower: summary.tickLower,
+              tickUpper: summary.tickUpper,
+              tokenA: form.tokenMint,
+              tokenB: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC mint
+              decA: 6, // Default token decimals (adjust as needed)
+              decB: 6, // USDC decimals
+              lastLiquidity: "0", // New position
+              action: "commit"
+            }
           })
         });
       } catch (error) {
-        console.warn("Failed to save transaction metadata:", error);
+        console.warn("Failed to notify transaction:", error);
       }
       
       // Show success result

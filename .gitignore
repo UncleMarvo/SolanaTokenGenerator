@@ -123,3 +123,4 @@ target/
 # Wallet files
 wallet.json
 keypair.json
+/src/generated/prisma

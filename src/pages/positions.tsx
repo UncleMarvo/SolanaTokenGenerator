@@ -200,21 +200,35 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
-      // Save transaction metadata for LP chips
+      // Notify transaction to database
       try {
-        await fetch("/api/positions/saveTx", {
+        await fetch("/api/tx/notify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            txSig: sig,
+            wallet: walletAddress,
             mint: position.tokenA, // Use tokenA as the primary mint
-            txid: sig,
-            whirlpool: position.whirlpool,
-            tickLower: position.lowerTick,
-            tickUpper: position.upperTick
+            dex: "orca",
+            context: {
+              poolId: position.whirlpool,
+              positionMint: position.positionMint,
+              tickLower: position.lowerTick,
+              tickUpper: position.upperTick,
+              tokenA: position.tokenA,
+              tokenB: position.tokenB,
+              decA: 6, // Default USDC decimals
+              decB: 6, // Default token decimals (adjust as needed)
+              lastLiquidity: position.liquidity,
+              action: "increase",
+              amountA: params.inputMint === "A" ? params.amountUi.toString() : undefined,
+              amountB: params.inputMint === "B" ? params.amountUi.toString() : undefined,
+              liquidityDelta: "100" // Simplified for MVP
+            }
           })
         });
       } catch (error) {
-        console.warn("Failed to save transaction metadata:", error);
+        console.warn("Failed to notify transaction:", error);
       }
       
       showToast("Increased ✓", { 
@@ -264,21 +278,33 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
-      // Save transaction metadata for LP chips
+      // Notify transaction to database
       try {
-        await fetch("/api/positions/saveTx", {
+        await fetch("/api/tx/notify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            txSig: sig,
+            wallet: walletAddress,
             mint: position.tokenA, // Use tokenA as the primary mint
-            txid: sig,
-            whirlpool: position.whirlpool,
-            tickLower: position.lowerTick,
-            tickUpper: position.upperTick
+            dex: "orca",
+            context: {
+              poolId: position.whirlpool,
+              positionMint: position.positionMint,
+              tickLower: position.lowerTick,
+              tickUpper: position.upperTick,
+              tokenA: position.tokenA,
+              tokenB: position.tokenB,
+              decA: 6, // Default USDC decimals
+              decB: 6, // Default token decimals (adjust as needed)
+              lastLiquidity: position.liquidity,
+              action: params.percent >= 100 ? "close" : "decrease",
+              liquidityDelta: `-${params.percent}%`
+            }
           })
         });
       } catch (error) {
-        console.warn("Failed to save transaction metadata:", error);
+        console.warn("Failed to notify transaction:", error);
       }
       
       const action = params.percent >= 100 ? "Closed" : "Decreased";
@@ -328,21 +354,32 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
-      // Save transaction metadata for LP chips
+      // Notify transaction to database
       try {
-        await fetch("/api/positions/saveTx", {
+        await fetch("/api/tx/notify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            txSig: sig,
+            wallet: walletAddress,
             mint: position.tokenA, // Use tokenA as the primary mint
-            txid: sig,
-            whirlpool: position.whirlpool,
-            tickLower: position.lowerTick,
-            tickUpper: position.upperTick
+            dex: "orca",
+            context: {
+              poolId: position.whirlpool,
+              positionMint: position.positionMint,
+              tickLower: position.lowerTick,
+              tickUpper: position.upperTick,
+              tokenA: position.tokenA,
+              tokenB: position.tokenB,
+              decA: 6, // Default USDC decimals
+              decB: 6, // Default token decimals (adjust as needed)
+              lastLiquidity: position.liquidity,
+              action: "collect"
+            }
           })
         });
       } catch (error) {
-        console.warn("Failed to save transaction metadata:", error);
+        console.warn("Failed to notify transaction:", error);
       }
       
       showToast("Fees collected ✓", { 
@@ -405,6 +442,37 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
+      // Notify transaction to database
+      try {
+        await fetch("/api/tx/notify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            txSig: sig,
+            wallet: walletAddress,
+            mint: position.tokenA, // Use tokenA as primary mint
+            dex: "raydium",
+            context: {
+              poolId: position.poolId,
+              positionMint: position.poolId, // For MVP, using poolId as position NFT
+              tickLower: position.tickLower,
+              tickUpper: position.tickUpper,
+              tokenA: position.tokenA,
+              tokenB: position.tokenB,
+              decA: 6, // Default USDC decimals
+              decB: 6, // Default token decimals (adjust as needed)
+              lastLiquidity: position.liquidity || "0",
+              action: "increase",
+              amountA: params.inputMint === "TOKEN" ? params.amountUi.toString() : undefined,
+              amountB: params.inputMint === "USDC" ? params.amountUi.toString() : undefined,
+              liquidityDelta: "100" // Simplified for MVP
+            }
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to notify transaction:", error);
+      }
+      
       showToast("Raydium liquidity increased ✓", { 
         label: "View", 
         onClick: () => window.open(`https://solscan.io/tx/${sig}`)
@@ -462,6 +530,35 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
+      // Notify transaction to database
+      try {
+        await fetch("/api/tx/notify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            txSig: sig,
+            wallet: walletAddress,
+            mint: position.tokenA, // Use tokenA as primary mint
+            dex: "raydium",
+            context: {
+              poolId: position.poolId,
+              positionMint: position.poolId, // For MVP, using poolId as position NFT
+              tickLower: position.tickLower,
+              tickUpper: position.tickUpper,
+              tokenA: position.tokenA,
+              tokenB: position.tokenB,
+              decA: 6, // Default USDC decimals
+              decB: 6, // Default token decimals (adjust as needed)
+              lastLiquidity: position.liquidity || "0",
+              action: params.percent >= 100 ? "close" : "decrease",
+              liquidityDelta: `-${params.percent}%`
+            }
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to notify transaction:", error);
+      }
+      
       const action = params.percent >= 100 ? "Closed" : "Decreased";
       showToast(`Raydium position ${action.toLowerCase()} ✓`, { 
         label: "View", 
@@ -509,6 +606,34 @@ const PositionsPage: FC = () => {
       const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
+      
+      // Notify transaction to database
+      try {
+        await fetch("/api/tx/notify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            txSig: sig,
+            wallet: walletAddress,
+            mint: position.tokenA, // Use tokenA as primary mint
+            dex: "raydium",
+            context: {
+              poolId: position.poolId,
+              positionMint: position.poolId, // For MVP, using poolId as position NFT
+              tickLower: position.tickLower,
+              tickUpper: position.tickUpper,
+              tokenA: position.tokenA,
+              tokenB: position.tokenB,
+              decA: 6, // Default USDC decimals
+              decB: 6, // Default token decimals (adjust as needed)
+              lastLiquidity: position.liquidity || "0",
+              action: "collect"
+            }
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to notify transaction:", error);
+      }
       
       showToast("Raydium fees collected ✓", { 
         label: "View", 

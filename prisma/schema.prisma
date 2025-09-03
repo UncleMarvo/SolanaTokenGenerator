@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PositionsClmm {
+  positionMint  String   @id
+  wallet        String
+  poolId        String
+  tokenA        String
+  tokenB        String
+  decA          Int
+  decB          Int
+  tickLower     Int
+  tickUpper     Int
+  lastLiquidity String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TxEvent {
+  txSig          String   @id
+  wallet         String
+  mint           String
+  positionMint   String?
+  poolId         String?
+  action         String
+  amountA        String?
+  amountB        String?
+  liquidityDelta String?
+  success        Boolean  @default(true)
+  ts             DateTime @default(now())
+
+  @@index([wallet])
+  @@index([mint])
+}
