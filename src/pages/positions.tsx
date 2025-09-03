@@ -17,21 +17,17 @@ interface OrcaPosition {
 }
 
 interface RaydiumPosition {
-  type: "CLMM" | "AMM";
+  source: "raydium";
+  kind: "CLMM" | "AMM";
   poolId: string;
   tokenA: string;
   tokenB: string;
-  symbolA?: string;
-  symbolB?: string;
-  // CLMM-specific fields
-  ticks?: {
-    lower: number;
-    upper: number;
-  };
-  liquidity?: string;
-  // AMM-specific fields
-  lpBalance?: string;
   lpMint?: string;
+  lpBalance?: string;
+  tickLower?: number;
+  tickUpper?: number;
+  liquidity?: string;
+  usd?: number;
 }
 
 interface PositionsData {
@@ -679,48 +675,48 @@ const PositionsPage: FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold text-fg">
-                      {position.symbolA && position.symbolB 
-                        ? `${position.symbolA} / ${position.symbolB}`
-                        : `${getTokenSymbol(position.tokenA)} / ${getTokenSymbol(position.tokenB)}`
-                      }
+                      {`${getTokenSymbol(position.tokenA)} / ${getTokenSymbol(position.tokenB)}`}
                     </h4>
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      position.type === 'CLMM' 
+                      position.kind === 'CLMM' 
                         ? 'bg-blue-500/20 text-blue-400' 
                         : 'bg-green-500/20 text-green-400'
                     }`}>
-                      {position.type}
+                      {position.kind}
                     </span>
                   </div>
                   <p className="text-sm text-muted">Position #{index + 1}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted">
-                    {position.type === 'CLMM' ? 'Liquidity' : 'LP Balance'}
+                    {position.kind === 'CLMM' ? 'Liquidity' : 'LP Balance'}
                   </p>
                   <p className="font-semibold text-fg">
-                    {position.type === 'CLMM' 
+                    {position.kind === 'CLMM' 
                       ? formatLiquidity(position.liquidity || "0")
                       : formatLiquidity(position.lpBalance || "0")
                     }
                   </p>
+                  {position.usd && (
+                    <p className="text-xs text-muted">~${position.usd.toLocaleString()}</p>
+                  )}
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                {position.type === 'CLMM' && position.ticks && (
+                {position.kind === 'CLMM' && position.tickLower !== undefined && position.tickUpper !== undefined && (
                   <div>
                     <p className="text-muted">Tick Range</p>
-                    <p className="text-fg font-mono">{position.ticks.lower} → {position.ticks.upper}</p>
+                    <p className="text-fg font-mono">{position.tickLower} → {position.tickUpper}</p>
                   </div>
                 )}
                 <div>
                   <p className="text-muted">Token A</p>
-                  <p className="text-fg">{position.symbolA || getTokenSymbol(position.tokenA)}</p>
+                  <p className="text-fg">{getTokenSymbol(position.tokenA)}</p>
                 </div>
                 <div>
                   <p className="text-muted">Token B</p>
-                  <p className="text-fg">{position.symbolB || getTokenSymbol(position.tokenB)}</p>
+                  <p className="text-fg">{getTokenSymbol(position.tokenB)}</p>
                 </div>
                 <div>
                   <p className="text-muted">Pool ID</p>
@@ -737,7 +733,7 @@ const PositionsPage: FC = () => {
                 >
                   View Pool
                 </a>
-                {position.type === 'CLMM' && (
+                {position.kind === 'CLMM' && (
                   <a
                     href={`https://raydium.io/pools/${position.poolId}`}
                     target="_blank"
@@ -816,7 +812,7 @@ const PositionsPage: FC = () => {
           <div className="max-w-4xl mx-auto">
                          <div className="text-center mb-8">
                <h1 className="text-4xl font-bold mb-4">My Positions</h1>
-               <p className="text-muted">View your Orca Whirlpool LP positions</p>
+               <p className="text-muted">View your Orca Whirlpool and Raydium LP positions</p>
              </div>
 
                          {walletAddress && (
