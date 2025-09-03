@@ -174,12 +174,16 @@ export const useLiquidityWizard = () => {
     setErrorMsg(null);
     
     try {
-      // Add whirlpool info for Orca
+      // Add required parameters for each DEX
       const requestBody = {
         ...form,
         quoteId: quote.quoteId,
         ...(form.dex === "Orca" && {
           whirlpool: quote.poolAddress,
+          slippageBp: 100 // Default 1% slippage
+        }),
+        ...(form.dex === "Raydium" && form.pair === "USDC/TOKEN" && {
+          clmmPoolId: quote.poolAddress, // Use pool address as CLMM pool ID
           slippageBp: 100 // Default 1% slippage
         })
       };
@@ -202,8 +206,11 @@ export const useLiquidityWizard = () => {
       if (form.dex === "Orca" && data.txBase64) {
         // For Orca, we need to sign and send the transaction
         await signAndSendOrcaTransaction(data.txBase64, data.summary);
+      } else if (form.dex === "Raydium" && data.txBase64) {
+        // For Raydium CLMM, we need to sign and send the transaction (same as Orca)
+        await signAndSendRaydiumClmmTransaction(data.txBase64, data.summary);
       } else if (form.dex === "Raydium" && data.txid) {
-        // For Raydium, just show the result
+        // For Raydium AMM (legacy), just show the result
         setCommitResult(data);
         setShowConfirmModal(false);
       } else {
@@ -280,6 +287,81 @@ export const useLiquidityWizard = () => {
       
     } catch (error) {
       console.error("Error signing/sending Orca transaction:", error);
+      if (error instanceof Error) {
+        if (error.message.includes("User rejected")) {
+          setErrorMsg("Transaction was rejected by user");
+        } else if (error.message.includes("insufficient funds")) {
+          setErrorMsg("Insufficient funds for transaction");
+        } else {
+          setErrorMsg(error.message);
+        }
+      } else {
+        setErrorMsg("Failed to sign and send transaction");
+      }
+    }
+  };
+
+  const signAndSendRaydiumClmmTransaction = async (txBase64: string, summary: any) => {
+    try {
+      // Check if wallet is available
+      if (typeof window === 'undefined' || !window.solana?.isPhantom) {
+        throw new Error("Phantom wallet not found. Please install Phantom wallet.");
+      }
+
+      const wallet = window.solana;
+      
+      // Connect wallet if not connected
+      await wallet.connect();
+
+      // Initialize connection
+      const connection = new Connection(
+        process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+      );
+
+      // Deserialize transaction
+      const transaction = Transaction.from(Buffer.from(txBase64, 'base64'));
+      
+      // Set fee payer and recent blockhash
+      transaction.feePayer = wallet.publicKey;
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      // Sign and send transaction
+      const signedTx = await wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, "confirmed");
+      
+      // Save transaction metadata for LP chips (using CLMM pool ID)
+      try {
+        await fetch("/api/positions/saveTx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mint: form.tokenMint,
+            txid: signature,
+            whirlpool: summary.clmmPoolId, // Use CLMM pool ID instead of whirlpool
+            tickLower: summary.tickLower,
+            tickUpper: summary.tickUpper
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to save transaction metadata:", error);
+      }
+      
+      // Show success result
+      setCommitResult({
+        txBase64,
+        summary: {
+          ...summary,
+          signature
+        }
+      });
+      setShowConfirmModal(false);
+      
+    } catch (error) {
+      console.error("Error signing/sending Raydium CLMM transaction:", error);
       if (error instanceof Error) {
         if (error.message.includes("User rejected")) {
           setErrorMsg("Transaction was rejected by user");
