@@ -1,5 +1,6 @@
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { WSOL_MINT, isWSOL, wrapWSOLIx } from "./wsol";
 
 // USDC mint address
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -57,6 +58,19 @@ export async function buildRayClmmIncreaseTx(p: RayClmmIncreaseParams) {
   // In production, you'd use Raydium's Percent class for proper slippage handling
   const slippageBp = Math.max(10, Math.min(500, p.slippageBp || 100));
   
+  // WSOL handling: Detect if input side is WSOL and prepare wrapping instructions
+  const inputMint = isTokenAInput ? mintA : mintB;
+  const isInputWSOL = isWSOL(inputMint.toBase58());
+  let wsolWrapIxs: any[] = [];
+  
+  if (isInputWSOL) {
+    // For WSOL input, compute lamports needed (SOL has 9 decimals)
+    const lamports = Math.floor(p.amountUi * Math.pow(10, 9));
+    const { ata, ixs } = wrapWSOLIx(owner, lamports);
+    wsolWrapIxs = ixs;
+    console.log(`WSOL input detected - wrapping ${lamports} lamports for ${p.amountUi} SOL`);
+  }
+  
   // For MVP, we'll create placeholder instructions
   // In production, you'd use Clmm.buildIncreasePositionTx with proper pool info
   // This would include the actual increase liquidity instructions
@@ -103,6 +117,14 @@ export async function buildRayClmmIncreaseTx(p: RayClmmIncreaseParams) {
 
   // Build and serialize the transaction
   const tx = new Transaction();
+  
+  // Add WSOL wrapping instructions first (if input is WSOL)
+  if (wsolWrapIxs.length > 0) {
+    wsolWrapIxs.forEach(ix => tx.add(ix));
+    console.log("Added WSOL wrapping instructions to increase transaction");
+  }
+  
+  // Add ATA creation and other instructions
   ixs.forEach(ix=>tx.add(ix));
   tx.feePayer = owner;
   tx.recentBlockhash = (await conn.getLatestBlockhash("finalized")).blockhash;

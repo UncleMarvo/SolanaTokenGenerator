@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { PublicKey, Transaction, Connection } from "@solana/web3.js";
 import { Spinner } from "../components/ui/Spinner";
+import { sendWithRetry } from "../lib/clientSend";
 
 interface OrcaPosition {
   positionMint: string;
@@ -195,10 +196,12 @@ const PositionsPage: FC = () => {
         return;
       }
       
-      // Deserialize and sign transaction
-      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
-      const sig = await window.solana.signAndSendTransaction(tx);
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use sendWithRetry for automatic blockhash expiry handling
+      const sig = await sendWithRetry(
+        () => Promise.resolve({ txBase64: j.txBase64 }),
+        window.solana,
+        connection
+      );
       
       // Notify transaction to database
       try {
@@ -273,10 +276,12 @@ const PositionsPage: FC = () => {
         return;
       }
       
-      // Deserialize and sign transaction
-      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
-      const sig = await window.solana.signAndSendTransaction(tx);
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use sendWithRetry for automatic blockhash expiry handling
+      const sig = await sendWithRetry(
+        () => Promise.resolve({ txBase64: j.txBase64 }),
+        window.solana,
+        connection
+      );
       
       // Notify transaction to database
       try {
@@ -349,10 +354,12 @@ const PositionsPage: FC = () => {
         return;
       }
       
-      // Deserialize and sign transaction
-      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
-      const sig = await window.solana.signAndSendTransaction(tx);
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use sendWithRetry for automatic blockhash expiry handling
+      const sig = await sendWithRetry(
+        () => Promise.resolve({ txBase64: j.txBase64 }),
+        window.solana,
+        connection
+      );
       
       // Notify transaction to database
       try {
@@ -437,10 +444,12 @@ const PositionsPage: FC = () => {
         return;
       }
       
-      // Deserialize and sign transaction
-      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
-      const sig = await window.solana.signAndSendTransaction(tx);
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use sendWithRetry for automatic blockhash expiry handling
+      const sig = await sendWithRetry(
+        () => Promise.resolve({ txBase64: j.txBase64 }),
+        window.solana,
+        connection
+      );
       
       // Notify transaction to database
       try {
@@ -525,10 +534,12 @@ const PositionsPage: FC = () => {
         return;
       }
       
-      // Deserialize and sign transaction
-      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
-      const sig = await window.solana.signAndSendTransaction(tx);
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use sendWithRetry for automatic blockhash expiry handling
+      const sig = await sendWithRetry(
+        () => Promise.resolve({ txBase64: j.txBase64 }),
+        window.solana,
+        connection
+      );
       
       // Notify transaction to database
       try {
@@ -602,10 +613,12 @@ const PositionsPage: FC = () => {
         return;
       }
       
-      // Deserialize and sign transaction
-      const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
-      const sig = await window.solana.signAndSendTransaction(tx);
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use sendWithRetry for automatic blockhash expiry handling
+      const sig = await sendWithRetry(
+        () => Promise.resolve({ txBase64: j.txBase64 }),
+        window.solana,
+        connection
+      );
       
       // Notify transaction to database
       try {

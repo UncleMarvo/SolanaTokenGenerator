@@ -1,5 +1,6 @@
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { isWSOL, unwrapWSOLIx } from "./wsol";
 
 // USDC mint address
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -72,6 +73,14 @@ export async function buildRayClmmDecreaseTx(p: RayClmmDecreaseParams) {
     // 3. Burning the position NFT
     // 4. Returning any remaining tokens to the user
   }
+  
+  // WSOL handling: Detect if either token is WSOL for unwrapping after decrease
+  const isTokenAWSOL = isWSOL(p.tokenAMint);
+  const isTokenBWSOL = isWSOL(p.tokenBMint);
+  
+  if (isTokenAWSOL || isTokenBWSOL) {
+    console.log("WSOL detected in pool - will unwrap after decrease operation");
+  }
 
   // Ensure ATAs exist (create if missing)
   // This ensures the user has token accounts for both tokens in the pair
@@ -108,6 +117,20 @@ export async function buildRayClmmDecreaseTx(p: RayClmmDecreaseParams) {
   // Add placeholder instructions from inner transactions
   // In production, these would be the actual decrease liquidity instructions
   innerTransactions.forEach((tx:any)=> ixs.push(...tx.instructions));
+  
+  // WSOL handling: Unwrap WSOL after decrease operation (returns SOL and cleans dust)
+  if (isTokenAWSOL || isTokenBWSOL) {
+    console.log("Adding WSOL unwrapping instructions to decrease transaction");
+    // Add unwrap instruction for WSOL - safe as it closes the ATA after tokens return
+    if (isTokenAWSOL) {
+      ixs.push(unwrapWSOLIx(owner));
+      console.log("Added unwrap instruction for token A (WSOL)");
+    }
+    if (isTokenBWSOL) {
+      ixs.push(unwrapWSOLIx(owner));
+      console.log("Added unwrap instruction for token B (WSOL)");
+    }
+  }
 
   // Build and serialize the transaction
   const tx = new Transaction();

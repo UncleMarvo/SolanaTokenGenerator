@@ -4,6 +4,7 @@ import {
   Clmm,      // Raydium CLMM core
   Percent,   // slippage helper
 } from "@raydium-io/raydium-sdk";
+import { WSOL_MINT, isWSOL, wrapWSOLIx } from "./wsol";
 
 // USDC mint address for Solana mainnet
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -114,6 +115,19 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
   const inputDecimals = inputIsA ? decA : decB;
   const inputAmount = BigInt(Math.floor(amountUi * 10 ** inputDecimals));
 
+  // WSOL handling: Detect if input side is WSOL and prepare wrapping instructions
+  const inputMint = inputIsA ? mintA : mintB;
+  const isInputWSOL = isWSOL(inputMint.toBase58());
+  let wsolWrapIxs: any[] = [];
+  
+  if (isInputWSOL) {
+    // For WSOL input, compute lamports needed (SOL has 9 decimals)
+    const lamports = Math.floor(amountUi * Math.pow(10, 9));
+    const { ata, ixs } = wrapWSOLIx(owner, lamports);
+    wsolWrapIxs = ixs;
+    console.log(`WSOL input detected - wrapping ${lamports} lamports for ${amountUi} SOL`);
+  }
+
   // 5) Compute required counterpart & liquidity quote using validated slippage
   const slippage = new Percent(slippageBp, 10_000);
 
@@ -176,6 +190,14 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
 
   // 8) Serialize (client signs)
   const tx = new Transaction();
+  
+  // Add WSOL wrapping instructions first (if input is WSOL)
+  if (wsolWrapIxs.length > 0) {
+    wsolWrapIxs.forEach(ix => tx.add(ix));
+    console.log("Added WSOL wrapping instructions to transaction");
+  }
+  
+  // Add ATA creation and other instructions
   ixs.forEach(ix => tx.add(ix));
   tx.feePayer = owner;
   tx.recentBlockhash = (await conn.getLatestBlockhash("finalized")).blockhash;
