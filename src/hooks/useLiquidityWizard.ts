@@ -251,6 +251,23 @@ export const useLiquidityWizard = () => {
       // Wait for confirmation
       await connection.confirmTransaction(signature, "confirmed");
       
+      // Save transaction metadata for LP chips
+      try {
+        await fetch("/api/positions/saveTx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mint: form.tokenMint,
+            txid: signature,
+            whirlpool: summary.whirlpool,
+            tickLower: summary.tickLower,
+            tickUpper: summary.tickUpper
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to save transaction metadata:", error);
+      }
+      
       // Show success result
       setCommitResult({
         txBase64,

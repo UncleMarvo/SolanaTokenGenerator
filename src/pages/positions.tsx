@@ -28,6 +28,9 @@ const PositionsPage: FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Filter state for specific token mint
+  const [filterMint, setFilterMint] = useState<string | null>(null);
+  
   // Position action states
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -38,7 +41,7 @@ const PositionsPage: FC = () => {
     process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
   ));
 
-  // Check for wallet connection on mount
+  // Check for wallet connection on mount and handle filter parameter
   useEffect(() => {
     if (typeof window !== 'undefined' && window.solana?.isPhantom) {
       const wallet = window.solana;
@@ -46,7 +49,12 @@ const PositionsPage: FC = () => {
         setWalletAddress(wallet.publicKey.toString());
       }
     }
-  }, []);
+    
+    // Handle filter parameter from URL
+    if (router.query.filter && typeof router.query.filter === "string") {
+      setFilterMint(router.query.filter);
+    }
+  }, [router.query.filter]);
 
   // Fetch positions when wallet is connected
   useEffect(() => {
@@ -177,6 +185,23 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
+      // Save transaction metadata for LP chips
+      try {
+        await fetch("/api/positions/saveTx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mint: position.tokenA, // Use tokenA as the primary mint
+            txid: sig,
+            whirlpool: position.whirlpool,
+            tickLower: position.lowerTick,
+            tickUpper: position.upperTick
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to save transaction metadata:", error);
+      }
+      
       showToast("Increased ✓", { 
         label: "View", 
         onClick: () => window.open(`https://solscan.io/tx/${sig}`)
@@ -224,6 +249,23 @@ const PositionsPage: FC = () => {
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
       
+      // Save transaction metadata for LP chips
+      try {
+        await fetch("/api/positions/saveTx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mint: position.tokenA, // Use tokenA as the primary mint
+            txid: sig,
+            whirlpool: position.whirlpool,
+            tickLower: position.lowerTick,
+            tickUpper: position.upperTick
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to save transaction metadata:", error);
+      }
+      
       const action = params.percent >= 100 ? "Closed" : "Decreased";
       showToast(`${action} ✓`, { 
         label: "View", 
@@ -270,6 +312,23 @@ const PositionsPage: FC = () => {
       const tx = Transaction.from(Buffer.from(j.txBase64, "base64"));
       const sig = await window.solana.signAndSendTransaction(tx);
       await connection.confirmTransaction(sig, "confirmed");
+      
+      // Save transaction metadata for LP chips
+      try {
+        await fetch("/api/positions/saveTx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mint: position.tokenA, // Use tokenA as the primary mint
+            txid: sig,
+            whirlpool: position.whirlpool,
+            tickLower: position.lowerTick,
+            tickUpper: position.upperTick
+          })
+        });
+      } catch (error) {
+        console.warn("Failed to save transaction metadata:", error);
+      }
       
       showToast("Fees collected ✓", { 
         label: "View", 
@@ -419,11 +478,44 @@ const PositionsPage: FC = () => {
   const renderOrcaPositions = () => {
     if (!positions?.orcaPositions.length) return null;
 
+    // Filter positions if filterMint is set
+    let filteredPositions = positions.orcaPositions;
+    if (filterMint) {
+      filteredPositions = positions.orcaPositions.filter(position => 
+        position.tokenA === filterMint || position.tokenB === filterMint
+      );
+    }
+
+    if (filteredPositions.length === 0) {
+      return (
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-muted">No Matching Positions</h3>
+            <p className="text-sm text-muted">
+              {filterMint ? `No positions found for the filtered token.` : "No positions found."}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-accent">Orca Whirlpool Positions</h3>
+        <h3 className="text-xl font-bold text-accent">
+          Orca Whirlpool Positions
+          {filterMint && (
+            <span className="text-sm font-normal text-muted ml-2">
+              (Filtered: {filteredPositions.length} of {positions.orcaPositions.length})
+            </span>
+          )}
+        </h3>
         <div className="grid gap-4">
-          {positions.orcaPositions.map((position, index) => (
+          {filteredPositions.map((position, index) => (
             <div key={index} className="bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -592,6 +684,30 @@ const PositionsPage: FC = () => {
                  <p className="text-success text-sm">
                    ✅ Connected: <strong>{walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}</strong>
                  </p>
+               </div>
+             )}
+
+             {/* Filter Display */}
+             {filterMint && (
+               <div className="bg-info/20 border border-info/30 rounded-lg p-4 mb-6">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center space-x-3">
+                     <div className="text-info">🔍</div>
+                     <div>
+                       <p className="text-info text-sm font-semibold">Filtered by Token</p>
+                       <p className="text-info text-xs font-mono">{filterMint.slice(0, 8)}...{filterMint.slice(-8)}</p>
+                     </div>
+                   </div>
+                   <button
+                     onClick={() => {
+                       setFilterMint(null);
+                       router.replace('/positions', undefined, { shallow: true });
+                     }}
+                     className="bg-info hover:bg-info/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                   >
+                     Clear Filter
+                   </button>
+                 </div>
                </div>
              )}
 
