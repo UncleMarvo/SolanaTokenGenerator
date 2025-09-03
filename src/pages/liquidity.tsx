@@ -4,6 +4,7 @@ import Head from "next/head";
 import { useLiquidityWizard } from "../hooks/useLiquidityWizard";
 import { AiOutlineClose } from "react-icons/ai";
 import { Spinner } from "../components/ui/Spinner";
+import { ErrorDisplay } from "../components/ui/ErrorDisplay";
 
 const LiquidityPage: FC = () => {
   const router = useRouter();
@@ -526,10 +527,27 @@ const LiquidityPage: FC = () => {
 
             {/* Error Display */}
             {errorMsg && (
-              <div className="bg-error/20 border border-error/30 rounded-lg p-4 mb-6 text-center">
-                <p className="text-error text-sm font-medium">
-                  ❌ {errorMsg}
-                </p>
+              <div className="mb-6">
+                {errorMsg.includes(':') ? (
+                  // Structured error with code
+                  <ErrorDisplay
+                    errorCode={errorMsg.split(':')[0]}
+                    errorMessage={errorMsg.split(':').slice(1).join(':').trim()}
+                    onRetry={() => {
+                      // Clear error and retry the current action
+                      if (currentStep === 3 && quote) {
+                        commitLiquidity();
+                      }
+                    }}
+                  />
+                ) : (
+                  // Fallback for non-structured errors
+                  <div className="bg-error/20 border border-error/30 rounded-lg p-4 text-center">
+                    <p className="text-error text-sm font-medium">
+                      ❌ {errorMsg}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             

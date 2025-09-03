@@ -16,8 +16,27 @@ interface OrcaPosition {
   symbolB?: string;
 }
 
+interface RaydiumPosition {
+  type: "CLMM" | "AMM";
+  poolId: string;
+  tokenA: string;
+  tokenB: string;
+  symbolA?: string;
+  symbolB?: string;
+  // CLMM-specific fields
+  ticks?: {
+    lower: number;
+    upper: number;
+  };
+  liquidity?: string;
+  // AMM-specific fields
+  lpBalance?: string;
+  lpMint?: string;
+}
+
 interface PositionsData {
   orcaPositions: OrcaPosition[];
+  raydiumPositions: RaydiumPosition[];
   timestamp: number;
 }
 
@@ -614,7 +633,127 @@ const PositionsPage: FC = () => {
     );
   };
 
+  const renderRaydiumPositions = () => {
+    if (!positions?.raydiumPositions?.length) return null;
 
+    // Filter positions if filterMint is set
+    let filteredPositions = positions.raydiumPositions;
+    if (filterMint) {
+      filteredPositions = positions.raydiumPositions.filter(position => 
+        position.tokenA === filterMint || position.tokenB === filterMint
+      );
+    }
+
+    if (filteredPositions.length === 0) {
+      return (
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-muted">No Matching Raydium Positions</h3>
+            <p className="text-sm text-muted">
+              {filterMint ? `No Raydium positions found for the filtered token.` : "No Raydium positions found."}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-accent">
+          Raydium Positions
+          {filterMint && (
+            <span className="text-sm font-normal text-muted ml-2">
+              (Filtered: {filteredPositions.length} of {positions.raydiumPositions.length})
+            </span>
+          )}
+        </h3>
+        <div className="grid gap-4">
+          {filteredPositions.map((position, index) => (
+            <div key={index} className="bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-fg">
+                      {position.symbolA && position.symbolB 
+                        ? `${position.symbolA} / ${position.symbolB}`
+                        : `${getTokenSymbol(position.tokenA)} / ${getTokenSymbol(position.tokenB)}`
+                      }
+                    </h4>
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      position.type === 'CLMM' 
+                        ? 'bg-blue-500/20 text-blue-400' 
+                        : 'bg-green-500/20 text-green-400'
+                    }`}>
+                      {position.type}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted">Position #{index + 1}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted">
+                    {position.type === 'CLMM' ? 'Liquidity' : 'LP Balance'}
+                  </p>
+                  <p className="font-semibold text-fg">
+                    {position.type === 'CLMM' 
+                      ? formatLiquidity(position.liquidity || "0")
+                      : formatLiquidity(position.lpBalance || "0")
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                {position.type === 'CLMM' && position.ticks && (
+                  <div>
+                    <p className="text-muted">Tick Range</p>
+                    <p className="text-fg font-mono">{position.ticks.lower} → {position.ticks.upper}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted">Token A</p>
+                  <p className="text-fg">{position.symbolA || getTokenSymbol(position.tokenA)}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Token B</p>
+                  <p className="text-fg">{position.symbolB || getTokenSymbol(position.tokenB)}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Pool ID</p>
+                  <p className="text-fg font-mono text-xs">{position.poolId.slice(0, 8)}...{position.poolId.slice(-8)}</p>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <a
+                  href={`https://solscan.io/account/${position.poolId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-primary hover:bg-primary/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                >
+                  View Pool
+                </a>
+                {position.type === 'CLMM' && (
+                  <a
+                    href={`https://raydium.io/pools/${position.poolId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                  >
+                    View on Raydium
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const renderPositions = () => {
     if (isLoading) {
@@ -645,13 +784,14 @@ const PositionsPage: FC = () => {
       );
     }
 
-    if (!positions || !positions.orcaPositions.length) {
+    if (!positions || (!positions.orcaPositions.length && !positions.raydiumPositions?.length)) {
       return renderEmptyState();
     }
 
     return (
       <div className="space-y-8">
         {renderOrcaPositions()}
+        {renderRaydiumPositions()}
         
         <div className="text-center">
           <button

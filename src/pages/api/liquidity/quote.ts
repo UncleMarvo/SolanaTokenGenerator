@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { Connection } from "@solana/web3.js";
 import { getOrcaQuote } from "../../../lib/orcaClient";
 import { getRaydiumQuote } from "../../../lib/raydiumClient";
+import { findClmmPoolId } from "../../../lib/raydiumClmmPools";
 
 interface LiquidityQuoteRequest {
   dex: "Raydium" | "Orca";
@@ -18,6 +20,13 @@ interface LiquidityQuoteResponse {
   minOut: string;
   quoteId: string;
   source: "Raydium" | "DexScreener" | "Orca"; // Include source for UI indication
+  clmmPoolId?: string; // CLMM pool ID for Raydium USDC/TOKEN pairs
+  // CLMM-specific fields for enhanced quotes
+  tickLower?: number;
+  tickUpper?: number;
+  tokenAIn?: string;
+  tokenBIn?: string;
+  estLiquidity?: string;
 }
 
 export default async function handler(
@@ -125,14 +134,55 @@ export default async function handler(
       } else if (dex === "Raydium") {
         // Get Raydium quote
         try {
+          // For USDC/TOKEN pairs, try to find CLMM pool ID first
+          let clmmPoolId: string | null = null;
+          if (pair === "USDC/TOKEN") {
+            try {
+              console.log(`Attempting to find CLMM pool for ${tokenMint} vs USDC`);
+              const connection = new Connection(
+                process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+              );
+              
+              clmmPoolId = await findClmmPoolId({ connection, tokenMint });
+              
+              if (clmmPoolId) {
+                console.log(`Found CLMM pool: ${clmmPoolId}`);
+              } else {
+                console.log(`No CLMM pool found for ${tokenMint} vs USDC`);
+              }
+            } catch (clmmError) {
+              console.warn("CLMM pool discovery failed:", clmmError);
+              // Don't fail the quote if CLMM discovery fails
+            }
+          }
+          
+          // Determine input mint based on pair
+          const inputMint: "TOKEN" | "USDC" = pair === "USDC/TOKEN" ? "TOKEN" : "TOKEN";
+          
+          // Get Raydium quote with enhanced CLMM support
           quote = await getRaydiumQuote({
             tokenMint,
             baseAmount,
-            quoteMint
+            quoteMint,
+            clmmPoolId, // Pass CLMM pool ID for enhanced quotes
+            inputMint    // Pass input mint for proper calculation
           });
+          
           // Update quoteId to reflect the actual source if fallback was used
           const source = quote.source || 'Raydium';
           quoteId = `${source.toLowerCase()}_quote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Add CLMM pool ID to quote if found
+          if (clmmPoolId) {
+            quote = { ...quote, clmmPoolId };
+          } else if (pair === "USDC/TOKEN") {
+            // For USDC/TOKEN pairs, require CLMM pool for Raydium
+            console.warn(`No CLMM pool found for ${tokenMint} vs USDC`);
+            return res.status(404).json({ 
+              error: "NoPool", 
+              message: "No Raydium CLMM pool for TOKEN/USDC" 
+            });
+          }
         } catch (raydiumError) {
           console.warn("Raydium quote failed:", raydiumError);
           if (raydiumError instanceof Error) {
@@ -162,7 +212,14 @@ export default async function handler(
         expectedLpTokens: quote.expectedLpTokens.toString(),
         minOut: quote.minOut.toString(),
         quoteId,
-        source: quote.source || dex // Use quote source or fallback to DEX name
+        source: quote.source || dex, // Use quote source or fallback to DEX name
+        clmmPoolId: (quote as any).clmmPoolId, // Include CLMM pool ID if available
+        // Include CLMM-specific fields if available
+        tickLower: (quote as any).tickLower,
+        tickUpper: (quote as any).tickUpper,
+        tokenAIn: (quote as any).tokenAIn,
+        tokenBIn: (quote as any).tokenBIn,
+        estLiquidity: (quote as any).estLiquidity
       };
 
       // Log the source for debugging

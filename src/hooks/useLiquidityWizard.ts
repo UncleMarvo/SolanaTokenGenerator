@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Connection, Transaction, PublicKey } from "@solana/web3.js";
+import { logPending, logSuccess, logError } from "../utils/actionLogger";
 
 export interface LiquidityForm {
   tokenMint: string;
@@ -19,6 +20,13 @@ export interface LiquidityQuote {
   minOut: string;
   quoteId: string;
   source: "Raydium" | "DexScreener" | "Orca"; // Source of the quote data
+  // CLMM-specific fields for enhanced quotes
+  clmmPoolId?: string;
+  tickLower?: number;
+  tickUpper?: number;
+  tokenAIn?: string;
+  tokenBIn?: string;
+  estLiquidity?: string;
 }
 
 export interface LiquidityError {
@@ -170,8 +178,20 @@ export const useLiquidityWizard = () => {
   const commitLiquidity = async () => {
     if (!quote) return;
     
+    const startTime = Date.now();
+    const action = `Commit ${form.dex} Liquidity`;
+    const amount = `${form.baseAmount} ${form.pair.split('/')[0]}`;
+    
     setIsCommitting(true);
     setErrorMsg(null);
+    
+    // Log pending action
+    logPending({
+      action,
+      dex: form.dex,
+      tokenMint: form.tokenMint,
+      amount
+    });
     
     try {
       // Add required parameters for each DEX
@@ -183,8 +203,11 @@ export const useLiquidityWizard = () => {
           slippageBp: 100 // Default 1% slippage
         }),
         ...(form.dex === "Raydium" && form.pair === "USDC/TOKEN" && {
-          clmmPoolId: quote.poolAddress, // Use pool address as CLMM pool ID
-          slippageBp: 100 // Default 1% slippage
+          clmmPoolId: quote.clmmPoolId || quote.poolAddress, // Use CLMM pool ID if available, fallback to pool address
+          slippageBp: 100, // Default 1% slippage
+          // NEW: Pass tick boundaries from quote to ensure consistency
+          tickLower: quote.tickLower,
+          tickUpper: quote.tickUpper
         })
       };
 
@@ -198,7 +221,23 @@ export const useLiquidityWizard = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to commit liquidity");
+        const errorCode = errorData.error || "ProviderError";
+        const errorMessage = errorData.message || "Failed to commit liquidity";
+        
+        // Log error with structured data
+        logError({
+          action,
+          dex: form.dex,
+          tokenMint: form.tokenMint,
+          amount,
+          errorCode,
+          errorMessage,
+          duration: Date.now() - startTime
+        });
+        
+        // Set structured error for UI display
+        setErrorMsg(`${errorCode}: ${errorMessage}`);
+        return;
       }
 
       const data = await response.json();
@@ -216,9 +255,34 @@ export const useLiquidityWizard = () => {
       } else {
         throw new Error("Invalid response format");
       }
+      
+      // Log success
+      logSuccess({
+        action,
+        dex: form.dex,
+        tokenMint: form.tokenMint,
+        amount,
+        txSignature: data.txid || 'pending',
+        duration: Date.now() - startTime
+      });
+      
     } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : "Failed to commit liquidity";
+      
+      // Log error
+      logError({
+        action,
+        dex: form.dex,
+        tokenMint: form.tokenMint,
+        amount,
+        errorCode: "ProviderError",
+        errorMessage,
+        duration
+      });
+      
       console.error("Error committing liquidity:", error);
-      setErrorMsg(error instanceof Error ? error.message : "Failed to commit liquidity");
+      setErrorMsg(errorMessage);
     } finally {
       setIsCommitting(false);
     }

@@ -8,6 +8,15 @@ export interface DexScreenerPair {
   price: number;
   reservesBase: number;
   reservesQuote: number;
+  dexId?: string;
+  baseToken?: {
+    address: string;
+    symbol: string;
+  };
+  quoteToken?: {
+    address: string;
+    symbol: string;
+  };
 }
 
 export interface DexScreenerResponse {
@@ -145,10 +154,19 @@ export async function getDexScreenerPair({
     console.log(`DexScreener pair found: ${baseToken.symbol}/${quoteToken.symbol}, price: ${price}, reserves: ${reservesBase}/${reservesQuote}`);
 
     return {
-      pool: suitablePair.url || `https://dexscreener.com/solana/${suitablePair.pairAddress}`,
+      pool: suitablePair.pairAddress,
       price,
       reservesBase,
       reservesQuote,
+      dexId: suitablePair.dexId,
+      baseToken: {
+        address: suitablePair.baseToken.address,
+        symbol: suitablePair.baseToken.symbol
+      },
+      quoteToken: {
+        address: suitablePair.quoteToken.address,
+        symbol: suitablePair.quoteToken.symbol
+      }
     };
 
   } catch (error) {

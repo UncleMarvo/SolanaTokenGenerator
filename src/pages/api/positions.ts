@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { fetchOrcaPositionsReal } from "../../lib/orcaPositions";
+import { fetchRaydiumPositions } from "../../lib/raydiumPositions";
 
 // Simple in-memory cache for positions
 const positionsCache = new Map<string, { data: any; timestamp: number }>();
@@ -12,6 +13,7 @@ interface PositionsRequest {
 
 interface PositionsResponse {
   orcaPositions: any[];
+  raydiumPositions: any[];
   timestamp: number;
 }
 
@@ -50,14 +52,21 @@ export default async function handler(
       process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
     );
 
-    // Fetch real Orca positions
-    const orcaPositions = await fetchOrcaPositionsReal({ 
-      connection, 
-      owner: ownerPubkey.toString() 
-    });
+    // Fetch both Orca and Raydium positions in parallel
+    const [orcaPositions, raydiumPositions] = await Promise.all([
+      fetchOrcaPositionsReal({ 
+        connection, 
+        owner: ownerPubkey.toString() 
+      }),
+      fetchRaydiumPositions({ 
+        connection, 
+        owner: ownerPubkey.toString() 
+      })
+    ]);
 
     const response: PositionsResponse = {
       orcaPositions,
+      raydiumPositions,
       timestamp: Date.now()
     };
 

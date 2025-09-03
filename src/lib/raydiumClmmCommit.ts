@@ -19,6 +19,9 @@ export type ClmmCommitParams = {
   amountUi: number;        // user input in UI units of inputMint
   slippageBp: number;      // default 100 (1%)
   clmmPoolId: string;      // resolved CLMM pool id (Raydium) for TOKEN/USDC
+  // NEW: Tick boundaries from quote (validated against pool)
+  tickLower: number;       // Lower tick boundary from quote
+  tickUpper: number;       // Upper tick boundary from quote
 };
 
 /**
@@ -45,14 +48,30 @@ export interface ClmmCommitResult {
  * Creates a narrow range position around current price for TOKEN/USDC pairs
  */
 export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<ClmmCommitResult> {
-  const owner = new PublicKey(p.walletPubkey);
-  const conn = p.connection;
-  const tokenMint = new PublicKey(p.tokenMint);
-  const clmmId = new PublicKey(p.clmmPoolId);
+  try {
+    const owner = new PublicKey(p.walletPubkey);
+    const conn = p.connection;
+    const tokenMint = new PublicKey(p.tokenMint);
+    const clmmId = new PublicKey(p.clmmPoolId);
 
-  // 1) Fetch pool info (current price, tick spacing, mints, vaults)
-  // Note: For now, we'll use a simplified approach since fetchMultiplePoolInfos 
-  // requires more complex setup. In production, you'd want to implement proper pool discovery.
+    // 1) Validate slippage bounds (0.1% - 5%)
+    const slippageBp = Math.max(10, Math.min(500, p.slippageBp || 100));
+    if (slippageBp < 10 || slippageBp > 500) {
+      throw new Error("SlippageTooLow");
+    }
+
+  // 2) Validate tick boundaries from quote
+  const { tickLower, tickUpper } = p;
+  if (typeof tickLower !== 'number' || typeof tickUpper !== 'number') {
+    throw new Error("Tick boundaries must be provided from quote");
+  }
+  if (tickLower >= tickUpper) {
+    throw new Error("Lower tick must be less than upper tick");
+  }
+
+  // 3) Fetch pool info for validation (current price, tick spacing, mints, vaults)
+  // Note: For MVP, we'll use a simplified approach since fetchMultiplePoolInfos 
+  // requires more complex setup. In production, you'd fetch this from Raydium's API or use their SDK properly
   
   // For MVP, we'll assume the pool exists and create a basic structure
   // In production, you'd fetch this from Raydium's API or use their SDK properly
@@ -73,11 +92,15 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
     throw new Error("NotTokenUsdcpool");
   }
 
-  // 2) Choose narrow range around current tick (±2 steps)
+  // 4) Validate tick boundaries against pool tick spacing
   const tickSpacing = poolInfo.config.tickSpacing;
-  const currentTick = poolInfo.state.tickCurrent;
-  const lower = currentTick - 2 * tickSpacing;
-  const upper = currentTick + 2 * tickSpacing;
+  if (tickLower % tickSpacing !== 0 || tickUpper % tickSpacing !== 0) {
+    throw new Error(`Tick boundaries must be multiples of pool tick spacing (${tickSpacing})`);
+  }
+
+  // Use provided tick boundaries from quote (validated)
+  const lower = tickLower;
+  const upper = tickUpper;
 
   // 3) Convert UI amount → smallest units
   const decA = poolInfo.mintA.decimals;
@@ -91,8 +114,8 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
   const inputDecimals = inputIsA ? decA : decB;
   const inputAmount = BigInt(Math.floor(amountUi * 10 ** inputDecimals));
 
-  // 4) Compute required counterpart & liquidity quote
-  const slippage = new Percent(Math.max(10, Math.min(500, p.slippageBp || 100)), 10_000);
+  // 5) Compute required counterpart & liquidity quote using validated slippage
+  const slippage = new Percent(slippageBp, 10_000);
 
   // Note: The actual Clmm.makeOpenPositionFromBase method may not exist
   // For MVP, we'll create a simplified quote structure
@@ -103,30 +126,55 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
     liquidity: BigInt(1000000), // Placeholder liquidity value
   };
 
-  // 5) Owner ATAs (create if missing)
+  // 6) Preflight ATAs and balances - only create if missing or low balance
   const ataA = getAssociatedTokenAddressSync(mintA, owner);
   const ataB = getAssociatedTokenAddressSync(mintB, owner);
 
   const ixs:any[] = [];
   
-  // Add ATA creation instructions (these will be no-ops if ATAs already exist)
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ataA, owner, mintA));
-  ixs.push(createAssociatedTokenAccountInstruction(owner, ataB, owner, mintB));
+  // Check if ATAs exist and have sufficient balances
+  try {
+    const [ataAInfo, ataBInfo] = await Promise.all([
+      conn.getAccountInfo(ataA),
+      conn.getAccountInfo(ataB)
+    ]);
+    
+    // Only create ATA if it doesn't exist
+    if (!ataAInfo) {
+      console.log(`Creating ATA for token A: ${mintA.toBase58()}`);
+      ixs.push(createAssociatedTokenAccountInstruction(owner, ataA, owner, mintA));
+    }
+    
+    if (!ataBInfo) {
+      console.log(`Creating ATA for token B: ${mintB.toBase58()}`);
+      ixs.push(createAssociatedTokenAccountInstruction(owner, ataB, owner, mintB));
+    }
+    
+    // Note: In production, you'd also check token balances here
+    // and potentially add swap instructions if balances are insufficient
+    
+  } catch (error) {
+    console.warn('Failed to check ATA status, creating both ATAs as fallback:', error);
+    // Fallback: create both ATAs (will be no-ops if they exist)
+    ixs.push(createAssociatedTokenAccountInstruction(owner, ataA, owner, mintA));
+    ixs.push(createAssociatedTokenAccountInstruction(owner, ataB, owner, mintB));
+  }
 
-  // 6) Build tx: open position + add liquidity as per quote
+    // 7) Build tx: open position + add liquidity as per quote
   // For MVP, we'll create a simplified transaction structure
   // In production, you'd use the actual Raydium SDK methods with proper pool info
-  
+   
   // Note: This is a placeholder implementation
   // The actual Raydium CLMM integration requires proper pool discovery and setup
   // For now, we'll create a basic transaction structure that can be extended later
-  
+   
   console.log("Building CLMM transaction for pool:", clmmId.toBase58());
   console.log("Token A:", mintA.toBase58(), "Token B:", mintB.toBase58());
   console.log("Tick range:", lower, "to", upper);
   console.log("Input amount:", inputAmount.toString());
+  console.log("Slippage:", slippageBp, "basis points");
 
-  // 7) Serialize (client signs)
+  // 8) Serialize (client signs)
   const tx = new Transaction();
   ixs.forEach(ix => tx.add(ix));
   tx.feePayer = owner;
@@ -143,19 +191,71 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
     estLiquidity: quote?.liquidity?.toString?.(),
   };
 
-  return { 
-    txBase64, 
-    summary, 
-    mints: { 
-      A: mintA.toBase58(), 
-      B: mintB.toBase58() 
-    } 
-  };
+    return { 
+      txBase64, 
+      summary, 
+      mints: { 
+        A: mintA.toBase58(), 
+        B: mintB.toBase58() 
+      } 
+    };
+  } catch (error) {
+    // Map errors to friendly codes
+    let errorCode = "ProviderError";
+    let errorMessage = "Unknown error occurred";
+    
+    if (error instanceof Error) {
+      const message = error.message;
+      
+      if (message.includes("SlippageTooLow")) {
+        errorCode = "SlippageTooLow";
+        errorMessage = "Slippage must be between 10-500 basis points (0.1%-5%)";
+      } else if (message.includes("NotTokenUsdcpool")) {
+        errorCode = "NoPool";
+        errorMessage = "Pool is not a TOKEN/USDC pair";
+      } else if (message.includes("BadAmount")) {
+        errorCode = "InsufficientFunds";
+        errorMessage = "Invalid or insufficient amount provided";
+      } else if (message.includes("BlockhashExpired") || message.includes("TransactionExpired")) {
+        errorCode = "BlockhashExpired";
+        errorMessage = "Transaction blockhash expired, retry needed";
+      } else if (message.includes("User rejected") || message.includes("UserRejected")) {
+        errorCode = "UserRejected";
+        errorMessage = "Transaction was rejected by user";
+      } else if (message.includes("insufficient funds") || message.includes("InsufficientFunds")) {
+        errorCode = "InsufficientFunds";
+        errorMessage = "Insufficient funds for transaction";
+      } else {
+        // Check for common Solana errors
+        if (message.includes("0x1")) {
+          errorCode = "InsufficientFunds";
+          errorMessage = "Insufficient SOL balance for transaction fees";
+        } else if (message.includes("0x2")) {
+          errorCode = "InvalidAccount";
+          errorMessage = "Invalid account data";
+        } else if (message.includes("0x3")) {
+          errorCode = "InvalidInstruction";
+          errorMessage = "Invalid instruction data";
+        }
+      }
+    }
+    
+    // Log error for debugging
+    console.error(`CLMM Error [${errorCode}]:`, error);
+    
+    // Throw structured error
+    const structuredError = new Error(errorMessage);
+    (structuredError as any).code = errorCode;
+    (structuredError as any).originalError = error;
+    throw structuredError;
+  }
 }
 
 /**
  * Helper function to find CLMM pool ID for TOKEN/USDC pair
  * This can be used to resolve the clmmPoolId parameter
+ * 
+ * @deprecated Use findClmmPoolId from raydiumClmmPools.ts instead
  */
 export async function findClmmPoolForToken(
   connection: Connection,
@@ -163,14 +263,9 @@ export async function findClmmPoolForToken(
   quoteMint: string = USDC_MINT.toBase58()
 ): Promise<string | null> {
   try {
-    // This would typically use Raydium's pool discovery API
-    // For now, we'll return null and let the caller handle it
-    // In a real implementation, you'd query Raydium's pool registry
-    
-    // Placeholder: you might want to implement pool discovery here
-    // or use the existing raydiumClient.ts pool discovery functions
-    
-    return null;
+    // Import the new pool discovery function
+    const { findClmmPoolId } = await import('./raydiumClmmPools');
+    return await findClmmPoolId({ connection, tokenMint });
   } catch (error) {
     console.error("Error finding CLMM pool:", error);
     return null;

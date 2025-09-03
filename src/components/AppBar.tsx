@@ -6,7 +6,7 @@ export const AppBar: FC = (props) => {
   const menu = [
     {
       name: "Home",
-      link: "#home",
+      link: "/",
     },
     {
       name: "Tools",

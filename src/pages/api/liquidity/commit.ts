@@ -14,6 +14,9 @@ interface LiquidityCommitRequest {
   whirlpool?: string; // Required for Orca
   clmmPoolId?: string; // Required for Raydium CLMM
   slippageBp?: number; // Slippage in basis points (default: 100 = 1%)
+  // NEW: Tick boundaries from quote for Raydium CLMM
+  tickLower?: number; // Lower tick boundary from quote
+  tickUpper?: number; // Upper tick boundary from quote
 }
 
 interface LiquidityCommitResponse {
@@ -35,12 +38,18 @@ interface LiquidityCommitResponse {
   };
 }
 
+interface LiquidityCommitError {
+  error: string;
+  message: string;
+  details?: string;
+}
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<LiquidityCommitResponse | { error: string; message?: string }>
+  res: NextApiResponse<LiquidityCommitResponse | LiquidityCommitError>
 ) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "MethodNotAllowed", message: "Method not allowed" });
   }
 
   try {
@@ -53,11 +62,13 @@ export default async function handler(
       quoteId, 
       whirlpool, 
       clmmPoolId,
-      slippageBp = 100 
+      slippageBp = 100,
+      tickLower,
+      tickUpper
     }: LiquidityCommitRequest = req.body;
 
     if (!dex || !pair || !tokenMint || !baseAmount || !quoteAmount || !quoteId) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ error: "MissingFields", message: "Missing required fields" });
     }
 
     // Handle Raydium CLMM (real implementation)
@@ -102,16 +113,52 @@ export default async function handler(
           });
         }
 
-        // Build the CLMM commit transaction
-        const result = await buildRaydiumClmmCommitTx({
-          connection,
-          walletPubkey: "11111111111111111111111111111111", // Placeholder - will be replaced by client
-          tokenMint,
-          inputMint,
-          amountUi: inputAmountUi,
-          slippageBp,
-          clmmPoolId
-        });
+        // Validate tick boundaries from quote
+        if (typeof tickLower !== 'number' || typeof tickUpper !== 'number') {
+          return res.status(400).json({ 
+            error: "Missing tick boundaries", 
+            message: "Tick boundaries (tickLower, tickUpper) are required from quote for Raydium CLMM" 
+          });
+        }
+
+        // Build the CLMM commit transaction with retry logic
+        let result;
+        try {
+          result = await buildRaydiumClmmCommitTx({
+            connection,
+            walletPubkey: "11111111111111111111111111111111", // Placeholder - will be replaced by client
+            tokenMint,
+            inputMint,
+            amountUi: inputAmountUi,
+            slippageBp,
+            clmmPoolId,
+            tickLower,
+            tickUpper
+          });
+        } catch (error: any) {
+          // Handle blockhash expiration with one retry
+          if (error.code === "BlockhashExpired") {
+            console.log("Blockhash expired, retrying with fresh blockhash...");
+            try {
+              result = await buildRaydiumClmmCommitTx({
+                connection,
+                walletPubkey: "11111111111111111111111111111111",
+                tokenMint,
+                inputMint,
+                amountUi: inputAmountUi,
+                slippageBp,
+                clmmPoolId,
+                tickLower,
+                tickUpper
+              });
+            } catch (retryError: any) {
+              // If retry fails, return the original error
+              throw error;
+            }
+          } else {
+            throw error;
+          }
+        }
 
         return res.status(200).json({
           txBase64: result.txBase64,
@@ -130,13 +177,19 @@ export default async function handler(
           }
         });
 
-      } catch (error) {
-        console.error("Error building Raydium CLMM transaction:", error);
-        return res.status(500).json({ 
-          error: "CLMM transaction build failed", 
-          message: error instanceof Error ? error.message : "Unknown error" 
-        });
-      }
+             } catch (error: any) {
+         console.error("Error building Raydium CLMM transaction:", error);
+         
+         // Return structured error response
+         const errorCode = error.code || "ProviderError";
+         const errorMessage = error.message || "Unknown error occurred";
+         
+         return res.status(500).json({ 
+           error: errorCode,
+           message: errorMessage,
+           details: error.originalError ? error.originalError.message : undefined
+         });
+       }
     }
 
     // Handle Orca (real implementation)
@@ -150,12 +203,12 @@ export default async function handler(
       }
 
       if (!whirlpool) {
-        return res.status(400).json({ error: "Whirlpool address required for Orca" });
+        return res.status(400).json({ error: "MissingWhirlpool", message: "Whirlpool address required for Orca" });
       }
 
       // Validate slippage
       if (slippageBp < 10 || slippageBp > 500) {
-        return res.status(400).json({ error: "Slippage must be between 10-500 basis points (0.1%-5%)" });
+        return res.status(400).json({ error: "InvalidSlippage", message: "Slippage must be between 10-500 basis points (0.1%-5%)" });
       }
 
       // Initialize Solana connection
@@ -187,10 +240,10 @@ export default async function handler(
       });
     }
 
-    return res.status(400).json({ error: "Unsupported DEX" });
+            return res.status(400).json({ error: "UnsupportedDEX", message: "Unsupported DEX" });
 
   } catch (error) {
     console.error("Error committing liquidity:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "InternalError", message: "Internal server error" });
   }
 }
