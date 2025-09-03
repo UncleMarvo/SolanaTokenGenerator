@@ -34,6 +34,7 @@ model TxEvent {
   mint           String
   positionMint   String?
   poolId         String?
+  dex            String?  // DEX identifier: "raydium", "orca"
   action         String
   amountA        String?
   amountB        String?
@@ -43,4 +44,5 @@ model TxEvent {
 
   @@index([wallet])
   @@index([mint])
+  @@index([dex])
 }
