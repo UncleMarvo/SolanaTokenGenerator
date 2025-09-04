@@ -1,10 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../../lib/db";
+import { authenticateAdmin } from "../../../lib/adminAuth";
 
 function auth(req: NextApiRequest) {
-  const admin = process.env.ADMIN_SECRET;
-  const auth = req.headers.authorization?.replace("Bearer ", "");
-  return admin && auth === admin;
+  const authResult = authenticateAdmin(req.headers.authorization);
+  return authResult.isAdmin;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

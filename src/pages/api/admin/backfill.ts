@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../../lib/db";
 import { getConnection } from "../../../lib/rpc";
 import { findClmmPositionMintFromTx } from "../../../lib/txParse";
+import { authenticateAdmin } from "../../../lib/adminAuth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -13,10 +14,8 @@ export default async function handler(
   }
 
   // Admin authentication check
-  const admin = process.env.ADMIN_SECRET;
-  const auth = req.headers.authorization?.replace("Bearer ", "");
-  
-  if (admin && auth !== admin) {
+  const authResult = authenticateAdmin(req.headers.authorization);
+  if (!authResult.isAdmin) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

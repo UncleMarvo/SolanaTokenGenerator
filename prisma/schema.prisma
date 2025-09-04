@@ -63,3 +63,17 @@ model ProAccess {
   @@index(wallet)
   @@index(expiresAt)
 }
+
+// Admin Authentication - Manages admin login sessions
+model AdminSession {
+  id         String   @id @default(cuid())
+  wallet     String   // Admin wallet address
+  nonce      String   // Challenge nonce for authentication
+  used       Boolean  @default(false) // Whether nonce has been used
+  createdAt  DateTime @default(now())
+  verifiedAt DateTime? // When authentication was completed
+  
+  @@index([wallet])
+  @@index([nonce])
+  @@index([createdAt])
+}

@@ -1,21 +1,43 @@
 import { FC, useEffect, useState } from "react";
 import Head from "next/head";
+import AdminLogin from "../../components/AdminLogin";
 
 const AdminRevenuePage: FC = () => {
   const [data, setData] = useState<any>(null);
   const [days, setDays] = useState(7);
-  const [auth, setAuth] = useState("");
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [adminWallet, setAdminWallet] = useState<string | null>(null);
 
   async function load() {
+    if (!adminToken) return;
+    
     const r = await fetch(`/api/admin/revenue?days=${days}`, {
-      headers: auth ? { Authorization: `Bearer ${auth}` } : {},
+      headers: { Authorization: `Bearer ${adminToken}` },
       cache: "no-store",
     });
     const j = await r.json();
     setData(j);
   }
 
-  useEffect(() => { /* no auto-load without auth */ }, []);
+  // Auto-load data when admin token changes
+  useEffect(() => {
+    if (adminToken) {
+      load();
+    }
+  }, [adminToken]);
+
+  // Handle admin login
+  const handleAdminLogin = (token: string, wallet: string) => {
+    setAdminToken(token);
+    setAdminWallet(wallet);
+  };
+
+  // Handle admin logout
+  const handleAdminLogout = () => {
+    setAdminToken(null);
+    setAdminWallet(null);
+    setData(null);
+  };
 
   return (
     <>
@@ -27,32 +49,38 @@ const AdminRevenuePage: FC = () => {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="text-2xl font-bold mb-4">Admin · Revenue</h1>
 
-        <div className="flex items-center gap-3 mb-6">
-          <input 
-            placeholder="ADMIN_SECRET" 
-            value={auth} 
-            onChange={e=>setAuth(e.target.value)} 
-            className="border px-3 py-2 rounded w-64 text-sm" 
-          />
-          <select 
-            value={days} 
-            onChange={e=>setDays(Number(e.target.value))} 
-            className="border px-3 py-2 rounded text-sm"
-          >
-            <option value={1}>1 day</option>
-            <option value={7}>7 days</option>
-            <option value={30}>30 days</option>
-          </select>
-          <button 
-            onClick={load} 
-            className="border rounded px-3 py-2 text-sm hover:bg-gray-50"
-          >
-            Load
-          </button>
-        </div>
+        {/* Admin Authentication */}
+        <AdminLogin 
+          onLogin={handleAdminLogin}
+          onLogout={handleAdminLogout}
+          isLoggedIn={!!adminToken}
+        />
 
-        {!data ? (
-          <div className="text-sm text-neutral-500">Enter ADMIN_SECRET and click Load.</div>
+        {/* Data Controls */}
+        {adminToken && (
+          <div className="flex items-center gap-3 mb-6">
+            <select 
+              value={days} 
+              onChange={e=>setDays(Number(e.target.value))} 
+              className="border px-3 py-2 rounded text-sm"
+            >
+              <option value={1}>1 day</option>
+              <option value={7}>7 days</option>
+              <option value={30}>30 days</option>
+            </select>
+            <button 
+              onClick={load} 
+              className="border rounded px-3 py-2 text-sm hover:bg-gray-50"
+            >
+              Refresh
+            </button>
+          </div>
+        )}
+
+        {!adminToken ? (
+          <div className="text-sm text-neutral-500">Please authenticate with your admin wallet to view revenue data.</div>
+        ) : !data ? (
+          <div className="text-sm text-neutral-500">Loading revenue data...</div>
         ) : (
           <>
             <section className="grid md:grid-cols-3 gap-4 mb-6">

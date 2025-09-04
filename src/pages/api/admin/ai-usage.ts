@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { authenticateAdmin } from "../../../lib/adminAuth";
 
 // Simple in-memory store for AI usage stats
 // In production, this should be replaced with a proper database
@@ -17,13 +18,10 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Basic protection - check for admin secret if configured
-  const adminSecret = process.env.ADMIN_SECRET;
-  if (adminSecret) {
-    const providedSecret = req.headers.authorization?.replace('Bearer ', '');
-    if (providedSecret !== adminSecret) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  // Admin authentication check
+  const authResult = authenticateAdmin(req.headers.authorization);
+  if (!authResult.isAdmin) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
