@@ -1,18 +1,15 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../../lib/db";
-import { authenticateAdmin } from "../../../lib/adminAuth";
-
-function auth(req: NextApiRequest) {
-  const authResult = authenticateAdmin(req.headers.authorization);
-  return authResult.isAdmin;
-}
+import { requireAdmin } from "../../../lib/adminAuth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!auth(req)) {
+  // Admin authentication check using new requireAdmin function
+  const auth = requireAdmin(req as any);
+  if (!auth.ok) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

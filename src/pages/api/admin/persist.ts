@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
+import { requireAdmin } from "../../../lib/adminAuth";
 
 const DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const FILE = path.join(DIR, "last-commit.json");
@@ -16,6 +17,12 @@ export default async function handler(
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Admin authentication check using new requireAdmin function
+  const auth = requireAdmin(req as any);
+  if (!auth.ok) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
