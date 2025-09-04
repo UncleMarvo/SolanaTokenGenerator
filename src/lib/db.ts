@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
 
 // Global instance for development to prevent multiple connections
 export const prisma = globalThis.prisma || new PrismaClient();

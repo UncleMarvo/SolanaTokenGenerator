@@ -1,6 +1,9 @@
 import { Connection } from "@solana/web3.js";
 
 // RPC endpoint configuration with environment variables
+// Note: This library expects RPC_PRIMARY and RPC_FALLBACK, but the project
+// primarily uses NEXT_PUBLIC_RPC_ENDPOINT. For health checks and fallback
+// functionality, consider setting RPC_PRIMARY and RPC_FALLBACK separately.
 const PRIMARY = process.env.RPC_PRIMARY!;
 const FALLBACK = process.env.RPC_FALLBACK || PRIMARY;
 
