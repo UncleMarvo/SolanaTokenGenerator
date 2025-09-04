@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try { pk = new PublicKey(wallet); } catch { return res.status(400).json({ ok: false, error: "BadWallet" }); }
     const ok = nacl.sign.detached.verify(
       new TextEncoder().encode(message),
-      Buffer.from(signature, "base64"),
+      new Uint8Array(Buffer.from(signature, "base64")),
       pk.toBytes()
     );
     if (!ok) return res.status(401).json({ ok: false, error: "BadSignature" });
