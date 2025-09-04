@@ -1,6 +1,9 @@
 import { FC, useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { UpgradePro } from "../components/UpgradePro";
+import { useProStatus } from "../hooks/useProStatus";
 
 interface MemeKitForm {
   name: string;
@@ -24,6 +27,10 @@ interface MemeKitResult {
 
 const MemeKitPage: FC = () => {
   const router = useRouter();
+  const { publicKey } = useWallet();
+  const { isPro, isLoading: isProLoading, refreshProStatus } = useProStatus();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
   const [form, setForm] = useState<MemeKitForm>({
     name: "",
     ticker: "",
@@ -52,6 +59,13 @@ const MemeKitPage: FC = () => {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    
+    // Check if user needs to upgrade to Pro
+    if (publicKey && !isPro) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
 
@@ -61,7 +75,10 @@ const MemeKitPage: FC = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          wallet: publicKey?.toBase58()
+        }),
       });
 
       const data = await response.json();
@@ -362,7 +379,7 @@ const MemeKitPage: FC = () => {
                     </button>
                     
                     <a
-                      href={`/api/meme/kit.zip?name=${encodeURIComponent(form.name)}&ticker=${encodeURIComponent(form.ticker)}&vibe=${encodeURIComponent(form.vibe)}&preset=degen&shareUrl=${encodeURIComponent(`${window.location.origin}/token/example`)}`}
+                      href={`/api/meme/kit.zip?name=${encodeURIComponent(form.name)}&ticker=${encodeURIComponent(form.ticker)}&vibe=${encodeURIComponent(form.vibe)}&preset=degen&shareUrl=${encodeURIComponent(`${window.location.origin}/token/example`)}&wallet=${publicKey?.toBase58() || ''}`}
                       className="bg-accent hover:bg-accent/80 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300 text-center"
                     >
                       Download Kit (ZIP)
@@ -392,6 +409,16 @@ const MemeKitPage: FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Upgrade to Pro Modal */}
+      <UpgradePro
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onUpgraded={() => {
+          setShowUpgradeModal(false);
+          refreshProStatus();
+        }}
+      />
     </>
   );
 };

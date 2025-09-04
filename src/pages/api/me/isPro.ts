@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../lib/db";
 
 // Response type for Pro status check
 type ProStatusResponse = {

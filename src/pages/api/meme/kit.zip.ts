@@ -20,6 +20,8 @@ import {
 import { hashString } from "../../../lib/hash";
 import { getClientIp, makeBucket, makeDailyGate } from "../../../lib/rateLimit";
 import { updateAiUsageStats } from "../admin/ai-usage";
+import { isPro } from "../../../lib/proStatus";
+import { getEnhancedContentByProStatus } from "../../../lib/proAssets";
 
 // Rate limiting buckets (module-scoped singletons)
 const endpointBucket = makeBucket({ limit: 20, windowMs: 10 * 60_000 }); // 20 requests per 10 minutes
@@ -128,7 +130,7 @@ export default async function handler(
       return res.status(429).json({ error: "rate_limited" });
     }
 
-    const { name, ticker, vibe, preset, shareUrl } = req.query;
+    const { name, ticker, vibe, preset, shareUrl, wallet } = req.query;
 
     // Validate parameters
     const validation = validateParams({ name, ticker, vibe, preset, shareUrl });
@@ -139,7 +141,7 @@ export default async function handler(
 
 
     // Create cache key
-    const cacheKey = `${name}|${ticker}|${vibe}|${preset}|${shareUrl}`;
+    const cacheKey = `${name}|${ticker}|${vibe}|${preset}|${shareUrl}|${wallet || 'no-wallet'}`;
     
     // Check cache first
     const cached = kitCache.get(cacheKey);
@@ -192,12 +194,12 @@ export default async function handler(
     const seed = hashString(`${name}${ticker}${vibe}${preset}`);
     const rng = seededRng(seed);
     
-    // Generate meme content using templates directly (no external AI calls)
-    const memeContent = generateMemeContent(name as string, ticker as string, vibe as any);
-    
     // Check Pro status for enhanced content
     const userIsPro = wallet ? await isPro(wallet as string) : false;
     console.log(`User Pro status for ${name} ($${ticker}): ${userIsPro ? 'PRO' : 'BASIC'}`);
+    
+    // Generate meme content using templates directly (no external AI calls)
+    const memeContent = generateMemeContent(name as string, ticker as string, vibe as any);
     
     // Enhance content based on Pro status
     const enhancedContent = getEnhancedContentByProStatus(memeContent, vibe as string, userIsPro);

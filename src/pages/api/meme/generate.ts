@@ -1,11 +1,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { generateMemeContent } from "../../../lib/memeTemplates";
 import { generateHashtags, generateSchedule } from "../../../lib/kitComposer";
+import { isPro } from "../../../lib/proStatus";
+import { getHashtagsByProStatus, getScheduleByProStatus, getEnhancedContentByProStatus } from "../../../lib/proAssets";
 
 interface MemeKitRequest {
   name: string;
   ticker: string;
   vibe: "funny" | "serious" | "degen";
+  wallet?: string; // Optional wallet for Pro status checking
 }
 
 interface MemeKitResponse {

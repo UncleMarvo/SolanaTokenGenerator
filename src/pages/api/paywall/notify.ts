@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../lib/db";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getConnection } from "@/lib/rpc";
+import { getConnection } from "../../../lib/rpc";
 
 // Payment configuration from environment variables
 const USDC_MINT = new PublicKey(process.env.USDC_MINT!);

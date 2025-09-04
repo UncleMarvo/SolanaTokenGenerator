@@ -1,5 +1,3 @@
-import { SeededRandom } from "./memeTemplates";
-
 // Pro-exclusive premium hashtag packs
 export const proHashtagPacks = {
   funny: [
@@ -52,7 +50,7 @@ export const proScheduleTemplates = {
     { t: "+0h", channel: "Twitter", type: "APE IN", ref: "Thread 1: The most insane token launch ever" },
     { t: "+1h", channel: "Discord", type: "Voice Chat", ref: "Screaming and celebrating together" },
     { t: "+2h", channel: "Twitter", type: "MOON MISSION", ref: "Thread 2: We're going to Mars" },
-    { t: "+3h", channel: "Telegram", ref: "Spam", ref: "Maximum copypasta energy" },
+    { t: "+3h", channel: "Telegram", type: "Spam", ref: "Maximum copypasta energy" },
     { t: "+4h", channel: "Discord", type: "Gaming", ref: "Play while we moon" },
     { t: "+6h", channel: "Twitter", type: "ROCKET", ref: "Thread 3: Blast off sequence initiated" },
     { t: "+8h", channel: "All", type: "CELEBRATION", ref: "Party mode activated" },
