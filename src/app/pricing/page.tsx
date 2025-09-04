@@ -54,7 +54,7 @@ export default function PricingPage() {
               <h2 className="text-xl font-semibold">{t.name}</h2>
               {t.highlight && <span className="text-xs rounded-full bg-indigo-50 text-indigo-700 px-2 py-1">Popular</span>}
             </div>
-            <p className="mt-2 text-neutral-600">{t.blurb}</p>
+            <p className="mt-2 text-neutral-300">{t.blurb}</p>
             <div className="mt-4">
               <div className="text-3xl font-bold">{t.price}</div>
             </div>
@@ -82,7 +82,7 @@ export default function PricingPage() {
           {fees.map((f) => (
             <div key={f.label} className="rounded-xl border p-4 text-sm">
               <div className="font-medium">{f.label}</div>
-              <div className="text-neutral-600 mt-1">{f.value}</div>
+              <div className="text-neutral-300 mt-1">{f.value}</div>
             </div>
           ))}
         </div>
