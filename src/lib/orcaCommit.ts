@@ -8,18 +8,12 @@ import {
   Keypair,
   LAMPORTS_PER_SOL
 } from "@solana/web3.js";
-// Temporarily commented out due to SPL token version compatibility issues
-// import { 
-//   getAssociatedTokenAddress,
-//   createAssociatedTokenAccountInstruction,
-//   createSyncNativeInstruction,
-//   createCloseAccountInstruction,
-//   getAccount,
-//   TOKEN_PROGRAM_ID,
-//   ASSOCIATED_TOKEN_PROGRAM_ID,
-//   NATIVE_MINT,
-//   getMint
-// } from "@solana/spl-token";
+import { 
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction, 
+  createTransferInstruction
+} from "@solana/spl-token";
+import { FEE_WALLET, FLAT_FEE_SOL, SKIM_BP, applySkimBp, solToLamports } from "./fees";
 
 // Common token mints
 const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
@@ -53,13 +47,19 @@ export interface OrcaCommitResponse {
     tickUpper: number;
     currentTick: number;
     tickSpacing: number;
+    fee?: {
+      sol: number;
+      skimBp: number;
+      skimA: string;
+      skimB: string;
+    };
   };
 }
 
 /**
  * Builds a transaction to commit liquidity in an Orca Whirlpool
  * Creates a new position NFT and increases liquidity
- * Note: This is a simplified implementation that demonstrates the flow
+ * Now includes fee integration: flat SOL fees and token skimming
  */
 export async function buildCommitTx({
   connection,
@@ -95,18 +95,81 @@ export async function buildCommitTx({
     // Simplified version without SPL token functions for now
     const inputAmountRaw = Math.floor(parseFloat(inputAmountUi) * Math.pow(10, 9)); // Assume 9 decimals
 
-    // Build instructions - simplified placeholder
+    // Build instructions array
     const instructions: TransactionInstruction[] = [];
 
-    // Placeholder: Add a simple transfer instruction to demonstrate the flow
-    // This would be replaced with actual Orca whirlpool instructions
+    // 1) Flat SOL fee transfer (prepend to transaction)
+    if (FLAT_FEE_SOL > 0) {
+      console.log(`Adding flat SOL fee: ${FLAT_FEE_SOL} SOL to ${FEE_WALLET.toString()}`);
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: walletPubkey,
+          toPubkey: FEE_WALLET,
+          lamports: solToLamports(FLAT_FEE_SOL),
+        })
+      );
+    }
+
+    // 2) Compute quote to get tokenMaxA and tokenMaxB
+    // Note: This is a simplified quote - in production you'd get this from Orca SDK
+    const quote = await getSimplifiedQuote(inputAmountRaw, inputMint, mintAPk, mintBPk);
+    
+    // Convert quote amounts to BigInt for fee calculations
+    const qA = BigInt(quote.tokenMaxA.toString());
+    const qB = BigInt(quote.tokenMaxB.toString());
+    
+    // Apply skim basis points to both sides
+    const { net: netA, skim: skimA } = applySkimBp(qA);
+    const { net: netB, skim: skimB } = applySkimBp(qB);
+    
+    console.log(`Quote amounts - A: ${qA.toString()}, B: ${qB.toString()}`);
+    console.log(`After skim (${SKIM_BP} bps) - Net A: ${netA.toString()}, Net B: ${netB.toString()}`);
+    console.log(`Skim amounts - A: ${skimA.toString()}, B: ${skimB.toString()}`);
+
+    // 3) Ensure ATAs exist for both owner and fee wallet
+    const feeAtaA = getAssociatedTokenAddressSync(mintAPk, FEE_WALLET);
+    const feeAtaB = getAssociatedTokenAddressSync(mintBPk, FEE_WALLET);
+    const ownerAtaA = getAssociatedTokenAddressSync(mintAPk, walletPubkey);
+    const ownerAtaB = getAssociatedTokenAddressSync(mintBPk, walletPubkey);
+    
+    // Create fee wallet ATAs if they don't exist (owner pays for creation)
     instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: walletPubkey,
-        toPubkey: walletPubkey, // Self-transfer as placeholder
-        lamports: 1000 // Minimal amount
-      })
+      createAssociatedTokenAccountInstruction(ownerAtaA, feeAtaA, FEE_WALLET, mintAPk)
     );
+    instructions.push(
+      createAssociatedTokenAccountInstruction(ownerAtaB, feeAtaB, FEE_WALLET, mintBPk)
+    );
+
+    // 4) Skim SPL transfers (from owner to fee wallet), only if skim > 0
+    if (skimA > BigInt(0)) {
+      console.log(`Adding skim transfer for token A: ${skimA.toString()} to fee wallet`);
+      instructions.push(
+        createTransferInstruction(ownerAtaA, feeAtaA, walletPubkey, skimA)
+      );
+    }
+    
+    if (skimB > BigInt(0)) {
+      console.log(`Adding skim transfer for token B: ${skimB.toString()} to fee wallet`);
+      instructions.push(
+        createTransferInstruction(ownerAtaB, feeAtaB, walletPubkey, skimB)
+      );
+    }
+
+    // 5) Add Orca increaseLiquidity instruction using NET amounts (after skim)
+    // Note: This is a placeholder - in production you'd use actual Orca SDK
+    const increaseLiquidityIx = createPlaceholderIncreaseLiquidityIx({
+      whirlpool: whirlpoolPk,
+      owner: walletPubkey,
+      mintA: mintAPk,
+      mintB: mintBPk,
+      tokenMaxA: netA, // Use NET amount (after skim)
+      tokenMaxB: netB, // Use NET amount (after skim)
+      tickLower,
+      tickUpper,
+      slippageBp
+    });
+    
+    instructions.push(increaseLiquidityIx);
 
     // Create Transaction, add instructions, set feePayer and recentBlockhash
     const transaction = new Transaction();
@@ -125,6 +188,14 @@ export async function buildCommitTx({
     // Calculate expected output amount (simplified for now)
     const expectedOutputAmountUi = (inputAmountRaw * 0.99) / Math.pow(10, 9); // Rough estimate with 1% slippage
 
+    // 6) Add fee information to response summary
+    const feeSummary = {
+      sol: FLAT_FEE_SOL,
+      skimBp: SKIM_BP,
+      skimA: skimA.toString(),
+      skimB: skimB.toString()
+    };
+
     return {
       txBase64,
       summary: {
@@ -138,7 +209,8 @@ export async function buildCommitTx({
         tickLower,
         tickUpper,
         currentTick,
-        tickSpacing
+        tickSpacing,
+        fee: feeSummary
       }
     };
 
@@ -148,6 +220,91 @@ export async function buildCommitTx({
       error instanceof Error ? error.message : "Failed to build commit transaction"
     );
   }
+}
+
+/**
+ * Simplified quote function that returns tokenMaxA and tokenMaxB
+ * In production, this would come from the actual Orca SDK quote
+ */
+async function getSimplifiedQuote(
+  inputAmount: number, 
+  inputMint: "A" | "B", 
+  mintA: PublicKey, 
+  mintB: PublicKey
+) {
+  // Simulate Orca quote response
+  // In production, you'd call: const quote = await orcaSdk.getQuote(...)
+  
+  // For demonstration, assume 1:1 ratio with some slippage
+  const baseAmount = inputAmount;
+  const quoteAmount = Math.floor(baseAmount * 0.98); // 2% slippage
+  
+  return {
+    tokenMaxA: inputMint === "A" ? baseAmount : quoteAmount,
+    tokenMaxB: inputMint === "B" ? baseAmount : quoteAmount,
+    priceImpact: 0.02, // 2%
+    lpFee: 0.003, // 0.3%
+    expectedLpTokens: (baseAmount * 0.1).toString()
+  };
+}
+
+/**
+ * Creates a placeholder increaseLiquidity instruction
+ * In production, this would use: WhirlpoolIx.increaseLiquidityIx(...)
+ */
+function createPlaceholderIncreaseLiquidityIx({
+  whirlpool,
+  owner,
+  mintA,
+  mintB,
+  tokenMaxA,
+  tokenMaxB,
+  tickLower,
+  tickUpper,
+  slippageBp
+}: {
+  whirlpool: PublicKey;
+  owner: PublicKey;
+  mintA: PublicKey;
+  mintB: PublicKey;
+  tokenMaxA: bigint;
+  tokenMaxB: bigint;
+  tickLower: number;
+  tickUpper: number;
+  slippageBp: number;
+}): TransactionInstruction {
+  
+  // This is a placeholder instruction
+  // In production, you'd use the actual Orca SDK:
+  // return WhirlpoolIx.increaseLiquidityIx(ctx.program, {
+  //   whirlpool,
+  //   owner,
+  //   positionMint: positionMint,
+  //   positionTokenAccount: positionTokenAccount,
+  //   tokenOwnerAccountA: ownerAtaA,
+  //   tokenOwnerAccountB: ownerAtaB,
+  //   tokenVaultA: poolTokenVaultA,
+  //   tokenVaultB: poolTokenVaultB,
+  //   tickArrayLower: tickArrayLower,
+  //   tickArrayUpper: tickArrayUpper,
+  //   tokenMaxA: netA, // Use NET amount (after skim)
+  //   tokenMaxB: netB, // Use NET amount (after skim)
+  //   tickLower,
+  //   tickUpper,
+  //   slippageBp
+  // });
+  
+  // For now, return a dummy instruction that will be replaced
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: whirlpool, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: true, isWritable: false },
+      { pubkey: mintA, isSigner: false, isWritable: false },
+      { pubkey: mintB, isSigner: false, isWritable: false },
+    ],
+    programId: ORCA_WHIRLPOOL_PROGRAM_ID,
+    data: Buffer.from([0x01, ...new Array(32).fill(0)]) // Dummy data
+  });
 }
 
 /**

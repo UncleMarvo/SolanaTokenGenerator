@@ -621,6 +621,24 @@ const LiquidityPage: FC = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Platform Fee Notice */}
+                <div className="bg-info/10 border border-info/20 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="text-info text-sm">
+                      <p className="font-medium">Platform Fee:</p>
+                      <p className="text-xs opacity-80">
+                        {process.env.NEXT_PUBLIC_LAUNCH_FLAT_FEE_SOL || "0.02"} SOL + {process.env.NEXT_PUBLIC_LAUNCH_SKIM_BP || "200"} bps (2%) skim on both sides
+                      </p>
+                    </div>
+                    <a 
+                      href="/pricing" 
+                      className="text-info hover:text-info/80 text-xs underline flex-shrink-0"
+                    >
+                      Learn more
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div className="flex space-x-3">

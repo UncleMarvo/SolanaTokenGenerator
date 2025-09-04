@@ -6,8 +6,8 @@ import { getConnection } from "../../../lib/rpc";
 // Payment configuration from environment variables
 const USDC_MINT = new PublicKey(process.env.USDC_MINT!);
 const FEE_WALLET = new PublicKey(process.env.FEE_WALLET!);
-const REQ_SOL = Number(process.env.FEE_AMOUNT_SOL || 0);
-const REQ_USDC = Number(process.env.FEE_AMOUNT_USDC || 0);
+  const REQ_SOL = Number(process.env.PRO_FEE_SOL || 0);
+  const REQ_USDC = Number(process.env.PRO_FEE_USDC || 0);
 
 // Response type for the API
 type PaywallResponse = {

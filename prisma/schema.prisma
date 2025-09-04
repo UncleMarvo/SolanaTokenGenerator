@@ -39,6 +39,11 @@ model TxEvent {
   amountA        String?
   amountB        String?
   liquidityDelta String?
+  // NEW: Fee tracking fields for transparency and admin monitoring
+  skimBp         Int?     // Skim basis points (e.g., 200 for 2%)
+  skimA          String?  // Skimmed amount for token A
+  skimB          String?  // Skimmed amount for token B
+  flatSol        Float?   // Flat fee in SOL
   success        Boolean  @default(true)
   ts             DateTime @default(now())
 

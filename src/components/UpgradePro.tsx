@@ -35,8 +35,8 @@ export const UpgradePro: React.FC<UpgradeProProps> = ({
 
   // Payment configuration from environment variables
   const feeWallet = process.env.NEXT_PUBLIC_FEE_WALLET || "";
-  const feeAmountSOL = Number(process.env.NEXT_PUBLIC_FEE_AMOUNT_SOL || 0);
-  const feeAmountUSDC = Number(process.env.NEXT_PUBLIC_FEE_AMOUNT_USDC || 0);
+  const feeAmountSOL = Number(process.env.NEXT_PUBLIC_PRO_FEE_SOL || 0);
+  const feeAmountUSDC = Number(process.env.NEXT_PUBLIC_PRO_FEE_USDC || 0);
 
   // Handle copying fee wallet address to clipboard
   const handleCopyFeeAddress = async () => {

@@ -23,6 +23,11 @@ interface TxNotifyRequest {
     amountA?: string;
     amountB?: string;
     liquidityDelta?: string;
+    // NEW: Fee tracking fields
+    skimBp?: number;
+    skimA?: string;
+    skimB?: string;
+    flatSol?: number;
   };
 }
 
@@ -69,6 +74,11 @@ export default async function handler(
         ...(body.context?.liquidityDelta && { liquidityDelta: body.context.liquidityDelta }),
         ...(body.context?.poolId && { poolId: body.context.poolId }),
         ...(body.context?.positionMint && { positionMint: body.context.positionMint }),
+        // NEW: Update fee fields if they exist
+        ...(body.context?.skimBp !== undefined && { skimBp: body.context.skimBp }),
+        ...(body.context?.skimA && { skimA: body.context.skimA }),
+        ...(body.context?.skimB && { skimB: body.context.skimB }),
+        ...(body.context?.flatSol !== undefined && { flatSol: body.context.flatSol }),
         ts: new Date() // Update timestamp
       },
       create: {
@@ -81,6 +91,11 @@ export default async function handler(
         liquidityDelta: body.context?.liquidityDelta || null,
         poolId: body.context?.poolId || null,
         positionMint: body.context?.positionMint || null,
+        // NEW: Include fee fields
+        skimBp: body.context?.skimBp || null,
+        skimA: body.context?.skimA || null,
+        skimB: body.context?.skimB || null,
+        flatSol: body.context?.flatSol || null,
         success: true,
         ts: new Date()
       }

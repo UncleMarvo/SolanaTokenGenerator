@@ -342,7 +342,15 @@ export const useLiquidityWizard = () => {
               decA: 6, // Default token decimals (adjust as needed)
               decB: 6, // USDC decimals
               lastLiquidity: "0", // New position
-              action: "commit"
+              action: "commit",
+              // NEW: Include fee information for admin tracking
+              ...(summary.fee && {
+                action: "skim",
+                skimBp: summary.fee.skimBp,
+                skimA: summary.fee.skimA,
+                skimB: summary.fee.skimB,
+                flatSol: summary.fee.sol
+              })
             }
           })
         });
@@ -428,7 +436,15 @@ export const useLiquidityWizard = () => {
               decA: 6, // Default token decimals (adjust as needed)
               decB: 6, // USDC decimals
               lastLiquidity: "0", // New position
-              action: "commit"
+              action: "commit",
+              // NEW: Include fee information for admin tracking
+              ...(summary.fee && {
+                action: "skim",
+                skimBp: summary.fee.skimBp,
+                skimA: summary.fee.skimA,
+                skimB: summary.fee.skimB,
+                flatSol: summary.fee.sol
+              })
             }
           })
         });

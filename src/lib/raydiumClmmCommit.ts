@@ -1,10 +1,11 @@
-import { Connection, PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { Connection, PublicKey, Transaction, VersionedTransaction, SystemProgram } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, createTransferInstruction } from "@solana/spl-token";
 import {
   Clmm,      // Raydium CLMM core
   Percent,   // slippage helper
 } from "@raydium-io/raydium-sdk";
 import { WSOL_MINT, isWSOL, wrapWSOLIx } from "./wsol";
+import { FEE_WALLET, FLAT_FEE_SOL, SKIM_BP, applySkimBp, solToLamports } from "./fees";
 
 // USDC mint address for Solana mainnet
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -37,6 +38,12 @@ export interface ClmmCommitResult {
     inA?: string;          // Amount of token A (if available from quote)
     inB?: string;          // Amount of token B (if available from quote)
     estLiquidity?: string; // Estimated liquidity (if available from quote)
+    fee?: {                // NEW: Fee information
+      sol: number;
+      skimBp: number;
+      skimA: string;
+      skimB: string;
+    };
   };
   mints: {
     A: string;             // Token A mint address
@@ -47,6 +54,7 @@ export interface ClmmCommitResult {
 /**
  * Build Raydium CLMM liquidity commitment transaction
  * Creates a narrow range position around current price for TOKEN/USDC pairs
+ * Now includes fee integration: flat SOL fees and token skimming
  */
 export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<ClmmCommitResult> {
   try {
@@ -140,12 +148,72 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
     liquidity: BigInt(1000000), // Placeholder liquidity value
   };
 
+  // NEW: 1) Flat SOL fee transfer (prepend to transaction)
+  const ixs: any[] = [];
+  
+  if (FLAT_FEE_SOL > 0) {
+    console.log(`Adding flat SOL fee: ${FLAT_FEE_SOL} SOL to ${FEE_WALLET.toString()}`);
+    ixs.push(
+      SystemProgram.transfer({
+        fromPubkey: owner,
+        toPubkey: FEE_WALLET,
+        lamports: solToLamports(FLAT_FEE_SOL),
+      })
+    );
+  }
+
+  // NEW: 2) Compute skim/net amounts from quote
+  // From your quote or inputs: get tokenAIn, tokenBIn (bigint)
+  const qA = BigInt(quote?.amountA?.toString?.() || "0");
+  const qB = BigInt(quote?.amountB?.toString?.() || "0");
+  const { net: netA, skim: skimA } = applySkimBp(qA);
+  const { net: netB, skim: skimB } = applySkimBp(qB);
+  
+  console.log(`Quote amounts - A: ${qA.toString()}, B: ${qB.toString()}`);
+  console.log(`After skim (${SKIM_BP} bps) - Net A: ${netA.toString()}, Net B: ${netB.toString()}`);
+  console.log(`Skim amounts - A: ${skimA.toString()}, B: ${skimB.toString()}`);
+
+  // NEW: 3) Ensure fee wallet ATAs exist
+  const feeAtaA = getAssociatedTokenAddressSync(mintA, FEE_WALLET);
+  const feeAtaB = getAssociatedTokenAddressSync(mintB, FEE_WALLET);
+  
+  // Create fee wallet ATAs if they don't exist (owner pays for creation)
+  ixs.push(
+    createAssociatedTokenAccountInstruction(owner, feeAtaA, FEE_WALLET, mintA)
+  );
+  ixs.push(
+    createAssociatedTokenAccountInstruction(owner, feeAtaB, FEE_WALLET, mintB)
+  );
+
+  // NEW: 4) Skim SPL transfers (owner → fee wallet), only if skim > 0
+  if (skimA > BigInt(0)) {
+    console.log(`Adding skim transfer for token A: ${skimA.toString()} to fee wallet`);
+    ixs.push(
+      createTransferInstruction(
+        getAssociatedTokenAddressSync(mintA, owner), 
+        feeAtaA, 
+        owner, 
+        skimA
+      )
+    );
+  }
+  
+  if (skimB > BigInt(0)) {
+    console.log(`Adding skim transfer for token B: ${skimB.toString()} to fee wallet`);
+    ixs.push(
+      createTransferInstruction(
+        getAssociatedTokenAddressSync(mintB, owner), 
+        feeAtaB, 
+        owner, 
+        skimB
+      )
+    );
+  }
+
   // 6) Preflight ATAs and balances - only create if missing or low balance
   const ataA = getAssociatedTokenAddressSync(mintA, owner);
   const ataB = getAssociatedTokenAddressSync(mintB, owner);
 
-  const ixs:any[] = [];
-  
   // Check if ATAs exist and have sufficient balances
   try {
     const [ataAInfo, ataBInfo] = await Promise.all([
@@ -187,6 +255,21 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
   console.log("Tick range:", lower, "to", upper);
   console.log("Input amount:", inputAmount.toString());
   console.log("Slippage:", slippageBp, "basis points");
+  console.log("Using NET amounts for liquidity - A: ${netA.toString()}, B: ${netB.toString()}");
+
+  // NEW: 5) Build Raydium open-position/add-liquidity with NET base amount
+  // If your builder uses baseAmount on a selected side (A or B), replace it with the corresponding net value
+  // If you pass both A & B via a helper, pass netA/netB
+  
+  // For now, we'll use the net amounts in our placeholder logic
+  // In production, you'd integrate this with actual Raydium SDK methods:
+  // const position = await Clmm.makeOpenPositionFromBase({
+  //   poolInfo,
+  //   baseAmount: inputIsA ? netA : netB, // Use NET amount (after skim)
+  //   tickLower: lower,
+  //   tickUpper: upper,
+  //   slippage
+  // });
 
   // 8) Serialize (client signs)
   const tx = new Transaction();
@@ -197,20 +280,34 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
     console.log("Added WSOL wrapping instructions to transaction");
   }
   
-  // Add ATA creation and other instructions
+  // Add fee instructions first (flat fee + skims)
   ixs.forEach(ix => tx.add(ix));
+  
+  // Add ATA creation and other instructions
+  // Note: In production, you'd add the actual Raydium CLMM instructions here
+  // using the net amounts (netA, netB) instead of the original amounts
+  
   tx.feePayer = owner;
   tx.recentBlockhash = (await conn.getLatestBlockhash("finalized")).blockhash;
   const txBase64 = tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64");
+
+  // NEW: 6) Add fee summary to response
+  const feeSummary = {
+    sol: FLAT_FEE_SOL,
+    skimBp: SKIM_BP,
+    skimA: skimA.toString(),
+    skimB: skimB.toString()
+  };
 
   // Summary for UI
   const summary = {
     tickLower: lower,
     tickUpper: upper,
     inputIsA,
-    inA: quote?.amountA?.toString?.(),
-    inB: quote?.amountB?.toString?.(),
+    inA: quote?.amountA?.toString?.(), // Note: In production, you might want to show net amounts here
+    inB: quote?.amountB?.toString?.(), // Note: In production, you might want to show net amounts here
     estLiquidity: quote?.liquidity?.toString?.(),
+    fee: feeSummary // NEW: Include fee information
   };
 
     return { 
