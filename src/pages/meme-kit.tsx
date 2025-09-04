@@ -118,7 +118,43 @@ const MemeKitPage: FC = () => {
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold text-center mb-8">AI Meme Kit Generator</h1>
             
-                         {/* Pre-filled indicator */}
+            {/* Pro Status and Upgrade Section */}
+            <div className="text-center mb-6">
+              {publicKey ? (
+                isProLoading ? (
+                  <div className="inline-flex items-center px-4 py-2 bg-muted/20 text-muted rounded-lg">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted mr-2"></div>
+                    Checking Pro status...
+                  </div>
+                ) : isPro ? (
+                  <div className="inline-flex items-center px-4 py-2 bg-success/20 text-success rounded-lg">
+                    <span className="mr-2">✨</span>
+                    Pro Access Active
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center px-4 py-2 bg-warning/20 text-warning rounded-lg">
+                      <span className="mr-2">🔒</span>
+                      Pro Feature - Upgrade Required
+                    </div>
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary-600 text-bg font-bold rounded-lg transition-all duration-300"
+                    >
+                      <span className="mr-2">🚀</span>
+                      Upgrade to Pro
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div className="inline-flex items-center px-4 py-2 bg-muted/20 text-muted rounded-lg">
+                  <span className="mr-2">🔗</span>
+                  Connect Wallet to Check Pro Status
+                </div>
+              )}
+            </div>
+            
+            {/* Pre-filled indicator */}
              {router.query.name && router.query.ticker && (
                <div className="bg-success/20 border border-success/30 rounded-lg p-4 mb-6 text-center">
                  <p className="text-success text-sm">

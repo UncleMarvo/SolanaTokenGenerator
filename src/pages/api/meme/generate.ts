@@ -20,6 +20,7 @@ interface MemeKitResponse {
     type: string;
     ref: string;
   }[];
+  isPro: boolean; // Added isPro to the interface
 }
 
 // Rate limiting store (in production, use Redis or similar)
@@ -158,6 +159,7 @@ Keep threads 6-8 lines each, copypastas short and punchy, roadmap 4 steps. Use e
       roadmap: parsed.roadmap || [],
       hashtags,
       schedule,
+      isPro: false, // Default to false for AI generation
     };
   } catch (error) {
     console.error("AI generation error:", error);
@@ -174,7 +176,7 @@ export default async function handler(
   }
 
   try {
-    const { name, ticker, vibe }: MemeKitRequest = req.body;
+    const { name, ticker, vibe, wallet }: MemeKitRequest = req.body;
 
     if (!name || !ticker || !vibe) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -194,39 +196,50 @@ export default async function handler(
       return res.status(429).json({ error: "Rate limit exceeded. Try again in 10 minutes." });
     }
 
+    // Check Pro status if wallet is provided
+    const userIsPro = wallet ? await isPro(wallet) : false;
+    console.log(`User Pro status for ${name} ($${ticker}): ${userIsPro ? 'PRO' : 'BASIC'}`);
+
     let response: MemeKitResponse;
 
     // Check if AI is enabled and API key exists
     if (process.env.MEME_AI === "on" && process.env.OPENAI_API_KEY) {
       try {
         response = await generateWithAI(name, ticker, vibe);
+        response.isPro = userIsPro; // Add Pro status to AI response
       } catch (aiError) {
         console.error("AI generation failed, falling back to templates:", aiError);
         // Fallback to template generation
         const generatedContent = generateMemeContent(name, ticker, vibe);
-        const hashtags = generateHashtags(ticker, name, vibe);
-        const schedule = generateSchedule(generatedContent.twitterThreads, generatedContent.copypastas, "en");
+        const hashtags = getHashtagsByProStatus(ticker, name, vibe, userIsPro);
+        const schedule = getScheduleByProStatus(vibe, userIsPro);
+        const enhancedContent = getEnhancedContentByProStatus(generatedContent, vibe, userIsPro);
+        
         response = {
-          logoUrl: "/brand/meme-placeholder.png",
-          twitterThreads: generatedContent.twitterThreads,
-          copypastas: generatedContent.copypastas,
-          roadmap: generatedContent.roadmap,
+          logoUrl: userIsPro ? "/brand/meme-placeholder.png" : "/brand/meme-placeholder.png",
+          twitterThreads: enhancedContent.twitterThreads,
+          copypastas: enhancedContent.copypastas,
+          roadmap: enhancedContent.roadmap,
           hashtags,
           schedule,
+          isPro: userIsPro
         };
       }
     } else {
       // Use template-based generation
       const generatedContent = generateMemeContent(name, ticker, vibe);
-      const hashtags = generateHashtags(ticker, name, vibe);
-      const schedule = generateSchedule(generatedContent.twitterThreads, generatedContent.copypastas, "en");
+      const hashtags = getHashtagsByProStatus(ticker, name, vibe, userIsPro);
+      const schedule = getScheduleByProStatus(vibe, userIsPro);
+      const enhancedContent = getEnhancedContentByProStatus(generatedContent, vibe, userIsPro);
+      
       response = {
-        logoUrl: "/brand/meme-placeholder.png",
-        twitterThreads: generatedContent.twitterThreads,
-        copypastas: generatedContent.copypastas,
-        roadmap: generatedContent.roadmap,
+        logoUrl: userIsPro ? "/brand/meme-placeholder.png" : "/brand/meme-placeholder.png",
+        twitterThreads: enhancedContent.twitterThreads,
+        copypastas: enhancedContent.copypastas,
+        roadmap: enhancedContent.roadmap,
         hashtags,
         schedule,
+        isPro: userIsPro
       };
     }
 

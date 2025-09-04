@@ -195,8 +195,19 @@ export default async function handler(
     // Generate meme content using templates directly (no external AI calls)
     const memeContent = generateMemeContent(name as string, ticker as string, vibe as any);
     
+    // Check Pro status for enhanced content
+    const userIsPro = wallet ? await isPro(wallet as string) : false;
+    console.log(`User Pro status for ${name} ($${ticker}): ${userIsPro ? 'PRO' : 'BASIC'}`);
+    
+    // Enhance content based on Pro status
+    const enhancedContent = getEnhancedContentByProStatus(memeContent, vibe as string, userIsPro);
+    
     // Create badge text
     const badge = preset === 'honest' ? '✅ Honest Launch' : '⚡ Degen Mode';
+    
+    // Add Pro badge if user has Pro access
+    const proBadge = userIsPro ? '✨ PRO' : '';
+    const finalBadge = proBadge ? `${badge} ${proBadge}` : badge;
     
     // Generate images
     console.log(`Generating images for ${name} ($${ticker}) with palette:`, palette, 'theme:', theme, 'default logo:', defaultLogo);

@@ -42,7 +42,19 @@ model TxEvent {
   success        Boolean  @default(true)
   ts             DateTime @default(now())
 
-  @@index([wallet])
-  @@index([mint])
-  @@index([dex])
+  @@index(wallet)
+  @@index(mint)
+  @@index(dex)
+}
+
+// Pro Access Management - Tracks users who have paid for Pro features
+model ProAccess {
+  wallet         String   @id  // User's wallet address (primary key)
+  txSig          String   // Transaction signature that granted Pro access
+  expiresAt      DateTime? // Optional expiration date (null = permanent access)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index(wallet)
+  @@index(expiresAt)
 }
