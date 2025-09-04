@@ -139,7 +139,9 @@ export const Footer: FC = () => {
           </p>
 
           <p className="text-muted text-base font-medium">
-            Terms Conditions & Policy
+            <a href="/trust" className="hover:text-fg transition-colors">
+              Terms Conditions & Policy
+            </a>
           </p>
         </div>
       </div>
