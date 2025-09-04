@@ -43,7 +43,7 @@ const AdminDashboardPage: FC = () => {
 
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <h1 className="h1 text-gray-900">Admin Dashboard</h1>
           <p className="text-gray-600 mt-2">
             Manage platform operations, monitor revenue, and access administrative tools
           </p>
@@ -84,7 +84,7 @@ const AdminDashboardPage: FC = () => {
         {/* Admin Tools */}
         {adminToken && (
           <div className="mt-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Administrative Tools</h2>
+            <h2 className="h2 text-gray-900 mb-6">Administrative Tools</h2>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Revenue Dashboard */}

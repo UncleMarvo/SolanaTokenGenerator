@@ -17,7 +17,7 @@ const PricingPage: FC = () => {
       </Head>
 
       <div className="min-h-screen bg-gradient-to-br from-bg via-bg/95 to-bg/90">
-        <div className="container mx-auto px-4 py-8">
+        <div className="section">
           {/* Header */}
           <div className="mb-8">
             <Link href="/liquidity">
@@ -26,7 +26,7 @@ const PricingPage: FC = () => {
                 <span>Back to Liquidity</span>
               </a>
             </Link>
-            <h1 className="text-4xl font-bold text-fg mb-2">Platform Fees</h1>
+            <h1 className="h1 text-fg mb-2">Platform Fees</h1>
             <p className="text-muted text-lg">
               Transparent pricing for liquidity provision services
             </p>
@@ -41,7 +41,7 @@ const PricingPage: FC = () => {
                   <DollarSign className="text-primary" size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-fg">Flat Fee</h3>
+                  <h3 className="h3 text-fg">Flat Fee</h3>
                   <p className="text-muted text-sm">One-time charge per transaction</p>
                 </div>
               </div>
@@ -67,7 +67,7 @@ const PricingPage: FC = () => {
                   <Percent className="text-accent" size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-fg">Liquidity Skim</h3>
+                  <h3 className="h3 text-fg">Liquidity Skim</h3>
                   <p className="text-muted text-sm">Percentage of provided liquidity</p>
                 </div>
               </div>
@@ -89,7 +89,7 @@ const PricingPage: FC = () => {
 
           {/* How It Works */}
           <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-8">
-            <h2 className="text-2xl font-bold text-fg mb-6">How Platform Fees Work</h2>
+            <h2 className="h2 text-fg mb-6">How Platform Fees Work</h2>
             <div className="space-y-6">
               <div className="flex items-start space-x-4">
                 <div className="bg-info/20 p-2 rounded-lg flex-shrink-0 mt-1">
@@ -137,7 +137,7 @@ const PricingPage: FC = () => {
 
           {/* Example Calculation */}
           <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-8">
-            <h2 className="text-2xl font-bold text-fg mb-6">Fee Example</h2>
+            <h2 className="h2 text-fg mb-6">Fee Example</h2>
             <div className="bg-muted/10 rounded-lg p-6">
               <p className="text-muted mb-4">Let's say you want to add liquidity with:</p>
               <div className="space-y-3 mb-6">
@@ -177,7 +177,7 @@ const PricingPage: FC = () => {
           {/* CTA */}
           <div className="text-center">
             <Link href="/liquidity">
-              <a className="inline-flex items-center space-x-2 bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300">
+              <a className="btn btn-primary space-x-2 py-3 px-8">
                 <span>Start Adding Liquidity</span>
               </a>
             </Link>

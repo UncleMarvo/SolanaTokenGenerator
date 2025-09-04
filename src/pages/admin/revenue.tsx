@@ -47,7 +47,7 @@ const AdminRevenuePage: FC = () => {
       </Head>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Admin · Revenue</h1>
+        <h1 className="h2 mb-4">Admin · Revenue</h1>
 
         {/* Admin Authentication */}
         <AdminLogin 

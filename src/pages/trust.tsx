@@ -4,12 +4,12 @@ export default function TrustPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
       <header className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold">Trust & Transparency</h1>
+        <h1 className="h1">Trust & Transparency</h1>
         <p className="mt-3 text-neutral-600">How we launch, what we charge, and what we store.</p>
       </header>
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold">Honest Launch</h2>
+        <h2 className="h3">Honest Launch</h2>
         <ul className="mt-3 list-disc pl-5 text-sm text-neutral-700 space-y-2">
           <li>We enforce revoking <b>mint</b> and <b>freeze</b> authorities and verify on-chain.</li>
           <li>Your Share Page displays a live "Honest Verified" badge with on-chain proof.</li>

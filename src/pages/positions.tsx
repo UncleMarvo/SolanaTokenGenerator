@@ -4,6 +4,8 @@ import { useRouter } from "next/router";
 import { PublicKey, Transaction, Connection } from "@solana/web3.js";
 import { Spinner } from "../components/ui/Spinner";
 import { sendWithRetry } from "../lib/clientSend";
+import { toastError, toastOk } from "../components/toast";
+import { mapFriendlyError } from "../lib/errors";
 
 interface OrcaPosition {
   positionMint: string;
@@ -238,13 +240,14 @@ const PositionsPage: FC = () => {
         label: "View", 
         onClick: () => window.open(`https://solscan.io/tx/${sig}`)
       });
+      toastOk("Liquidity increased successfully!");
       
       // Refresh positions
       fetchPositions();
       
     } catch (error) {
       // Handle transaction signing/confirmation errors
-      handleApiError(error, "Failed to increase liquidity");
+      toastError(mapFriendlyError(error));
     } finally {
       setIsActionLoading(false);
     }
@@ -317,13 +320,14 @@ const PositionsPage: FC = () => {
         label: "View", 
         onClick: () => window.open(`https://solscan.io/tx/${sig}`)
       });
+      toastOk(`Liquidity ${action.toLowerCase()} successfully!`);
       
       // Refresh positions
       fetchPositions();
       
     } catch (error) {
       // Handle transaction signing/confirmation errors
-      handleApiError(error, "Failed to decrease liquidity");
+      toastError(mapFriendlyError(error));
     } finally {
       setIsActionLoading(false);
     }
@@ -393,13 +397,14 @@ const PositionsPage: FC = () => {
         label: "View", 
         onClick: () => window.open(`https://solscan.io/tx/${sig}`)
       });
+      toastOk("Fees collected successfully!");
       
       // Refresh positions
       fetchPositions();
       
     } catch (error) {
       // Handle transaction signing/confirmation errors
-      handleApiError(error, "Failed to collect fees");
+      toastError(mapFriendlyError(error));
     } finally {
       setIsActionLoading(false);
     }
@@ -491,7 +496,7 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      handleApiError(error, "Failed to increase Raydium liquidity");
+      toastError(mapFriendlyError(error));
     } finally {
       setIsActionLoading(false);
     }
@@ -580,7 +585,7 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      handleApiError(error, "Failed to decrease Raydium liquidity");
+      toastError(mapFriendlyError(error));
     } finally {
       setIsActionLoading(false);
     }
@@ -657,7 +662,7 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      handleApiError(error, "Failed to collect Raydium fees");
+      toastError(mapFriendlyError(error));
     } finally {
       setIsActionLoading(false);
     }
@@ -770,13 +775,13 @@ const PositionsPage: FC = () => {
       </div>
       
       <div>
-        <h2 className="text-2xl font-bold mb-2">Connect Your Wallet</h2>
+        <h2 className="h2 mb-2">Connect Your Wallet</h2>
         <p className="text-muted">Connect your Phantom wallet to view your LP positions</p>
       </div>
       
       <button
         onClick={connectWallet}
-        className="bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300"
+        className="btn btn-primary py-3 px-8"
       >
         Connect Phantom Wallet
       </button>
@@ -798,7 +803,7 @@ const PositionsPage: FC = () => {
       
       <button
         onClick={() => router.push('/liquidity')}
-        className="bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300"
+        className="btn btn-primary py-3 px-8"
       >
         Add Liquidity
       </button>
@@ -846,7 +851,7 @@ const PositionsPage: FC = () => {
         </h3>
         <div className="grid gap-4">
           {filteredPositions.map((position, index) => (
-            <div key={index} className="bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
+            <div key={index} className="card bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
               <div className="flex justify-between items-start mb-4">
                 <div>
                                    <h4 className="font-semibold text-fg">
@@ -985,7 +990,7 @@ const PositionsPage: FC = () => {
         </h3>
         <div className="grid gap-4">
           {filteredPositions.map((position, index) => (
-            <div key={index} className="bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
+            <div key={index} className="card bg-bg/40 backdrop-blur-2xl rounded-xl p-6 border border-muted/10">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1161,7 +1166,7 @@ const PositionsPage: FC = () => {
         <div className="text-center">
           <button
             onClick={fetchPositions}
-            className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300"
+            className="btn btn-ghost py-2 px-6"
           >
             Refresh Positions
           </button>
@@ -1177,10 +1182,10 @@ const PositionsPage: FC = () => {
       </Head>
       
       <div className="min-h-screen bg-bg text-fg">
-        <div className="container mx-auto px-6 py-8">
+        <div className="section">
           <div className="max-w-4xl mx-auto">
                          <div className="text-center mb-8">
-               <h1 className="text-4xl font-bold mb-4">My Positions</h1>
+               <h1 className="h1 mb-4">My Positions</h1>
                <p className="text-muted">View your Orca Whirlpool and Raydium LP positions</p>
              </div>
 
@@ -1389,7 +1394,7 @@ const PositionsPage: FC = () => {
              <div className="flex space-x-3 mt-6">
                <button
                  onClick={() => setShowIncreaseModal(false)}
-                 className="flex-1 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300"
+                 className="btn btn-ghost flex-1 py-2 px-4"
                >
                  Cancel
                </button>
@@ -1496,7 +1501,7 @@ const PositionsPage: FC = () => {
              <div className="flex space-x-3 mt-6">
                <button
                  onClick={() => setShowDecreaseModal(false)}
-                 className="flex-1 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300"
+                 className="btn btn-ghost flex-1 py-2 px-4"
                >
                  Cancel
                </button>

@@ -63,9 +63,15 @@ export default function PricingPage() {
                 <li key={f} className="flex gap-2"><span>✔</span><span>{f}</span></li>
               ))}
             </ul>
-            <a href={t.cta.href} className="mt-6 inline-block w-full text-center rounded-xl border px-4 py-2 hover:shadow-sm">
-              {t.cta.label}
-            </a>
+            {t.cta.label === "Upgrade to Pro" ? (
+              <a href={t.cta.href} className="mt-6 inline-block w-full text-center btn btn-primary animate-[pulse_2.5s_ease-in-out_infinite] px-4 py-2">
+                {t.cta.label}
+              </a>
+            ) : (
+              <a href={t.cta.href} className="mt-6 inline-block w-full text-center rounded-xl border px-4 py-2 hover:shadow-sm">
+                {t.cta.label}
+              </a>
+            )}
           </div>
         ))}
       </section>

@@ -131,9 +131,9 @@ const MemeKitPage: FC = () => {
       </Head>
       
       <div className="min-h-screen bg-bg text-fg">
-        <div className="container mx-auto px-6 py-8">
+        <div className="section">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-center mb-8">AI Meme Kit Generator</h1>
+            <h1 className="h1 text-center mb-8">AI Meme Kit Generator</h1>
             
             {/* Pro Status and Upgrade Section */}
             <div className="text-center mb-6">
@@ -156,7 +156,7 @@ const MemeKitPage: FC = () => {
                     </div>
                     <button
                       onClick={() => setShowUpgradeModal(true)}
-                      className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary-600 text-bg font-bold rounded-lg transition-all duration-300"
+                      className="btn btn-primary animate-[pulse_2.5s_ease-in-out_infinite] px-6 py-3"
                     >
                       <span className="mr-2">🚀</span>
                       Upgrade to Pro
@@ -373,7 +373,7 @@ const MemeKitPage: FC = () => {
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <button
                       onClick={handleDownload}
-                      className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300"
+                      className="btn btn-ghost py-3 px-8"
                     >
                       Download Kit (JSON)
                     </button>
@@ -389,7 +389,7 @@ const MemeKitPage: FC = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="bg-primary hover:bg-primary-600 text-bg font-bold py-3 px-8 rounded-lg transition-all duration-300 disabled:opacity-50"
+                    className="btn btn-primary py-3 px-8 disabled:opacity-50"
                   >
                     {isLoading ? "Regenerating..." : "Regenerate"}
                   </button>
@@ -399,7 +399,7 @@ const MemeKitPage: FC = () => {
                 <div className="text-center">
                   <button
                     onClick={() => setResult(null)}
-                    className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-3 px-8 rounded-lg transition-all duration-300"
+                    className="btn btn-ghost py-3 px-8"
                   >
                     Generate New Kit
                   </button>

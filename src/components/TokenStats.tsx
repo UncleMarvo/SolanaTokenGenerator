@@ -125,14 +125,14 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
 
       <div className="flex flex-wrap gap-3">
         {/* Price Chip */}
-        <div className="bg-primary/10 border border-primary/20 rounded-full px-4 py-2">
+        <div className="chip bg-primary/10 border-primary/20">
           <span className="text-primary font-medium">
             {stats.price ? `$${stats.price.toFixed(4)}` : "—"}
           </span>
         </div>
 
         {/* 24h Change Chip */}
-        <div className={`rounded-full px-4 py-2 border ${
+        <div className={`chip ${
           stats.change24h && stats.change24h >= 0
             ? "bg-success/10 border-success/20"
             : "bg-error/10 border-error/20"
@@ -152,7 +152,7 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
         </div>
 
         {/* Liquidity Chip */}
-        <div className="bg-secondary/10 border border-secondary/20 rounded-full px-4 py-2">
+        <div className="chip bg-secondary/10 border-secondary/20">
           <span className="text-secondary font-medium">
             {stats.liquidityUSD
               ? `💧 $${Intl.NumberFormat().format(Math.round(stats.liquidityUSD))}`
@@ -162,7 +162,7 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
         </div>
 
         {/* Holders Chip */}
-        <div className="bg-accent/10 border border-accent/20 rounded-full px-4 py-2">
+        <div className="chip bg-accent/10 border-accent/20">
           <span className="text-accent font-medium">
             {stats.holders !== undefined ? stats.holders.toLocaleString() : "—"}
           </span>

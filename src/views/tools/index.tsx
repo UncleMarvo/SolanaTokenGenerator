@@ -63,11 +63,11 @@ export const ToolView: FC<ToolViewProps> = ({
   ];
 
   return (
-    <section id="tools" className="py-20">
+    <section id="tools" className="section">
       <div className="container">
         <div className="mb-10 flex items-end justify-between">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-medium capitalize text-fg">
+            <h2 className="h2 mb-4 capitalize text-fg">
               Solana Powerful Tools
             </h2>
             <p className="text-muted text-sm font-medium">
@@ -122,7 +122,7 @@ export const ToolView: FC<ToolViewProps> = ({
         </div>
 
         <div className="mt-10 flex justify-center">
-          <a className="hover:bg-primary-600 bg-primary inline-flex items-center justify-center gap-2 rounded-full px-6 py-2 text-bg transition-all duration-500">
+          <a className="btn btn-primary gap-2">
             More Tools
             <i>
               <IoIosArrowRoundForward />

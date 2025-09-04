@@ -94,7 +94,7 @@ const LiquidityPage: FC = () => {
         <button
           onClick={nextStep}
           disabled={!form.tokenMint || isLoading}
-          className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
+          className="btn btn-primary py-2 px-6 disabled:opacity-50"
         >
           Next
         </button>
@@ -154,14 +154,14 @@ const LiquidityPage: FC = () => {
         <button
           onClick={prevStep}
           disabled={isLoading}
-          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn btn-ghost py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
         <button
           onClick={nextStep}
           disabled={isLoading}
-          className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
+          className="btn btn-primary py-2 px-6 disabled:opacity-50"
         >
           Next
         </button>
@@ -249,14 +249,14 @@ const LiquidityPage: FC = () => {
         <button
           onClick={prevStep}
           disabled={isLoading}
-          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn btn-ghost py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
         <button
           onClick={getQuote}
           disabled={!form.baseAmount || !form.quoteAmount || isLoading || (form.slippageBp && (form.slippageBp < 10 || form.slippageBp > 500))}
-          className="bg-secondary hover:bg-secondary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 disabled:opacity-50"
+          className="btn btn-ghost py-2 px-6 disabled:opacity-50"
         >
           {isLoading ? (
             <>
@@ -322,15 +322,15 @@ const LiquidityPage: FC = () => {
       <div className="flex justify-between">
         <button
           onClick={goBackFromQuote}
-          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300"
+          className="btn btn-ghost py-2 px-6"
         >
           Back
         </button>
         <button
           onClick={() => setShowConfirmModal(true)}
-          className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300"
+          className="btn btn-primary w-full py-3 tracking-wide"
         >
-          Confirm
+          Confirm & Commit Liquidity
         </button>
       </div>
     </div>
@@ -438,7 +438,7 @@ const LiquidityPage: FC = () => {
         {form.dex === "Raydium" && (
           <a
             href="#"
-            className="bg-secondary hover:bg-secondary/600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
+            className="btn btn-ghost py-2 px-6 inline-block"
           >
             View on DEX
           </a>
@@ -448,7 +448,7 @@ const LiquidityPage: FC = () => {
             href={`https://solscan.io/tx/${commitResult.summary.signature}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-6 rounded-lg transition-all duration-300 inline-block"
+            className="btn btn-primary py-2 px-6 inline-block"
           >
             View on Solscan
           </a>
@@ -488,9 +488,9 @@ const LiquidityPage: FC = () => {
       </Head>
       
       <div className="min-h-screen bg-bg text-fg">
-        <div className="container mx-auto px-6 py-8">
+        <div className="section">
           <div className="max-w-2xl mx-auto">
-            <h1 className="text-4xl font-bold text-center mb-8">Liquidity Wizard</h1>
+            <h1 className="h1 text-center mb-8">Liquidity Wizard</h1>
             
             {/* Pre-filled indicator */}
             {router.query.tokenMint && (
@@ -641,19 +641,22 @@ const LiquidityPage: FC = () => {
                 </div>
               </div>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300"
-                >
-                  Cancel
-                </button>
+              <div className="space-y-3">
                 <button
                   onClick={commitLiquidity}
                   disabled={isCommitting}
-                  className="flex-1 bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50"
+                  className="btn btn-primary w-full py-3 tracking-wide disabled:opacity-50"
                 >
-                  {isCommitting ? "Building Transaction..." : "Confirm"}
+                  {isCommitting ? "Building Transaction..." : "Confirm & Commit Liquidity"}
+                </button>
+                <p className="small mt-2 text-center">
+                  Includes platform fee (0.02 SOL) and 2% skim. <a className="underline" href="/pricing">Details</a>
+                </p>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="btn btn-ghost w-full py-2 px-4"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

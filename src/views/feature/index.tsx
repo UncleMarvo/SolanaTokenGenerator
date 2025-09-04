@@ -51,11 +51,11 @@ export const FeatureView: FC<FeatureViewProps> = ({
   ];
 
   return (
-    <section className="py-20">
+    <section className="section">
       <div className="container">
         <div className="mb-10 flex items-end justify-between">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-medium capitalize text-fg">
+            <h2 className="h2 mb-4 capitalize text-fg">
               Choose Solana Blockchain Generator
             </h2>
             <p className="text-muted text-sm font-medium">

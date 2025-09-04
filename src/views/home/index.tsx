@@ -11,7 +11,7 @@ interface HomeViewProps {
 
 export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
   return (
-    <section id="home" className="relative overflow-hidden pb-20 pt-[72px]">
+    <section id="home" className="section relative overflow-hidden">
       <div className="px-6 py-4">
         <div className="bg-bg/40 rounded-2xl">
           <div className="container">
@@ -25,7 +25,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                     CREATE SOLANA TOKEN {pkg.version}
                   </span>
 
-                  <h1 className="md:text-5xl/tight my-4 max-w-lg text-4xl font-medium text-fg">
+                  <h1 className="h1 md:text-5xl/tight my-4 max-w-lg text-fg">
                     Launch. Meme. Moon. In minutes.
                   </h1>
                   <p className="text-muted md:text-lg">
@@ -35,7 +35,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                   <div className="new_add_css">
                     <a
                       onClick={() => setOpenCreateModal(true)}
-                      className="hover:bg-primary-600 pe-4 group mt-10 inline-flex items-center justify-center gap-2 rounded-full border border-muted/10 px-1 py-1 text-fg transition-all duration-300"
+                      className="btn btn-primary pe-4 group mt-10 gap-2"
                     >
                       <span className="bg-primary/20 text-primary me-2 flex h-11 w-11 items-center justify-center rounded-full group-hover:bg-muted/10 group-hover:text-fg">
                         <MdGeneratingTokens />
