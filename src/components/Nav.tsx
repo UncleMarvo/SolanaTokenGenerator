@@ -1,12 +1,11 @@
 import { FC } from "react";
 import { useRouter } from "next/router";
 import NetworkSwitcher from "./NetworkSwitcher";
-
-// Check if admin UI should be shown based on environment variable
-const showAdmin = process.env.NEXT_PUBLIC_ADMIN_UI === "1";
+import { useAdminStatus } from "../hooks/useAdminStatus";
 
 export const Nav: FC = () => {
   const { pathname } = useRouter();
+  const isAdmin = useAdminStatus();
 
   return (
     <nav className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-neutral-950/60 bg-neutral-950/90 border-b border-neutral-800/60">
@@ -35,8 +34,8 @@ export const Nav: FC = () => {
         {/* Right: Network Switcher and Admin */}
         <div className="ml-auto flex items-center gap-3">
           <NetworkSwitcher />
-          {/* Admin login link - only shown if ADMIN_UI=1 */}
-          {showAdmin && (
+          {/* Admin login link - only shown to admin wallets */}
+          {isAdmin && (
             <a 
               className="nav-link text-xs text-neutral-500 hover:text-neutral-300" 
               href="/admin/login"

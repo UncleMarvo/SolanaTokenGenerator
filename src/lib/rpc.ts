@@ -1,4 +1,5 @@
 import { Connection } from "@solana/web3.js";
+import { CLUSTER } from "./network";
 
 // RPC endpoint configuration with environment variables
 // Note: This library expects RPC_PRIMARY and RPC_FALLBACK, but the project
@@ -40,3 +41,6 @@ export async function withRpc<T>(fn: (c: Connection)=>Promise<T>): Promise<T> {
     throw e; 
   }
 }
+
+// Export CLUSTER string for use by other libraries
+export { CLUSTER };

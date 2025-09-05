@@ -1,11 +1,11 @@
 import { FC } from "react";
 import { LuMenu } from "react-icons/lu";
 import NetworkSwitcher from "./NetworkSwitcher";
-
-// Check if admin UI should be shown based on environment variable
-const showAdmin = process.env.NEXT_PUBLIC_ADMIN_UI === "1";
+import { useAdminStatus } from "../hooks/useAdminStatus";
 
 export const AppBar: FC = (props) => {
+  const isAdmin = useAdminStatus();
+  
   const menu = [
     {
       name: "Home",
@@ -65,8 +65,8 @@ export const AppBar: FC = (props) => {
                     </a>
                   </li>
                 ))}
-                {/* Admin login link - only shown if ADMIN_UI=1 */}
-                {showAdmin && (
+                {/* Admin login link - only shown to admin wallets */}
+                {isAdmin && (
                   <li className="nav-item">
                     <a className="nav-link text-xs text-neutral-500 ml-auto" href="/admin/login">
                       Admin
