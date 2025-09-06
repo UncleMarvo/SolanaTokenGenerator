@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Create connection to devnet
-    const connection = new Connection(process.env.RPC_PRIMARY || "https://api.devnet.solana.com", "confirmed");
+    const connection = new Connection(process.env.RPC_PRIMARY || process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.devnet.solana.com", "confirmed");
     
     // Calculate lamports (1 SOL = 1,000,000,000 lamports)
     const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);

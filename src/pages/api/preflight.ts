@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokenBalanceUi } from "../../lib/balances";
+import { retryWithBackoff } from "../../lib/confirmRetry";
 import { isWSOL } from "../../lib/wsol";
 
 interface PreflightRequest {
@@ -56,8 +57,8 @@ export default async function handler(
 
     // Get mint decimals
     const [mintAInfo, mintBInfo] = await Promise.all([
-      connection.getParsedAccountInfo(mintA),
-      connection.getParsedAccountInfo(mintB)
+      retryWithBackoff(() => connection.getParsedAccountInfo(mintA)),
+      retryWithBackoff(() => connection.getParsedAccountInfo(mintB))
     ]);
     
     const decA = (mintAInfo.value?.data as any)?.parsed?.info?.decimals || 9;

@@ -1,3 +1,5 @@
+import { DEV_DISABLE_DEXSCR } from "./env";
+
 /**
  * LP Statistics and Chips for Token Pages
  * Fetches live data from multiple sources: DexScreener, Orca, and on-chain verification
@@ -20,30 +22,32 @@ export type LpChips = {
 export async function fetchLpChips({ mint }: { mint: string }): Promise<LpChips> {
   const result: LpChips = {};
   
-  // a) DexScreener pair (primary for USD + last tx)
+  // a) DexScreener pair (primary for USD + last tx) - only if not disabled
   let lpUsd: number|undefined, lastTx: string|undefined;
-  try {
-    const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { 
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000) // 10 second timeout
-    });
-    
-    if (r.ok) {
-      const j = await r.json();
-      const pairs = Array.isArray(j.pairs) ? j.pairs.filter(p => p.chainId === "solana") : [];
+  if (!DEV_DISABLE_DEXSCR) {
+    try {
+      const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, { 
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
       
-      if (pairs.length > 0) {
-        // Sort by liquidity USD (highest first)
-        const best = pairs.sort((a, b) => (b?.liquidity?.usd || 0) - (a?.liquidity?.usd || 0))[0];
-        lpUsd = best?.liquidity?.usd;
+      if (r.ok) {
+        const j = await r.json();
+        const pairs = Array.isArray(j.pairs) ? j.pairs.filter(p => p.chainId === "solana") : [];
         
-        // Note: DexScreener doesn't provide individual tx signatures
-        // We'll leave lastTx undefined for now
-        result.source = "dexscreener";
+        if (pairs.length > 0) {
+          // Sort by liquidity USD (highest first)
+          const best = pairs.sort((a, b) => (b?.liquidity?.usd || 0) - (a?.liquidity?.usd || 0))[0];
+          lpUsd = best?.liquidity?.usd;
+          
+          // Note: DexScreener doesn't provide individual tx signatures
+          // We'll leave lastTx undefined for now
+          result.source = "dexscreener";
+        }
       }
+    } catch (error) {
+      console.warn("DexScreener fetch failed:", error);
     }
-  } catch (error) {
-    console.warn("DexScreener fetch failed:", error);
   }
 
   // b) Honest verify (reuse existing helper)

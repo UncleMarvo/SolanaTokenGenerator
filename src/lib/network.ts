@@ -3,14 +3,11 @@
  * Provides network detection and environment-based configuration
  */
 
-// Network type definition
-export type NetworkType = "devnet" | "mainnet";
+// Re-export from centralized env configuration
+export { NETWORK, IS_DEVNET, type Cluster as NetworkType, DEV_RELAX_CONFIRM_MS, DEV_DISABLE_DEXSCR, DEV_ALLOW_MANUAL_RAY } from './env';
 
-// Get network from environment variable, defaulting to mainnet
-export const NETWORK = (process.env.NETWORK || "mainnet") as NetworkType;
-
-// Boolean flag for devnet detection
-export const IS_DEVNET = NETWORK === "devnet";
+// Import for local use
+import { NETWORK, IS_DEVNET, DEV_RELAX_CONFIRM_MS, DEV_DISABLE_DEXSCR, DEV_ALLOW_MANUAL_RAY } from './env';
 
 // Boolean flag for mainnet detection
 export const IS_MAINNET = NETWORK === "mainnet";
@@ -37,3 +34,10 @@ export const getCurrentNetworkConfig = () => NETWORK_CONFIG[NETWORK];
 
 // Helper to check if we're in development mode
 export const isDevelopment = () => IS_DEVNET || process.env.NODE_ENV === "development";
+
+// Legacy DEVNET_CONFIG object for backward compatibility
+export const DEVNET_CONFIG = {
+  relaxConfirmMs: DEV_RELAX_CONFIRM_MS,
+  disableDexScreener: DEV_DISABLE_DEXSCR,
+  allowManualRaydium: DEV_ALLOW_MANUAL_RAY,
+} as const;

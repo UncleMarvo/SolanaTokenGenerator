@@ -178,6 +178,7 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
   const feeAtaB = getAssociatedTokenAddressSync(mintB, FEE_WALLET);
   
   // Create fee wallet ATAs if they don't exist (owner pays for creation)
+  // devnet audit: SOL skim lamports; ATA payer=user, owner=FEE_WALLET
   ixs.push(
     createAssociatedTokenAccountInstruction(owner, feeAtaA, FEE_WALLET, mintA)
   );

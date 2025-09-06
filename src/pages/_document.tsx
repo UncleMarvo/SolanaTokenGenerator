@@ -17,7 +17,7 @@ class MyDocument extends Document {
     return (
       <Html lang="en">
         <Head>
-          <link rel="stylesheet" href="/favicon.ico" />
+          <link rel="icon" href="/favicon.ico" />
         </Head>
         <body>
           <Main />

@@ -11,6 +11,7 @@ import {
   AuthorityType 
 } from "@solana/spl-token";
 import { WalletAdapter } from "@solana/wallet-adapter-base";
+import { retryWithBackoff } from "@/lib/confirmRetry";
 
 export interface MintAuthorities {
   mintAuthority: string | null;
@@ -87,7 +88,7 @@ export async function revokeAuthorities({
     // Sign and send transaction
     const signedTx = await wallet.signTransaction(transaction);
     const txid = await connection.sendRawTransaction(signedTx.serialize());
-    await connection.confirmTransaction(txid);
+    await connection.confirmTransaction(txid, "confirmed");
 
     return { txid };
   } catch (error) {
@@ -109,8 +110,20 @@ export async function readMintAuthorities({
   mint: string;
 }): Promise<MintAuthorities> {
   try {
-    const mintPk = new PublicKey(mint);
-    const mintInfo = await getMint(connection, mintPk);
+    // Validate mint address format
+    if (!mint || mint.trim() === "") {
+      throw new Error("Mint address is required");
+    }
+
+    // Validate that mint address is a valid PublicKey
+    let mintPk: PublicKey;
+    try {
+      mintPk = new PublicKey(mint);
+    } catch (keyError) {
+      throw new Error(`Invalid mint address format: ${mint}`);
+    }
+
+    const mintInfo = await retryWithBackoff(() => getMint(connection, mintPk));
 
     return {
       mintAuthority: mintInfo.mintAuthority?.toBase58() || null,
@@ -118,7 +131,12 @@ export async function readMintAuthorities({
     };
   } catch (error) {
     console.error("Failed to read mint authorities:", error);
-    throw new Error("Failed to read mint authorities from blockchain");
+    // Preserve the original error type and message for better error handling
+    if (error instanceof Error) {
+      throw error; // Re-throw the original error to preserve its type
+    } else {
+      throw new Error("Failed to read mint authorities from blockchain");
+    }
   }
 }
 
@@ -186,7 +204,7 @@ export async function burnLpTokens({
     // Sign and send transaction
     const signedTx = await wallet.signTransaction(transaction);
     const txid = await connection.sendRawTransaction(signedTx.serialize());
-    await connection.confirmTransaction(txid);
+    await connection.confirmTransaction(txid, "confirmed");
 
     return { txid };
   } catch (error) {

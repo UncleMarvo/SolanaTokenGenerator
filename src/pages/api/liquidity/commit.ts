@@ -3,8 +3,10 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { buildCommitTx } from "../../../lib/orcaCommit";
 import { buildRaydiumClmmCommitTx } from "../../../lib/raydiumClmmCommit";
 import { flags } from "../../../lib/flags";
+import { DEV_ALLOW_MANUAL_RAY } from "../../../lib/env";
 import { withRpc } from "../../../lib/rpc";
 import { logAction } from "../../../lib/log";
+import { IS_DEVNET } from "../../../lib/network";
 
 interface LiquidityCommitRequest {
   dex: "Raydium" | "Orca";
@@ -86,6 +88,14 @@ export default async function handler(
 
     // Handle Raydium CLMM (real implementation)
     if (dex === "Raydium") {
+      // Check if manual Raydium is allowed on devnet
+      if (!DEV_ALLOW_MANUAL_RAY) {
+        return res.status(400).json({
+          error: "Raydium disabled",
+          message: "Raydium functionality is disabled on devnet"
+        });
+      }
+      
       // Check if USDC/TOKEN pair (CLMM only supports USDC pairs for now)
       if (pair !== "USDC/TOKEN") {
         return res.status(400).json({
@@ -221,6 +231,22 @@ export default async function handler(
           });
       }
 
+      // Validate whirlpool address format
+      if (IS_DEVNET && whirlpool.startsWith('orca_devnet_')) {
+        // On devnet, allow test pool addresses for testing purposes
+        console.log(`[DEVNET] Using test pool address: ${whirlpool}`);
+      } else {
+        // On mainnet, validate as proper public key
+        try {
+          new PublicKey(whirlpool);
+        } catch (error) {
+          return res.status(400).json({
+            error: "InvalidWhirlpoolAddress",
+            message: `Invalid whirlpool address format: ${whirlpool}. Must be a valid base58-encoded public key.`,
+          });
+        }
+      }
+
       // Validate slippage
       if (slippageBp < 10 || slippageBp > 500) {
         return res
@@ -229,6 +255,16 @@ export default async function handler(
             error: "InvalidSlippage",
             message: "Slippage must be between 10-500 basis points (0.1%-5%)",
           });
+      }
+
+      // Validate token mint format
+      try {
+        new PublicKey(tokenMint);
+      } catch (error) {
+        return res.status(400).json({
+          error: "InvalidTokenMint",
+          message: `Invalid token mint address format: ${tokenMint}. Must be a valid base58-encoded public key.`,
+        });
       }
 
       // Determine token mints based on pair
@@ -286,8 +322,23 @@ export default async function handler(
           msg: error?.message,
         });
 
-        console.error("Error building Orca commit transaction:", error);
-        throw error;
+        console.error("[commit-orca] error", { 
+          name: error?.name, 
+          message: error?.message, 
+          stack: error?.stack 
+        });
+        
+        // Return structured error response with meaningful error codes
+        const code = 
+          /associated.*owner/i.test(error?.message || "") ? "ATAOwnerMismatch" :
+          /invalid account data for instruction/i.test(error?.message || "") ? "InvalidAccountData" :
+          /custom program error/i.test(error?.message || "") ? "ProgramError" :
+          "InternalError";
+        
+        return res.status(500).json({ 
+          error: code, 
+          message: error?.message || "Internal server error" 
+        });
       }
     }
 

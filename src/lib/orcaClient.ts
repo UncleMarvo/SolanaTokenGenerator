@@ -1,4 +1,5 @@
 import { Connection, PublicKey } from '@solana/web3.js';
+import { IS_DEVNET, DEV_DISABLE_DEXSCR } from './env';
 
 // Initialize Solana connection
 const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
@@ -23,8 +24,7 @@ export interface OrcaQuoteResponse {
 
 /**
  * Get Orca Whirlpool quote for adding liquidity
- * Note: This is a simplified implementation that simulates Orca quotes
- * In a production environment, you would use the full Orca SDK
+ * Uses DexScreener API to find real pool addresses and get basic quote data
  */
 export async function getOrcaQuote(request: OrcaQuoteRequest): Promise<OrcaQuoteResponse> {
   try {
@@ -40,12 +40,57 @@ export async function getOrcaQuote(request: OrcaQuoteRequest): Promise<OrcaQuote
     const quoteMintPubkey = new PublicKey(quoteMint);
     const baseAmountBN = BigInt(baseAmount);
     
-    // Simulate pool discovery (in real implementation, this would query Orca API)
-    // For now, we'll simulate finding a pool
-    const poolAddress = `orca_pool_${tokenMintPubkey.toString().slice(0, 8)}_${quoteMintPubkey.toString().slice(0, 8)}`;
+    // Try to find a real Orca pool using DexScreener API (mainnet only)
+    let poolAddress: string;
     
-    // Simulate price impact calculation based on amount
+    if (IS_DEVNET) {
+      // On devnet, DexScreener doesn't have data for test tokens
+      // For testing purposes, we'll generate a deterministic pool address
+      // This allows the commit flow to work for testing without real pools
+      const tokenA = tokenMintPubkey.toBase58();
+      const tokenB = quoteMintPubkey.toBase58();
+      const sortedTokens = [tokenA, tokenB].sort();
+      poolAddress = `orca_devnet_${sortedTokens[0].slice(0, 8)}_${sortedTokens[1].slice(0, 8)}`;
+      console.log(`[DEVNET] Generated test pool address: ${poolAddress}`);
+    } else {
+      // On mainnet, use DexScreener to find real Orca pools (unless disabled on devnet)
+      if (DEV_DISABLE_DEXSCR) {
+        throw new Error('DexScreener API calls disabled on devnet');
+      }
+      
+      try {
+        const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`, { 
+          cache: "no-store" 
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const orcaPools = data.pairs?.filter((pair: any) => 
+            pair.dexId === 'orca' && 
+            (pair.baseToken?.address === tokenMint || pair.quoteToken?.address === tokenMint) &&
+            (pair.baseToken?.address === quoteMint || pair.quoteToken?.address === quoteMint)
+          );
+          
+          if (orcaPools && orcaPools.length > 0) {
+            // Use the first Orca pool found
+            poolAddress = orcaPools[0].pairAddress;
+          } else {
+            throw new Error('No Orca pool found on DexScreener');
+          }
+        } else {
+          throw new Error('DexScreener API error');
+        }
+      } catch (dexError) {
+        console.warn('DexScreener lookup failed:', dexError);
+        // No fallback - if we can't find a real pool, we should return an error
+        throw new Error(`No Orca pool found for token pair: ${tokenMint} / ${quoteMint}. Please ensure the tokens have an existing Orca liquidity pool.`);
+      }
+    }
+    
+    // Calculate quote data
     const baseAmountNum = Number(baseAmountBN);
+    
+    // Estimate price impact (simplified calculation)
     const priceImpact = Math.min(baseAmountNum / 1000000, 5); // Max 5% impact
     
     // Orca typically has 0.3% LP fee
@@ -56,9 +101,6 @@ export async function getOrcaQuote(request: OrcaQuoteRequest): Promise<OrcaQuote
     
     // Calculate minimum output with 1% slippage
     const minOut = baseAmountNum * 0.99;
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 100));
     
     return {
       pool: poolAddress,
@@ -76,26 +118,38 @@ export async function getOrcaQuote(request: OrcaQuoteRequest): Promise<OrcaQuote
       throw new Error('Invalid token mint address');
     }
     
-    // For now, simulate "no pool available" for unknown tokens
-    throw new Error('No pool available');
+    // For other errors, provide generic message
+    throw new Error('Failed to get Orca quote. Pool may not exist or network error occurred.');
   }
 }
 
 /**
- * Get available pools for a token (simulated)
+ * Get available pools for a token using DexScreener API
  */
 export async function getAvailablePools(tokenMint: string): Promise<string[]> {
   try {
     // Validate token mint format
     new PublicKey(tokenMint);
     
-    // Simulate finding pools
-    const pools = [
-      `orca_pool_${tokenMint.slice(0, 8)}_sol`,
-      `orca_pool_${tokenMint.slice(0, 8)}_usdc`
-    ];
+    // Use DexScreener to find Orca pools for this token
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`, { 
+      cache: "no-store" 
+    });
     
-    return pools;
+    if (response.ok) {
+      const data = await response.json();
+      const orcaPools = data.pairs?.filter((pair: any) => 
+        pair.dexId === 'orca' && 
+        (pair.baseToken?.address === tokenMint || pair.quoteToken?.address === tokenMint)
+      );
+      
+      if (orcaPools && orcaPools.length > 0) {
+        return orcaPools.map((pool: any) => pool.pairAddress);
+      }
+    }
+    
+    // Return empty array if no pools found
+    return [];
     
   } catch (error) {
     console.error('Error getting available pools:', error);

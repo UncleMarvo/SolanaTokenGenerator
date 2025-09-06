@@ -2,6 +2,7 @@ import { FC } from "react";
 import { useRouter } from "next/router";
 import NetworkSwitcher from "./NetworkSwitcher";
 import { useAdminStatus } from "../hooks/useAdminStatus";
+import { IS_DEVNET } from "../lib/env";
 
 export const Nav: FC = () => {
   const { pathname } = useRouter();
@@ -31,9 +32,15 @@ export const Nav: FC = () => {
           Trust
         </a>
         
-        {/* Right: Network Switcher and Admin */}
+        {/* Right: Network Switcher, Devnet Indicator, and Admin */}
         <div className="ml-auto flex items-center gap-3">
           <NetworkSwitcher />
+          {/* Devnet indicator - only shown on devnet */}
+          {IS_DEVNET && (
+            <span className="chip bg-warning/10 border-warning/20 text-warning">
+              Devnet
+            </span>
+          )}
           {/* Admin login link - only shown to admin wallets */}
           {isAdmin && (
             <a 

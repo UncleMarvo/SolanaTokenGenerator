@@ -1,4 +1,5 @@
 import { Transaction } from "@solana/web3.js";
+import { DEV_RELAX_CONFIRM_MS } from "./env";
 
 /**
  * Client-side transaction sending utility with automatic retry on blockhash expiry
@@ -36,8 +37,17 @@ export async function sendWithRetry(
       // Send transaction
       const sig = await wallet.sendTransaction(tx, connection);
       
-      // Wait for confirmation
-      await connection.confirmTransaction(sig, "confirmed");
+      // Wait for confirmation with devnet timeout if applicable
+      const confirmPromise = connection.confirmTransaction(sig, "confirmed");
+      
+      await (DEV_RELAX_CONFIRM_MS > 0 
+        ? Promise.race([
+            confirmPromise,
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
+            )
+          ])
+        : confirmPromise);
       
       console.log(`Transaction sent successfully on attempt ${attempt + 1}:`, sig);
       return sig;

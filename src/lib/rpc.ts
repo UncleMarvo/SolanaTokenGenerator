@@ -2,11 +2,9 @@ import { Connection } from "@solana/web3.js";
 import { CLUSTER } from "./network";
 
 // RPC endpoint configuration with environment variables
-// Note: This library expects RPC_PRIMARY and RPC_FALLBACK, but the project
-// primarily uses NEXT_PUBLIC_RPC_ENDPOINT. For health checks and fallback
-// functionality, consider setting RPC_PRIMARY and RPC_FALLBACK separately.
-const PRIMARY = process.env.RPC_PRIMARY!;
-const FALLBACK = process.env.RPC_FALLBACK || PRIMARY;
+// Uses NEXT_PUBLIC_RPC_ENDPOINT as primary, with RPC_PRIMARY/RPC_FALLBACK as overrides
+const PRIMARY = process.env.RPC_PRIMARY || process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com";
+const FALLBACK = process.env.RPC_FALLBACK || process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com";
 
 /**
  * Get a Solana connection instance for the specified preference

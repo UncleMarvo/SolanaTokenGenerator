@@ -1,5 +1,6 @@
 import { FC, useState, useEffect } from "react";
 import { TokenStats as TokenStatsType } from "../lib/analytics";
+import { DEV_DISABLE_DEXSCR, IS_DEVNET } from "../lib/env";
 
 interface TokenStatsProps {
   mint: string;
@@ -13,6 +14,10 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Devnet-specific logic for conditional rendering
+  const showExternal = !DEV_DISABLE_DEXSCR;
+  const label = IS_DEVNET ? "Devnet" : undefined;
 
   // Extract existing fetch into a function
   async function loadStats(force = false) {
@@ -72,6 +77,15 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap gap-3">
+          {/* Devnet Label */}
+          {label && (
+            <div className="chip bg-warning/10 border-warning/20">
+              <span className="text-warning font-medium">
+                {label}
+              </span>
+            </div>
+          )}
+          
           {/* Skeleton loading chips */}
           {[1, 2, 3, 4].map((i) => (
             <div
@@ -87,8 +101,21 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
 
   if (!stats || Object.keys(stats).length === 0) {
     return (
-      <div className="text-muted text-sm">
-        No analytics data available
+      <div className="space-y-3">
+        {/* Devnet Label */}
+        {label && (
+          <div className="flex flex-wrap gap-3">
+            <div className="chip bg-warning/10 border-warning/20">
+              <span className="text-warning font-medium">
+                {label}
+              </span>
+            </div>
+          </div>
+        )}
+        
+        <div className="text-muted text-sm">
+          {showExternal ? "No analytics data available" : "On-chain data only (devnet mode)"}
+        </div>
       </div>
     );
   }
@@ -124,55 +151,79 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        {/* Price Chip */}
-        <div className="chip bg-primary/10 border-primary/20">
-          <span className="text-primary font-medium">
-            {stats.price ? `$${stats.price.toFixed(4)}` : "—"}
-          </span>
-        </div>
+        {/* Devnet Label */}
+        {label && (
+          <div className="chip bg-warning/10 border-warning/20">
+            <span className="text-warning font-medium">
+              {label}
+            </span>
+          </div>
+        )}
 
-        {/* 24h Change Chip */}
-        <div className={`chip ${
-          stats.change24h && stats.change24h >= 0
-            ? "bg-success/10 border-success/20"
-            : "bg-error/10 border-error/20"
-        }`}>
-          <span className={`font-medium ${
-            stats.change24h && stats.change24h >= 0
-              ? "text-success"
-              : "text-error"
-          }`}>
-            {stats.change24h !== undefined
-              ? stats.change24h >= 0
-                ? `📈 +${stats.change24h.toFixed(2)}%`
-                : `📉 ${stats.change24h.toFixed(2)}%`
-              : "—"
-            }
-          </span>
-        </div>
+        {/* External Metrics (Price, 24h Change, Liquidity) - only show if external data is enabled */}
+        {showExternal && (
+          <>
+            {/* Price Chip */}
+            <div className="chip bg-primary/10 border-primary/20">
+              <span className="text-primary font-medium">
+                {stats.price ? `$${stats.price.toFixed(4)}` : "—"}
+              </span>
+            </div>
 
-        {/* Liquidity Chip */}
-        <div className="chip bg-secondary/10 border-secondary/20">
-          <span className="text-secondary font-medium">
-            {stats.liquidityUSD
-              ? `💧 $${Intl.NumberFormat().format(Math.round(stats.liquidityUSD))}`
-              : "—"
-            }
-          </span>
-        </div>
+            {/* 24h Change Chip */}
+            <div className={`chip ${
+              stats.change24h && stats.change24h >= 0
+                ? "bg-success/10 border-success/20"
+                : "bg-error/10 border-error/20"
+            }`}>
+              <span className={`font-medium ${
+                stats.change24h && stats.change24h >= 0
+                  ? "text-success"
+                  : "text-error"
+              }`}>
+                {stats.change24h !== undefined
+                  ? stats.change24h >= 0
+                    ? `📈 +${stats.change24h.toFixed(2)}%`
+                    : `📉 ${stats.change24h.toFixed(2)}%`
+                  : "—"
+                }
+              </span>
+            </div>
 
-        {/* Holders Chip */}
-        <div className="chip bg-accent/10 border-accent/20">
-          <span className="text-accent font-medium">
-            {stats.holders !== undefined ? stats.holders.toLocaleString() : "—"}
+            {/* Liquidity Chip */}
+            <div className="chip bg-secondary/10 border-secondary/20">
+              <span className="text-secondary font-medium">
+                {stats.liquidityUSD
+                  ? `💧 $${Intl.NumberFormat().format(Math.round(stats.liquidityUSD))}`
+                  : "—"
+                }
+              </span>
+            </div>
+
+            {/* Holders Chip */}
+            <div className="chip bg-accent/10 border-accent/20">
+              <span className="text-accent font-medium">
+                {stats.holders !== undefined ? stats.holders.toLocaleString() : "—"}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* On-Chain Metrics - always show */}
+        <div className="chip bg-info/10 border-info/20">
+          <span className="text-info font-medium">
+            📊 On-Chain Data
           </span>
         </div>
       </div>
 
       {/* Source Attribution */}
       <div className="flex items-center justify-start text-xs text-muted">
-        {stats.source === "dexscreener" && (
+        {showExternal && stats.source === "dexscreener" && (
           <span>Data via DexScreener</span>
+        )}
+        {!showExternal && (
+          <span>On-chain data only (devnet mode)</span>
         )}
       </div>
     </div>

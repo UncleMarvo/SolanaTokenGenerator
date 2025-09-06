@@ -8,19 +8,42 @@ import {
   Keypair,
   LAMPORTS_PER_SOL
 } from "@solana/web3.js";
+import { DEV_RELAX_CONFIRM_MS } from "./env";
 import { 
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction, 
-  createTransferInstruction
+  createTransferInstruction,
+  NATIVE_MINT
 } from "@solana/spl-token";
+import { increaseLiquidityInstructions } from "@orca-so/whirlpools";
 import { FEE_WALLET, FLAT_FEE_SOL, SKIM_BP, applySkimBp, solToLamports } from "./fees";
+import { IS_DEVNET } from "./network";
+
+// Orca Whirlpool Program ID
+const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
 
 // Common token mints
 const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
 const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
-// Orca Whirlpool Program ID
-const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
+// Helper functions for native SOL detection and lamports conversion
+/**
+ * Checks if a mint is the native SOL mint (So111...)
+ * @param mint - The mint public key to check
+ * @returns true if the mint is native SOL
+ */
+function isNativeSolMint(mint: PublicKey): boolean {
+  return mint.toBase58() === NATIVE_MINT.toBase58();
+}
+
+/**
+ * Converts a number or bigint to lamports (base units)
+ * @param amount - Amount to convert (number in SOL or bigint in base units)
+ * @returns Amount in lamports as number
+ */
+function lamports(amount: number | bigint): number {
+  return typeof amount === "bigint" ? Number(amount) : Math.floor(amount * 1e9);
+}
 
 export interface OrcaCommitRequest {
   connection: Connection;
@@ -73,18 +96,43 @@ export async function buildCommitTx({
 }: OrcaCommitRequest): Promise<OrcaCommitResponse> {
   
   try {
-    // Parse public keys
-    const whirlpoolPk = new PublicKey(whirlpool);
-    const mintAPk = new PublicKey(tokenMintA);
-    const mintBPk = new PublicKey(tokenMintB);
+    // Validate and parse public keys with proper error handling
+    let whirlpoolPk: PublicKey;
+    let mintAPk: PublicKey;
+    let mintBPk: PublicKey;
+    
+    if (IS_DEVNET && whirlpool.startsWith('orca_devnet_')) {
+      // On devnet, use a placeholder public key for test pool addresses
+      // This allows the transaction building to proceed for testing
+      whirlpoolPk = new PublicKey("11111111111111111111111111111111"); // System program as placeholder
+      console.log(`[DEVNET] Using placeholder whirlpool for test address: ${whirlpool}`);
+    } else {
+      try {
+        whirlpoolPk = new PublicKey(whirlpool);
+      } catch (error) {
+        throw new Error(`Invalid whirlpool address: ${whirlpool}. Must be a valid base58-encoded public key.`);
+      }
+    }
+    
+    try {
+      mintAPk = new PublicKey(tokenMintA);
+    } catch (error) {
+      throw new Error(`Invalid token mint A address: ${tokenMintA}. Must be a valid base58-encoded public key.`);
+    }
+    
+    try {
+      mintBPk = new PublicKey(tokenMintB);
+    } catch (error) {
+      throw new Error(`Invalid token mint B address: ${tokenMintB}. Must be a valid base58-encoded public key.`);
+    }
     
     // Validate slippage
     if (slippageBp < 10 || slippageBp > 500) {
       throw new Error("Slippage must be between 10-500 basis points (0.1%-5%)");
     }
 
-    // For now, we'll use default values since the new Orca API has type incompatibilities
-    // In a production environment, you would fetch these from the actual whirlpool
+    // For now, use default values for tick spacing and current tick
+    // In the future, this could be enhanced to fetch real pool data
     const tickSpacing = 64; // Default for most pools
     const currentTick = 0; // Would be fetched from pool data
     
@@ -111,12 +159,11 @@ export async function buildCommitTx({
     }
 
     // 2) Compute quote to get tokenMaxA and tokenMaxB
-    // Note: This is a simplified quote - in production you'd get this from Orca SDK
     const quote = await getSimplifiedQuote(inputAmountRaw, inputMint, mintAPk, mintBPk);
     
-    // Convert quote amounts to BigInt for fee calculations
-    const qA = BigInt(quote.tokenMaxA.toString());
-    const qB = BigInt(quote.tokenMaxB.toString());
+    // Defensive parse - convert quote amounts to BigInt for fee calculations
+    const qA = BigInt((quote?.tokenMaxA ?? 0).toString());
+    const qB = BigInt((quote?.tokenMaxB ?? 0).toString());
     
     // Apply skim basis points to both sides
     const { net: netA, skim: skimA } = applySkimBp(qA);
@@ -126,36 +173,65 @@ export async function buildCommitTx({
     console.log(`After skim (${SKIM_BP} bps) - Net A: ${netA.toString()}, Net B: ${netB.toString()}`);
     console.log(`Skim amounts - A: ${skimA.toString()}, B: ${skimB.toString()}`);
 
-    // 3) Ensure ATAs exist for both owner and fee wallet
-    const feeAtaA = getAssociatedTokenAddressSync(mintAPk, FEE_WALLET);
-    const feeAtaB = getAssociatedTokenAddressSync(mintBPk, FEE_WALLET);
-    const ownerAtaA = getAssociatedTokenAddressSync(mintAPk, walletPubkey);
-    const ownerAtaB = getAssociatedTokenAddressSync(mintBPk, walletPubkey);
+    // 3) Skim handling with proper SOL vs SPL token distinction
+    // For SPL mints → SPL transfer owner → fee wallet ATA (payer = owner, owner of ATA = FEE_WALLET)
+    // For SOL side (NATIVE_MINT) → use lamports transfer, NOT SPL (no ATA)
+    // devnet audit: SOL skim lamports; ATA payer=user, owner=FEE_WALLET
     
-    // Create fee wallet ATAs if they don't exist (owner pays for creation)
-    instructions.push(
-      createAssociatedTokenAccountInstruction(ownerAtaA, feeAtaA, FEE_WALLET, mintAPk)
-    );
-    instructions.push(
-      createAssociatedTokenAccountInstruction(ownerAtaB, feeAtaB, FEE_WALLET, mintBPk)
-    );
-
-    // 4) Skim SPL transfers (from owner to fee wallet), only if skim > 0
-    if (skimA > BigInt(0)) {
-      console.log(`Adding skim transfer for token A: ${skimA.toString()} to fee wallet`);
+    // Handle token A skimming
+    if (!isNativeSolMint(mintAPk)) {
+      // Token A is SPL - create fee ATA and transfer
+      const feeAtaA = getAssociatedTokenAddressSync(mintAPk, FEE_WALLET);
+      // payer=walletPubkey, ataOwner=FEE_WALLET
       instructions.push(
-        createTransferInstruction(ownerAtaA, feeAtaA, walletPubkey, skimA)
+        createAssociatedTokenAccountInstruction(walletPubkey, feeAtaA, FEE_WALLET, mintAPk)
       );
-    }
-    
-    if (skimB > BigInt(0)) {
-      console.log(`Adding skim transfer for token B: ${skimB.toString()} to fee wallet`);
-      instructions.push(
-        createTransferInstruction(ownerAtaB, feeAtaB, walletPubkey, skimB)
-      );
+      if (skimA > 0n) {
+        const ownerAtaA = getAssociatedTokenAddressSync(mintAPk, walletPubkey);
+        instructions.push(
+          createTransferInstruction(ownerAtaA, feeAtaA, walletPubkey, skimA)
+        );
+      }
+    } else {
+      // A-side is SOL → skim as lamports transfer
+      if (skimA > 0n) {
+        instructions.push(
+          SystemProgram.transfer({
+            fromPubkey: walletPubkey,
+            toPubkey: FEE_WALLET,
+            lamports: Number(skimA), // skimA is in "base units" same as quote lamports when SOL side
+          })
+        );
+      }
     }
 
-    // 5) Add Orca increaseLiquidity instruction using NET amounts (after skim)
+    // Handle token B skimming
+    if (!isNativeSolMint(mintBPk)) {
+      // Token B is SPL - create fee ATA and transfer
+      const feeAtaB = getAssociatedTokenAddressSync(mintBPk, FEE_WALLET);
+      instructions.push(
+        createAssociatedTokenAccountInstruction(walletPubkey, feeAtaB, FEE_WALLET, mintBPk)
+      );
+      if (skimB > 0n) {
+        const ownerAtaB = getAssociatedTokenAddressSync(mintBPk, walletPubkey);
+        instructions.push(
+          createTransferInstruction(ownerAtaB, feeAtaB, walletPubkey, skimB)
+        );
+      }
+    } else {
+      // B-side is SOL → skim as lamports transfer
+      if (skimB > 0n) {
+        instructions.push(
+          SystemProgram.transfer({
+            fromPubkey: walletPubkey,
+            toPubkey: FEE_WALLET,
+            lamports: Number(skimB),
+          })
+        );
+      }
+    }
+
+    // 4) Add Orca increaseLiquidity instruction using NET amounts (after skim)
     // Note: This is a placeholder - in production you'd use actual Orca SDK
     const increaseLiquidityIx = createPlaceholderIncreaseLiquidityIx({
       whirlpool: whirlpoolPk,
@@ -188,7 +264,7 @@ export async function buildCommitTx({
     // Calculate expected output amount (simplified for now)
     const expectedOutputAmountUi = (inputAmountRaw * 0.99) / Math.pow(10, 9); // Rough estimate with 1% slippage
 
-    // 6) Add fee information to response summary
+    // 5) Add fee information to response summary
     const feeSummary = {
       sol: FLAT_FEE_SOL,
       skimBp: SKIM_BP,
@@ -224,7 +300,7 @@ export async function buildCommitTx({
 
 /**
  * Simplified quote function that returns tokenMaxA and tokenMaxB
- * In production, this would come from the actual Orca SDK quote
+ * Uses basic calculations for now - can be enhanced with real pool data later
  */
 async function getSimplifiedQuote(
   inputAmount: number, 
@@ -232,10 +308,9 @@ async function getSimplifiedQuote(
   mintA: PublicKey, 
   mintB: PublicKey
 ) {
-  // Simulate Orca quote response
-  // In production, you'd call: const quote = await orcaSdk.getQuote(...)
+  // For now, use simplified calculations
+  // In the future, this could be enhanced to fetch real pool data
   
-  // For demonstration, assume 1:1 ratio with some slippage
   const baseAmount = inputAmount;
   const quoteAmount = Math.floor(baseAmount * 0.98); // 2% slippage
   
@@ -295,6 +370,7 @@ function createPlaceholderIncreaseLiquidityIx({
   // });
   
   // For now, return a dummy instruction that will be replaced
+  // TODO: Implement real Orca SDK integration when position creation is available
   return new TransactionInstruction({
     keys: [
       { pubkey: whirlpool, isSigner: false, isWritable: true },
@@ -335,8 +411,17 @@ export async function sendAndConfirm({
     const signedTx = await wallet.signTransaction(tx);
     const txid = await connection.sendRawTransaction(signedTx.serialize());
     
-    // Wait for confirmation
-    await connection.confirmTransaction(txid, "confirmed");
+    // Wait for confirmation with devnet timeout if applicable
+    const confirmPromise = connection.confirmTransaction(txid, "confirmed");
+    
+    await (DEV_RELAX_CONFIRM_MS > 0 
+      ? Promise.race([
+          confirmPromise,
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
+          )
+        ])
+      : confirmPromise);
 
     return txid;
   } catch (error) {

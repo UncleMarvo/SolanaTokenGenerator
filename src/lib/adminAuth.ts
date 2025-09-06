@@ -1,16 +1,17 @@
 import jwt from "jsonwebtoken";
 import { randomBytes } from "crypto";
 import { prisma } from "./db";
+import { NextApiRequest } from "next";
 
 /**
  * Admin authentication middleware function
  * Extracts and verifies admin JWT tokens from cookies
- * @param req - The incoming request object
+ * @param req - The incoming Next.js API request object
  * @returns Authentication result with wallet address or error
  */
-export function requireAdmin(req: Request) {
+export function requireAdmin(req: NextApiRequest) {
   // Extract admin session cookie from request headers
-  const cookie = req.headers.get("cookie") || "";
+  const cookie = req.headers.cookie || "";
   const m = /(?:^|; )admin_session=([^;]+)/.exec(cookie);
   
   // Return error if no admin session cookie found

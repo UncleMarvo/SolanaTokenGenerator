@@ -5,6 +5,7 @@ import {
   verifyHonestMint, 
   readMintAuthorities 
 } from "../lib/solanaToken";
+import { IS_DEVNET } from "../lib/env";
 
 export interface HonestLaunchStatus {
   isVerified: boolean;
@@ -26,13 +27,23 @@ export const useHonestLaunchVerification = (mintAddress: string | null) => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  // Verify honest launch status from blockchain
+  // Verify honest launch status from blockchain with retry logic
   const verifyStatus = useCallback(async () => {
     if (!mintAddress || !connection) return;
 
     try {
       setError(null);
+      setIsLoading(true);
+      
+      // Show devnet retry message if on devnet
+      if (IS_DEVNET) {
+        setIsRetrying(true);
+        console.log("[devnet] confirm retry...");
+      }
+      
+      // The readMintAuthorities function now uses retryWithBackoff internally
       const authorities = await readMintAuthorities({ connection, mint: mintAddress });
       const isVerified = !authorities.mintAuthority && !authorities.freezeAuthority;
       
@@ -44,7 +55,13 @@ export const useHonestLaunchVerification = (mintAddress: string | null) => {
       });
     } catch (err) {
       console.error("Failed to verify honest launch status:", err);
-      setError("Failed to verify on-chain status");
+      
+      // Provide more specific error messages based on the error type
+      const errorMessage = err instanceof Error ? err.message : "Failed to verify on-chain status";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+      setIsRetrying(false);
     }
   }, [mintAddress, connection]);
 
@@ -102,6 +119,7 @@ export const useHonestLaunchVerification = (mintAddress: string | null) => {
     status,
     isLoading,
     error,
+    isRetrying,
     verifyStatus,
     enforceHonestLaunch,
     clearError: () => setError(null),

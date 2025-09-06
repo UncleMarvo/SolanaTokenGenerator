@@ -3,6 +3,8 @@
  * Used as a fallback when Raydium pool fetch fails
  */
 
+import { DEV_DISABLE_DEXSCR } from './env';
+
 export interface DexScreenerPair {
   pool: string;
   price: number;
@@ -76,6 +78,12 @@ export async function getDexScreenerPair({
   tokenMint: string;
   quoteMint: string;
 }): Promise<DexScreenerPair | null> {
+  // Skip DexScreener API calls on devnet if disabled
+  if (DEV_DISABLE_DEXSCR) {
+    console.log(`DexScreener API calls disabled on devnet for ${tokenMint} vs ${quoteMint}`);
+    return null;
+  }
+
   try {
     console.log(`Fetching DexScreener pairs for ${tokenMint} vs ${quoteMint}`);
     

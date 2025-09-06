@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
+import { DEV_RELAX_CONFIRM_MS } from "../lib/env";
 import { Spinner } from "./ui/Spinner";
 
 // Props interface for the UpgradePro component
@@ -77,8 +78,17 @@ export const UpgradePro: React.FC<UpgradeProProps> = ({
       // Send transaction to wallet for signing
       const signature = await sendTransaction(transaction, connection);
       
-      // Wait for confirmation
-      const confirmation = await connection.confirmTransaction(signature, "confirmed");
+      // Wait for confirmation with devnet timeout if applicable
+      const confirmPromise = connection.confirmTransaction(signature, "confirmed");
+      
+      const confirmation = DEV_RELAX_CONFIRM_MS > 0 
+        ? await Promise.race([
+            confirmPromise,
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
+            )
+          ])
+        : await confirmPromise;
       
       if (confirmation.value.err) {
         throw new Error("Transaction failed");

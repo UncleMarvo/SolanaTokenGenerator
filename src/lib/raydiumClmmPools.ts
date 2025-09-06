@@ -1,5 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Clmm } from "@raydium-io/raydium-sdk";
+import { DEV_DISABLE_DEXSCR } from './env';
 
 // USDC mint address for Solana mainnet
 export const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -71,6 +72,12 @@ async function fetchRaydiumCLMMPools(): Promise<any[]> {
  * Find CLMM pool ID for TOKEN/USDC pair using DexScreener as fallback
  */
 async function findClmmPoolViaDexScreener(tokenMint: string): Promise<string | null> {
+  // Skip DexScreener API calls on devnet if disabled
+  if (DEV_DISABLE_DEXSCR) {
+    console.log(`DexScreener API calls disabled on devnet for ${tokenMint}`);
+    return null;
+  }
+
   try {
     console.log(`Trying DexScreener fallback for ${tokenMint}`);
     

@@ -23,10 +23,10 @@ const nextConfig = {
           { key: "Content-Security-Policy", value: [
             "default-src 'self';",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval';", // Allow inline scripts for local assets
-            "style-src 'self' 'unsafe-inline';", // Allow inline styles for Tailwind/DaisyUI
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;", // Allow inline styles for Tailwind/DaisyUI and Google Fonts
             "img-src 'self' data: blob: https:;", // Allow images from any HTTPS source
-            "font-src 'self' data:;", // Allow local fonts and data URIs
-            "connect-src 'self' https://api.mainnet-beta.solana.com https://api.dexscreener.com https://solana-mainnet.g.alchemy.com;", // Allow connections to Solana RPC and DexScreener
+            "font-src 'self' data: https://fonts.gstatic.com;", // Allow local fonts, data URIs, and Google Fonts
+            "connect-src 'self' https://api.mainnet-beta.solana.com https://api.devnet.solana.com wss://api.mainnet-beta.solana.com wss://api.devnet.solana.com https://api.dexscreener.com https://solana-mainnet.g.alchemy.com https://api.pinata.cloud https://gateway.pinata.cloud;", // Allow connections to Solana RPC (mainnet/devnet), DexScreener, and Pinata IPFS
             "frame-ancestors 'self';", // Prevent embedding in frames from other origins
             "base-uri 'self';", // Restrict base tag usage
             "form-action 'self';", // Restrict form submissions to same origin

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Connection, Transaction, PublicKey } from "@solana/web3.js";
 import { logPending, logSuccess, logError } from "../utils/actionLogger";
+import { DEV_RELAX_CONFIRM_MS } from "../lib/env";
 
 export interface LiquidityForm {
   tokenMint: string;
@@ -10,6 +11,7 @@ export interface LiquidityForm {
   baseAmount: string;
   quoteAmount: string;
   slippageBp?: number;
+  selectedPool?: string; // Manual pool selection for devnet
 }
 
 export interface LiquidityQuote {
@@ -310,17 +312,38 @@ export const useLiquidityWizard = () => {
       // Deserialize transaction
       const transaction = Transaction.from(Buffer.from(txBase64, 'base64'));
       
-      // Set fee payer and recent blockhash
-      transaction.feePayer = wallet.publicKey;
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+      // Only set fee payer and recent blockhash if they're not already set
+      // This prevents invalidating the transaction structure from the server
+      if (!transaction.feePayer) {
+        console.log("Setting fee payer for Orca transaction");
+        transaction.feePayer = wallet.publicKey;
+      } else {
+        console.log("Orca transaction already has fee payer:", transaction.feePayer.toBase58());
+      }
+      
+      if (!transaction.recentBlockhash) {
+        console.log("Setting recent blockhash for Orca transaction");
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+      } else {
+        console.log("Orca transaction already has recent blockhash:", transaction.recentBlockhash);
+      }
 
       // Sign and send transaction
       const signedTx = await wallet.signTransaction(transaction);
       const signature = await connection.sendRawTransaction(signedTx.serialize());
       
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, "confirmed");
+      // Wait for confirmation with devnet timeout if applicable
+      const confirmPromise = connection.confirmTransaction(signature, "confirmed");
+      
+      await (DEV_RELAX_CONFIRM_MS > 0 
+        ? Promise.race([
+            confirmPromise,
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
+            )
+          ])
+        : confirmPromise);
       
       // Notify transaction to database
       try {
@@ -404,17 +427,38 @@ export const useLiquidityWizard = () => {
       // Deserialize transaction
       const transaction = Transaction.from(Buffer.from(txBase64, 'base64'));
       
-      // Set fee payer and recent blockhash
-      transaction.feePayer = wallet.publicKey;
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+      // Only set fee payer and recent blockhash if they're not already set
+      // This prevents invalidating the transaction structure from the server
+      if (!transaction.feePayer) {
+        console.log("Setting fee payer for Raydium CLMM transaction");
+        transaction.feePayer = wallet.publicKey;
+      } else {
+        console.log("Raydium CLMM transaction already has fee payer:", transaction.feePayer.toBase58());
+      }
+      
+      if (!transaction.recentBlockhash) {
+        console.log("Setting recent blockhash for Raydium CLMM transaction");
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+      } else {
+        console.log("Raydium CLMM transaction already has recent blockhash:", transaction.recentBlockhash);
+      }
 
       // Sign and send transaction
       const signedTx = await wallet.signTransaction(transaction);
       const signature = await connection.sendRawTransaction(signedTx.serialize());
       
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, "confirmed");
+      // Wait for confirmation with devnet timeout if applicable
+      const confirmPromise = connection.confirmTransaction(signature, "confirmed");
+      
+      await (DEV_RELAX_CONFIRM_MS > 0 
+        ? Promise.race([
+            confirmPromise,
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
+            )
+          ])
+        : confirmPromise);
       
       // Notify transaction to database
       try {
@@ -492,6 +536,10 @@ export const useLiquidityWizard = () => {
     prevStep();
   };
 
+  const setSelectedPool = (poolAddress: string) => {
+    setForm(prev => ({ ...prev, selectedPool: poolAddress }));
+  };
+
   return {
     currentStep,
     form,
@@ -508,6 +556,7 @@ export const useLiquidityWizard = () => {
     commitLiquidity,
     setShowConfirmModal,
     resetWizard,
-    goBackFromQuote
+    goBackFromQuote,
+    setSelectedPool
   };
 };

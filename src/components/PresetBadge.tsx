@@ -10,7 +10,7 @@ export const PresetBadge: FC<PresetBadgeProps> = ({ preset, className = "", isOn
   const isHonest = preset === "honest";
   
   // If honest preset and on-chain verified, show verified badge
-  if (isHonest && isOnChainVerified) {
+/*   if (isHonest && isOnChainVerified) {
     return (
       <div 
         className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${className} bg-success/20 text-success border border-success/30`}
@@ -19,7 +19,7 @@ export const PresetBadge: FC<PresetBadgeProps> = ({ preset, className = "", isOn
         <span>✅ On-chain Verified</span>
       </div>
     );
-  }
+  } */
   
   // Default preset badges
   return (

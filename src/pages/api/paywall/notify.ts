@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../../lib/db";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getConnection } from "../../../lib/rpc";
+import { retryWithBackoff } from "../../../lib/confirmRetry";
 
 // Payment configuration from environment variables
 const USDC_MINT = new PublicKey(process.env.USDC_MINT!);
@@ -48,10 +49,10 @@ export default async function handler(
 
     // Get Solana connection and fetch transaction details
     const conn = getConnection("primary");
-    const tx = await conn.getParsedTransaction(txSig, { 
+    const tx = await retryWithBackoff(() => conn.getParsedTransaction(txSig, { 
       maxSupportedTransactionVersion: 0, 
       commitment: "confirmed" 
-    });
+    }));
     
     if (!tx) {
       return res.status(404).json({ 

@@ -1,5 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token";
+import { retryWithBackoff } from "@/lib/confirmRetry";
 
 // Orca Whirlpool Program ID
 const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
@@ -193,7 +194,7 @@ export async function getTokenMetadata(connection: Connection, mint: string): Pr
   decimals: number;
 } | null> {
   try {
-    const mintInfo = await connection.getParsedAccountInfo(new PublicKey(mint));
+    const mintInfo = await retryWithBackoff(() => connection.getParsedAccountInfo(new PublicKey(mint)));
     if (mintInfo.value && mintInfo.value.data) {
       const data = mintInfo.value.data as any;
       if (data.parsed && data.parsed.info) {

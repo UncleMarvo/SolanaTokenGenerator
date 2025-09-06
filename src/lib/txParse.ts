@@ -1,4 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
+import { retryWithBackoff } from "@/lib/confirmRetry";
 
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
@@ -20,10 +21,10 @@ export async function findClmmPositionMintFromTx(
 ): Promise<string | null> {
   try {
     // Fetch the confirmed transaction
-    const tx = await conn.getTransaction(txSig, { 
+    const tx = await retryWithBackoff(() => conn.getTransaction(txSig, { 
       maxSupportedTransactionVersion: 0, 
       commitment: "confirmed" 
-    });
+    }));
     
     if (!tx) {
       console.log(`Transaction ${txSig} not found`);
@@ -136,10 +137,10 @@ export async function findClmmPositionMintFromTokenChanges(
   txSig: string
 ): Promise<string | null> {
   try {
-    const tx = await conn.getTransaction(txSig, { 
+    const tx = await retryWithBackoff(() => conn.getTransaction(txSig, { 
       maxSupportedTransactionVersion: 0, 
       commitment: "confirmed" 
-    });
+    }));
     
     if (!tx || !tx.meta) return null;
 
@@ -158,7 +159,7 @@ export async function findClmmPositionMintFromTokenChanges(
     // Check if any of the new mints are NFTs (decimals === 0)
     for (const mint of newMints) {
       try {
-        const parsed = await conn.getParsedAccountInfo(new PublicKey(mint));
+        const parsed = await retryWithBackoff(() => conn.getParsedAccountInfo(new PublicKey(mint)));
         const parsedValue = parsed.value as any;
         
         if (parsedValue?.data?.parsed?.type === 'mint') {

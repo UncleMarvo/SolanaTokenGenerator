@@ -1,6 +1,8 @@
 import { FC, useState } from "react";
 import { useHonestLaunchVerification } from "../hooks/useHonestLaunchVerification";
 import { useToast } from "../hooks/useToast";
+import { IS_DEVNET } from "../lib/env";
+import { Spinner } from "./ui/Spinner";
 
 interface HonestLaunchEnforcerProps {
   mintAddress: string;
@@ -13,7 +15,7 @@ const HonestLaunchEnforcer: FC<HonestLaunchEnforcerProps> = ({
   preset,
   onVerificationChange,
 }) => {
-  const { status, isLoading, error, enforceHonestLaunch, clearError } = useHonestLaunchVerification(mintAddress);
+  const { status, isLoading, error, isRetrying, enforceHonestLaunch, clearError } = useHonestLaunchVerification(mintAddress);
   const { showToast } = useToast();
   const [txid, setTxid] = useState<string | null>(null);
   
@@ -39,7 +41,7 @@ const HonestLaunchEnforcer: FC<HonestLaunchEnforcerProps> = ({
   // If already verified, show success state
   if (status.isVerified) {
     return (
-      <div className="flex items-center space-x-2">
+      <div className="flex flex-col items-center space-x-2">
         <div className="bg-success/20 border border-success/30 rounded-lg px-3 py-2">
           <span className="text-success text-sm font-medium flex items-center">
             ✅ On-chain Verified
@@ -61,12 +63,33 @@ const HonestLaunchEnforcer: FC<HonestLaunchEnforcerProps> = ({
 
   return (
     <div className="space-y-2">
+      {/* Show loading state during initial verification */}
+      {isLoading && !status.isVerified && (
+        <div className="bg-muted/20 border border-muted/30 rounded-lg px-3 py-2 text-center">
+          <div className="flex items-center justify-center space-x-2">
+            <Spinner size={12} />
+            <span className="text-muted text-sm">
+              {isRetrying ? "Waiting for confirmation… (devnet can be slow)" : (IS_DEVNET ? "Verifying… (devnet can be slow)" : "Verifying...")}
+            </span>
+          </div>
+        </div>
+      )}
+      
       <button
         onClick={handleEnforceHonestLaunch}
         disabled={isLoading}
         className="bg-warning/20 hover:bg-warning/30 text-warning border border-warning/30 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
-        {isLoading ? "Enforcing..." : "Enforce Honest Launch (revoke authorities)"}
+        {isLoading ? (
+          <div className="flex items-center space-x-2">
+            <Spinner size={12} />
+            <span>
+              {IS_DEVNET ? "Waiting for confirmation… (devnet can be slow)" : "Enforcing..."}
+            </span>
+          </div>
+        ) : (
+          "Enforce Honest Launch (revoke authorities)"
+        )}
       </button>
       
       {error && (

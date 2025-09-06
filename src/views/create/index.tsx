@@ -6,6 +6,7 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import { DEV_RELAX_CONFIRM_MS } from "../../lib/env";
 import {
   MINT_SIZE,
   TOKEN_PROGRAM_ID,
@@ -182,6 +183,20 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
             signers: [mintKeypair],
           }
         );
+
+        // Wait for transaction confirmation before setting tokenMintAddress
+        console.log("Waiting for transaction confirmation...");
+        const confirmPromise = connection.confirmTransaction(signature, "confirmed");
+        
+        await (DEV_RELAX_CONFIRM_MS > 0 
+          ? Promise.race([
+              confirmPromise,
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
+              )
+            ])
+          : confirmPromise);
+        console.log("Transaction confirmed!");
 
         const mintAddress = mintKeypair.publicKey.toString();
         setTokenMintAddress(mintAddress);
@@ -652,8 +667,8 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                       />
                     </div>
 
-                    {/* Honest Launch Enforcer - only show for honest preset */}
-                    {token.preset === "honest" && (
+                    {/* Honest Launch Enforcer - only show for honest preset and when token is created */}
+                    {token.preset === "honest" && tokenMintAddress && (
                       <div className="mt-4">
                         <HonestLaunchEnforcer
                           mintAddress={tokenMintAddress}
@@ -664,7 +679,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                     )}
 
                     <div className="mt-5 w-full text-center">
-                      <p className="text-muted text-base font-medium leading-6">
+                      <div className="text-muted text-base font-medium leading-6">
                         <InputView
                           name={"Token Address"}
                           placeholder={tokenMintAddress}
@@ -677,7 +692,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         >
                           Copy
                         </span>
-                      </p>
+                      </div>
 
                       <div className="mb-6 text-center space-y-3">
                         <a

@@ -1,10 +1,11 @@
-import { FC } from "react";
+import { FC, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { useLiquidityWizard } from "../hooks/useLiquidityWizard";
 import { AiOutlineClose } from "react-icons/ai";
 import { Spinner } from "../components/ui/Spinner";
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
+import { DEV_ALLOW_MANUAL_RAY } from "../lib/env";
 
 const LiquidityPage: FC = () => {
   const router = useRouter();
@@ -24,8 +25,12 @@ const LiquidityPage: FC = () => {
     commitLiquidity,
     setShowConfirmModal,
     resetWizard,
-    goBackFromQuote
+    goBackFromQuote,
+    setSelectedPool
   } = useLiquidityWizard();
+
+  // Manual pool entry state for devnet
+  const [manualPool, setManualPool] = useState("");
 
   const renderStep1 = () => (
     <div className="space-y-6">
@@ -33,7 +38,7 @@ const LiquidityPage: FC = () => {
         <h3 className="text-xl font-bold mb-4">Step 1: Choose DEX</h3>
         <div className="space-y-3">
           <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
-            isLoading 
+            isLoading || !DEV_ALLOW_MANUAL_RAY
               ? "opacity-50 cursor-not-allowed" 
               : "cursor-pointer"
           } ${
@@ -47,10 +52,15 @@ const LiquidityPage: FC = () => {
               value="Raydium"
               checked={form.dex === "Raydium"}
               onChange={(e) => updateForm("dex", e.target.value)}
-              disabled={isLoading}
+              disabled={isLoading || !DEV_ALLOW_MANUAL_RAY}
               className="text-primary focus:ring-primary w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className="text-fg font-medium">Raydium</span>
+            <span className="text-fg font-medium">
+              Raydium
+              {!DEV_ALLOW_MANUAL_RAY && (
+                <span className="text-xs text-muted ml-2">(Disabled on devnet)</span>
+              )}
+            </span>
           </label>
           <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
             isLoading 
@@ -547,6 +557,36 @@ const LiquidityPage: FC = () => {
                       ❌ {errorMsg}
                     </p>
                   </div>
+                )}
+
+                {/* Manual Pool Entry for Raydium NoPool errors on devnet */}
+                {errorMsg.includes('NoPool') && form.dex === "Raydium" && DEV_ALLOW_MANUAL_RAY && (
+                  <details className="mt-3">
+                    <summary className="text-sm text-muted cursor-pointer hover:text-fg transition-colors">
+                      Advanced (Devnet): Enter CLMM pool address
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <input
+                        className="w-full p-3 rounded-lg border border-muted/10 bg-transparent text-fg focus:border-muted/25 focus:ring-transparent"
+                        placeholder="CLMM pool address"
+                        value={manualPool}
+                        onChange={(e) => setManualPool(e.target.value.trim())}
+                      />
+                      <button 
+                        className="btn btn-ghost w-full py-2" 
+                        onClick={() => {
+                          if (manualPool) {
+                            // Set the selected pool and retry quote
+                            setSelectedPool(manualPool);
+                            getQuote();
+                          }
+                        }} 
+                        disabled={!manualPool}
+                      >
+                        Use this pool
+                      </button>
+                    </div>
+                  </details>
                 )}
               </div>
             )}

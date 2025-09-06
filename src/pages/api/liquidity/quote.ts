@@ -3,6 +3,7 @@ import { Connection } from "@solana/web3.js";
 import { getOrcaQuote } from "../../../lib/orcaClient";
 import { getRaydiumQuote } from "../../../lib/raydiumClient";
 import { findClmmPoolId } from "../../../lib/raydiumClmmPools";
+import { DEV_ALLOW_MANUAL_RAY } from "../../../lib/env";
 
 interface LiquidityQuoteRequest {
   dex: "Raydium" | "Orca";
@@ -10,6 +11,7 @@ interface LiquidityQuoteRequest {
   tokenMint: string;
   baseAmount: string;
   quoteAmount: string;
+  selectedPool?: string; // Manual pool override for devnet
 }
 
 interface LiquidityQuoteResponse {
@@ -123,36 +125,52 @@ export default async function handler(
         } catch (orcaError) {
           console.warn("Orca quote failed:", orcaError);
           if (orcaError instanceof Error) {
-            if (orcaError.message.includes('No pool available')) {
-              return res.status(404).json({ error: "NoPool", message: "No pool available for this pair on Orca" });
+            if (orcaError.message.includes('No Orca pool found')) {
+              return res.status(404).json({ error: "NoPool", message: orcaError.message });
             } else if (orcaError.message.includes('Invalid token mint address')) {
+              return res.status(400).json({ error: "InvalidRequest", message: "Invalid token mint address" });
+            } else if (orcaError.message.includes('Invalid public key')) {
               return res.status(400).json({ error: "InvalidRequest", message: "Invalid token mint address" });
             }
           }
           return res.status(502).json({ error: "ProviderError", message: "Orca API error" });
         }
       } else if (dex === "Raydium") {
+        // Check if manual Raydium is allowed on devnet
+        if (!DEV_ALLOW_MANUAL_RAY) {
+          return res.status(400).json({
+            error: "Raydium disabled",
+            message: "Raydium functionality is disabled on devnet"
+          });
+        }
+        
         // Get Raydium quote
         try {
           // For USDC/TOKEN pairs, try to find CLMM pool ID first
           let clmmPoolId: string | null = null;
           if (pair === "USDC/TOKEN") {
-            try {
-              console.log(`Attempting to find CLMM pool for ${tokenMint} vs USDC`);
-              const connection = new Connection(
-                process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
-              );
-              
-              clmmPoolId = await findClmmPoolId({ connection, tokenMint });
-              
-              if (clmmPoolId) {
-                console.log(`Found CLMM pool: ${clmmPoolId}`);
-              } else {
-                console.log(`No CLMM pool found for ${tokenMint} vs USDC`);
+            // Check if manual pool is provided (devnet feature)
+            if (body.selectedPool) {
+              console.log(`[devnet] using manual CLMM pool: ${body.selectedPool}`);
+              clmmPoolId = body.selectedPool;
+            } else {
+              try {
+                console.log(`Attempting to find CLMM pool for ${tokenMint} vs USDC`);
+                const connection = new Connection(
+                  process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+                );
+                
+                clmmPoolId = await findClmmPoolId({ connection, tokenMint });
+                
+                if (clmmPoolId) {
+                  console.log(`Found CLMM pool: ${clmmPoolId}`);
+                } else {
+                  console.log(`No CLMM pool found for ${tokenMint} vs USDC`);
+                }
+              } catch (clmmError) {
+                console.warn("CLMM pool discovery failed:", clmmError);
+                // Don't fail the quote if CLMM discovery fails
               }
-            } catch (clmmError) {
-              console.warn("CLMM pool discovery failed:", clmmError);
-              // Don't fail the quote if CLMM discovery fails
             }
           }
           

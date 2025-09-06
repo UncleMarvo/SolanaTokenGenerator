@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Admin authentication check using new requireAdmin function
-  const auth = requireAdmin(req as any);
+  const auth = requireAdmin(req);
   if (!auth.ok) {
     return res.status(401).json({ error: "Unauthorized" });
   }
