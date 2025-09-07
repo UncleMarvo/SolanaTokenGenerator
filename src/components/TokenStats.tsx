@@ -16,8 +16,14 @@ const TokenStats: FC<TokenStatsProps> = ({ mint, tokenName, tokenSymbol }) => {
   const [copied, setCopied] = useState(false);
 
   // Devnet-specific logic for conditional rendering
-  const showExternal = !DEV_DISABLE_DEXSCR;
-  const label = IS_DEVNET ? "Devnet" : undefined;
+  const [isClient, setIsClient] = useState(false);
+  const showExternal = isClient && !DEV_DISABLE_DEXSCR;
+  const label = isClient && IS_DEVNET ? "Devnet" : undefined;
+
+  // Ensure client-side rendering to prevent hydration mismatches
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Extract existing fetch into a function
   async function loadStats(force = false) {

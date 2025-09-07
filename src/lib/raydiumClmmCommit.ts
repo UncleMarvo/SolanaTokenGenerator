@@ -31,6 +31,7 @@ export type ClmmCommitParams = {
  */
 export interface ClmmCommitResult {
   txBase64: string;        // Base64 encoded transaction for client signing
+  partialSigners?: string[]; // Base58 encoded keypairs that need to be partially signed
   summary: {
     tickLower: number;     // Lower tick boundary
     tickUpper: number;     // Upper tick boundary
@@ -288,8 +289,8 @@ export async function buildRaydiumClmmCommitTx(p: ClmmCommitParams): Promise<Clm
   // Note: In production, you'd add the actual Raydium CLMM instructions here
   // using the net amounts (netA, netB) instead of the original amounts
   
-  tx.feePayer = owner;
-  tx.recentBlockhash = (await conn.getLatestBlockhash("finalized")).blockhash;
+  // Note: Do NOT set blockhash and feePayer here
+  // These will be set in the client-side sending flow to prevent message changes after signing
   const txBase64 = tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64");
 
   // NEW: 6) Add fee summary to response

@@ -7,6 +7,7 @@ import { DEV_ALLOW_MANUAL_RAY } from "../../../lib/env";
 import { withRpc } from "../../../lib/rpc";
 import { logAction } from "../../../lib/log";
 import { IS_DEVNET } from "../../../lib/network";
+import { enforceCanaryCaps } from "../../../lib/canaryCaps";
 
 interface LiquidityCommitRequest {
   dex: "Raydium" | "Orca";
@@ -84,6 +85,40 @@ export default async function handler(
       return res
         .status(400)
         .json({ error: "MissingFields", message: "Missing required fields" });
+    }
+
+    // Canary guard: enforce mainnet restrictions using base units (no-op on devnet)
+    try {
+      // Extract wallet address from request body
+      const owner = req.body.owner;
+      if (!owner) {
+        return res.status(400).json({ 
+          error: "MissingWallet", 
+          message: "Wallet address is required for canary validation" 
+        });
+      }
+      
+      // Calculate UI amounts for validation
+      const sideAUi = pair === "SOL/TOKEN" ? parseFloat(baseAmount) : undefined;
+      const sideBUi = pair === "SOL/TOKEN" ? parseFloat(quoteAmount) : parseFloat(baseAmount);
+      
+      // Determine mint addresses
+      const mintA = pair === "SOL/TOKEN" ? "So11111111111111111111111111111111111111112" : "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+      const mintB = tokenMint;
+      
+      // Use base unit validation with on-chain mint decimals
+      const conn = new Connection(process.env.RPC_PRIMARY!, "confirmed");
+      await enforceCanaryCaps(conn, {
+        owner,
+        mintA,
+        mintB,
+        uiA: sideAUi,
+        uiB: sideBUi,
+      });
+    } catch (canaryError: any) {
+      const code = canaryError?.code || "CanaryError";
+      const message = canaryError?.message || "Canary validation failed";
+      return res.status(400).json({ error: code, message });
     }
 
     // Handle Raydium CLMM (real implementation)

@@ -1,7 +1,8 @@
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { useLiquidityWizard } from "../hooks/useLiquidityWizard";
+import { useCanaryStatus, useWalletCanaryCheck } from "../hooks/useCanaryStatus";
 import { AiOutlineClose } from "react-icons/ai";
 import { Spinner } from "../components/ui/Spinner";
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
@@ -18,6 +19,8 @@ const LiquidityPage: FC = () => {
     isCommitting,
     showConfirmModal,
     commitResult,
+    txPhase,
+    isTxInFlight,
     updateForm,
     nextStep,
     prevStep,
@@ -31,6 +34,79 @@ const LiquidityPage: FC = () => {
 
   // Manual pool entry state for devnet
   const [manualPool, setManualPool] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  // Canary status checks
+  const canaryStatus = useCanaryStatus();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const { isAllowed: isWalletAllowed, isLoading: isWalletCheckLoading } = useWalletCanaryCheck(walletAddress);
+
+  // Ensure client-side rendering to prevent hydration mismatches
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Get wallet address for canary checks
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.solana?.isPhantom && window.solana.publicKey) {
+      setWalletAddress(window.solana.publicKey.toString());
+    }
+  }, []);
+
+  // Check if commits are allowed based on canary status
+  const isCommitAllowed = () => {
+    if (!canaryStatus) return true; // Default to allowed if status not loaded
+    
+    // Devnet: always allowed
+    if (!canaryStatus.isMainnet) return true;
+    
+    // Mainnet: check canary mode
+    if (!canaryStatus.canaryMode) return false; // Mainnet disabled
+    
+    // Canary mode: check wallet allow-list
+    if (isWalletCheckLoading) return true; // Allow while checking
+    return isWalletAllowed === true;
+  };
+
+  // Get canary status message
+  const getCanaryMessage = () => {
+    if (!canaryStatus) return null;
+    
+    // Devnet: no restrictions
+    if (!canaryStatus.isMainnet) return null;
+    
+    // Mainnet disabled
+    if (!canaryStatus.canaryMode) {
+      return {
+        type: "error" as const,
+        message: "Mainnet commits disabled."
+      };
+    }
+    
+    // Canary mode: check wallet
+    if (isWalletCheckLoading) {
+      return {
+        type: "info" as const,
+        message: "Checking wallet allow-list status..."
+      };
+    }
+    
+    if (isWalletAllowed === false) {
+      return {
+        type: "error" as const,
+        message: "This wallet isn't in the mainnet test allow-list."
+      };
+    }
+    
+    if (isWalletAllowed === true) {
+      return {
+        type: "info" as const,
+        message: `Canary mode: Max ${canaryStatus.maxSol} SOL, ${canaryStatus.maxTokenUi} tokens per side.`
+      };
+    }
+    
+    return null;
+  };
 
   const renderStep1 = () => (
     <div className="space-y-6">
@@ -38,7 +114,7 @@ const LiquidityPage: FC = () => {
         <h3 className="text-xl font-bold mb-4">Step 1: Choose DEX</h3>
         <div className="space-y-3">
           <label className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
-            isLoading || !DEV_ALLOW_MANUAL_RAY
+            isLoading || (isClient && !DEV_ALLOW_MANUAL_RAY)
               ? "opacity-50 cursor-not-allowed" 
               : "cursor-pointer"
           } ${
@@ -52,12 +128,12 @@ const LiquidityPage: FC = () => {
               value="Raydium"
               checked={form.dex === "Raydium"}
               onChange={(e) => updateForm("dex", e.target.value)}
-              disabled={isLoading || !DEV_ALLOW_MANUAL_RAY}
+              disabled={isLoading || (isClient && !DEV_ALLOW_MANUAL_RAY)}
               className="text-primary focus:ring-primary w-5 h-5 border-2 border-primary/30 checked:bg-primary checked:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <span className="text-fg font-medium">
               Raydium
-              {!DEV_ALLOW_MANUAL_RAY && (
+              {isClient && !DEV_ALLOW_MANUAL_RAY && (
                 <span className="text-xs text-muted ml-2">(Disabled on devnet)</span>
               )}
             </span>
@@ -329,6 +405,22 @@ const LiquidityPage: FC = () => {
         </div>
       </div>
 
+      {/* Canary status message */}
+      {(() => {
+        const canaryMessage = getCanaryMessage();
+        if (!canaryMessage) return null;
+        
+        return (
+          <div className={`rounded-lg p-3 text-sm ${
+            canaryMessage.type === "error" 
+              ? "bg-error/20 border border-error/30 text-error" 
+              : "bg-info/20 border border-info/30 text-info"
+          }`}>
+            {canaryMessage.message}
+          </div>
+        );
+      })()}
+
       <div className="flex justify-between">
         <button
           onClick={goBackFromQuote}
@@ -338,9 +430,10 @@ const LiquidityPage: FC = () => {
         </button>
         <button
           onClick={() => setShowConfirmModal(true)}
-          className="btn btn-primary w-full py-3 tracking-wide"
+          disabled={isTxInFlight || txPhase !== "idle" || !isCommitAllowed()}
+          className="btn btn-primary w-full py-3 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Confirm & Commit Liquidity
+          {isTxInFlight ? `Transaction ${txPhase}...` : "Confirm & Commit Liquidity"}
         </button>
       </div>
     </div>
@@ -560,7 +653,7 @@ const LiquidityPage: FC = () => {
                 )}
 
                 {/* Manual Pool Entry for Raydium NoPool errors on devnet */}
-                {errorMsg.includes('NoPool') && form.dex === "Raydium" && DEV_ALLOW_MANUAL_RAY && (
+                {errorMsg.includes('NoPool') && form.dex === "Raydium" && isClient && DEV_ALLOW_MANUAL_RAY && (
                   <details className="mt-3">
                     <summary className="text-sm text-muted cursor-pointer hover:text-fg transition-colors">
                       Advanced (Devnet): Enter CLMM pool address
@@ -684,10 +777,12 @@ const LiquidityPage: FC = () => {
               <div className="space-y-3">
                 <button
                   onClick={commitLiquidity}
-                  disabled={isCommitting}
-                  className="btn btn-primary w-full py-3 tracking-wide disabled:opacity-50"
+                  disabled={isCommitting || isTxInFlight || txPhase !== "idle" || !isCommitAllowed()}
+                  className="btn btn-primary w-full py-3 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isCommitting ? "Building Transaction..." : "Confirm & Commit Liquidity"}
+                  {isCommitting ? "Building Transaction..." : 
+                   isTxInFlight ? `Transaction ${txPhase}...` : 
+                   "Confirm & Commit Liquidity"}
                 </button>
                 <p className="small mt-2 text-center">
                   Includes platform fee (0.02 SOL) and 2% skim. <a className="underline" href="/pricing">Details</a>

@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import NetworkSwitcher from "./NetworkSwitcher";
 import { useAdminStatus } from "../hooks/useAdminStatus";
@@ -7,6 +7,12 @@ import { IS_DEVNET } from "../lib/env";
 export const Nav: FC = () => {
   const { pathname } = useRouter();
   const isAdmin = useAdminStatus();
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure client-side rendering to prevent hydration mismatches
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-neutral-950/60 bg-neutral-950/90 border-b border-neutral-800/60">
@@ -35,14 +41,14 @@ export const Nav: FC = () => {
         {/* Right: Network Switcher, Devnet Indicator, and Admin */}
         <div className="ml-auto flex items-center gap-3">
           <NetworkSwitcher />
-          {/* Devnet indicator - only shown on devnet */}
-          {IS_DEVNET && (
+          {/* Devnet indicator - only shown on devnet and client-side */}
+          {isClient && IS_DEVNET && (
             <span className="chip bg-warning/10 border-warning/20 text-warning">
               Devnet
             </span>
           )}
-          {/* Admin login link - only shown to admin wallets */}
-          {isAdmin && (
+          {/* Admin login link - only shown to admin wallets and client-side */}
+          {isClient && isAdmin && (
             <a 
               className="nav-link text-xs text-neutral-500 hover:text-neutral-300" 
               href="/admin/login"

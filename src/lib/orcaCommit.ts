@@ -8,7 +8,7 @@ import {
   Keypair,
   LAMPORTS_PER_SOL
 } from "@solana/web3.js";
-import { DEV_RELAX_CONFIRM_MS } from "./env";
+import { DEV_RELAX_CONFIRM_MS, RUN_ORCA_REAL } from "./env";
 import { 
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction, 
@@ -18,6 +18,7 @@ import {
 import { increaseLiquidityInstructions } from "@orca-so/whirlpools";
 import { FEE_WALLET, FLAT_FEE_SOL, SKIM_BP, applySkimBp, solToLamports } from "./fees";
 import { IS_DEVNET } from "./network";
+import { buildOrcaRealCommit } from "./orcaReal";
 
 // Orca Whirlpool Program ID
 const ORCA_WHIRLPOOL_PROGRAM_ID = new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
@@ -58,6 +59,7 @@ export interface OrcaCommitRequest {
 
 export interface OrcaCommitResponse {
   txBase64: string;
+  partialSigners?: string[]; // Base58 encoded keypairs that need to be partially signed
   summary: {
     whirlpool: string;
     tokenMintA: string;
@@ -130,6 +132,23 @@ export async function buildCommitTx({
     if (slippageBp < 10 || slippageBp > 500) {
       throw new Error("Slippage must be between 10-500 basis points (0.1%-5%)");
     }
+
+    // Check if we should use real Orca flow
+    if (RUN_ORCA_REAL) {
+      console.log("Using real Orca production flow");
+      return await buildRealOrcaCommit({
+        connection,
+        walletPubkey,
+        whirlpool: whirlpoolPk,
+        tokenMintA: mintAPk,
+        tokenMintB: mintBPk,
+        inputMint,
+        inputAmountUi,
+        slippageBp
+      });
+    }
+
+    console.log("Using mock/dev Orca flow for testing");
 
     // For now, use default values for tick spacing and current tick
     // In the future, this could be enhanced to fetch real pool data
@@ -231,8 +250,11 @@ export async function buildCommitTx({
       }
     }
 
-    // 4) Add Orca increaseLiquidity instruction using NET amounts (after skim)
-    // Note: This is a placeholder - in production you'd use actual Orca SDK
+    // 4) Add Orca liquidity instruction using NET amounts (after skim)
+    // Note: For production, this would need to:
+    // 1. Create a new position NFT first
+    // 2. Then increase liquidity on that position
+    // For now, we use a placeholder that works for testing
     const increaseLiquidityIx = createPlaceholderIncreaseLiquidityIx({
       whirlpool: whirlpoolPk,
       owner: walletPubkey,
@@ -247,13 +269,12 @@ export async function buildCommitTx({
     
     instructions.push(increaseLiquidityIx);
 
-    // Create Transaction, add instructions, set feePayer and recentBlockhash
+    // Create Transaction and add instructions
     const transaction = new Transaction();
     transaction.add(...instructions);
     
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = walletPubkey;
+    // Note: Do NOT set blockhash and feePayer here
+    // These will be set in the client-side sending flow to prevent message changes after signing
 
     // Serialize to base64 (requireAllSignatures=false)
     const txBase64 = transaction.serialize({
@@ -349,7 +370,7 @@ function createPlaceholderIncreaseLiquidityIx({
   slippageBp: number;
 }): TransactionInstruction {
   
-  // This is a placeholder instruction
+  // This is a placeholder instruction for testing purposes
   // In production, you'd use the actual Orca SDK:
   // return WhirlpoolIx.increaseLiquidityIx(ctx.program, {
   //   whirlpool,
@@ -369,17 +390,13 @@ function createPlaceholderIncreaseLiquidityIx({
   //   slippageBp
   // });
   
-  // For now, return a dummy instruction that will be replaced
-  // TODO: Implement real Orca SDK integration when position creation is available
-  return new TransactionInstruction({
-    keys: [
-      { pubkey: whirlpool, isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: true, isWritable: false },
-      { pubkey: mintA, isSigner: false, isWritable: false },
-      { pubkey: mintB, isSigner: false, isWritable: false },
-    ],
-    programId: ORCA_WHIRLPOOL_PROGRAM_ID,
-    data: Buffer.from([0x01, ...new Array(32).fill(0)]) // Dummy data
+  // For testing purposes, create a valid mock transaction using SystemProgram
+  // This creates a simple transfer instruction that can be signed by the wallet
+  // In production, this would be replaced with actual Orca SDK integration
+  return SystemProgram.transfer({
+    fromPubkey: owner,
+    toPubkey: owner, // Transfer to self (no-op for testing)
+    lamports: 0 // Zero amount transfer for testing
   });
 }
 
@@ -402,12 +419,14 @@ export async function sendAndConfirm({
   }
 
   try {
-    // Get recent blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
+    // Get fresh blockhash and lastValidBlockHeight BEFORE any signing
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+    
+    // Set transaction properties - MUST be done before signing
     tx.recentBlockhash = blockhash;
     tx.feePayer = wallet.publicKey;
 
-    // Sign and send transaction
+    // DO NOT modify transaction after this point to avoid signature invalidation
     const signedTx = await wallet.signTransaction(tx);
     const txid = await connection.sendRawTransaction(signedTx.serialize());
     
@@ -472,4 +491,90 @@ export async function validateBalances({
       error: "Failed to validate balances" 
     };
   }
+}
+
+/**
+ * Builds a real Orca commit transaction using the production flow
+ * This function bridges the real Orca implementation with the existing interface
+ */
+async function buildRealOrcaCommit({
+  connection,
+  walletPubkey,
+  whirlpool,
+  tokenMintA,
+  tokenMintB,
+  inputMint,
+  inputAmountUi,
+  slippageBp
+}: {
+  connection: Connection;
+  walletPubkey: PublicKey;
+  whirlpool: PublicKey;
+  tokenMintA: PublicKey;
+  tokenMintB: PublicKey;
+  inputMint: "A" | "B";
+  inputAmountUi: string;
+  slippageBp: number;
+}): Promise<OrcaCommitResponse> {
+  
+  // Get quote to determine token amounts
+  const quote = await getSimplifiedQuote(
+    Math.floor(parseFloat(inputAmountUi) * Math.pow(10, 9)), 
+    inputMint, 
+    tokenMintA, 
+    tokenMintB
+  );
+  
+  // Build real Orca commit transaction
+  const { tx, signers, positionMint, positionPda } = await buildOrcaRealCommit({
+    owner: walletPubkey,
+    whirlpool,
+    mintA: tokenMintA,
+    mintB: tokenMintB,
+    tokenMaxA: BigInt(quote.tokenMaxA.toString()),
+    tokenMaxB: BigInt(quote.tokenMaxB.toString()),
+    slippageBps: slippageBp
+  });
+
+  // Note: Do NOT set blockhash and feePayer here
+  // These will be set in the client-side sending flow to prevent message changes after signing
+
+  // Serialize transaction
+  const txBase64 = tx.serialize({
+    requireAllSignatures: false,
+    verifySignatures: false
+  }).toString('base64');
+
+  // Calculate expected output amount
+  const expectedOutputAmountUi = (parseFloat(inputAmountUi) * 0.99).toFixed(6);
+
+  // Apply fee calculations for summary
+  const qA = BigInt(quote.tokenMaxA.toString());
+  const qB = BigInt(quote.tokenMaxB.toString());
+  const { skim: skimA } = applySkimBp(qA);
+  const { skim: skimB } = applySkimBp(qB);
+
+  return {
+    txBase64,
+    partialSigners: signers.map(signer => Buffer.from(signer.secretKey).toString('base64')), // Include partial signers
+    summary: {
+      whirlpool: whirlpool.toString(),
+      tokenMintA: tokenMintA.toString(),
+      tokenMintB: tokenMintB.toString(),
+      inputMint,
+      inputAmountUi,
+      expectedOutputAmountUi,
+      slippageBp,
+      tickLower: 0, // Will be set by real implementation
+      tickUpper: 0, // Will be set by real implementation
+      currentTick: 0, // Will be fetched from pool
+      tickSpacing: 64, // Will be fetched from pool
+      fee: {
+        sol: FLAT_FEE_SOL,
+        skimBp: SKIM_BP,
+        skimA: skimA.toString(),
+        skimB: skimB.toString()
+      }
+    }
+  };
 }

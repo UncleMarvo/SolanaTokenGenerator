@@ -10,3 +10,7 @@ const toNum = (v: string | undefined, def = 0) => (Number.isFinite(Number(v)) ? 
 export const DEV_RELAX_CONFIRM_MS = toNum(process.env.DEVNET_RELAX_CONFIRM_MS, IS_DEVNET ? 60000 : 0);
 export const DEV_DISABLE_DEXSCR   = toBool(process.env.DEVNET_DISABLE_DEXSCR, IS_DEVNET ? true : false);
 export const DEV_ALLOW_MANUAL_RAY = toBool(process.env.DEVNET_ALLOW_MANUAL_RAYDIUM, IS_DEVNET ? true : false);
+
+/** Orca production configuration */
+export const ORCA_PROD = process.env.ORCA_PROD === "1";
+export const RUN_ORCA_REAL = (process.env.NETWORK === "mainnet" && ORCA_PROD) || (process.env.NETWORK === "devnet" && ORCA_PROD === true);
