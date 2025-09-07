@@ -215,6 +215,21 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           createdAt: Date.now(),
         });
 
+        // Log token creation to database (non-blocking)
+        fetch("/api/my-tokens/log", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ 
+            mint: mintAddress, 
+            creatorWallet: publicKey.toBase58(), 
+            name: token.name, 
+            ticker: token.symbol 
+          })
+        }).catch((error) => { 
+          console.error("Failed to log token creation:", error);
+          // Non-blocking - don't show error to user
+        });
+
         notify({
           type: "success",
           message: "Token was created successfully",

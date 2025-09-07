@@ -77,3 +77,18 @@ model AdminSession {
   @@index([nonce])
   @@index([createdAt])
 }
+
+// Created Tokens - Tracks tokens created by users
+model CreatedToken {
+  mint           String   @id
+  creatorWallet  String   @db.VarChar(64)
+  name           String
+  ticker         String
+  createdAt      DateTime @default(now())
+  // optional future fields:
+  // imageUrl     String?
+  // badge        String?   // Honest/Degen etc.
+  
+  @@index([creatorWallet])
+  @@index([createdAt])
+}

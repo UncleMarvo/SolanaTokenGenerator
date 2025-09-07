@@ -37,6 +37,13 @@ export const Nav: FC = () => {
         >
           Trust
         </a>
+        <a 
+          href="/my-tokens" 
+          data-active={pathname === "/my-tokens"} 
+          className="nav-link"
+        >
+          My Tokens
+        </a>
         
         {/* Right: Network Switcher, Devnet Indicator, and Admin */}
         <div className="ml-auto flex items-center gap-3">
