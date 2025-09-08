@@ -11,6 +11,13 @@ type Item = {
   createdAt: string; 
 };
 
+// Type definition for honest status
+type HonestStatus = {
+  isHonest: boolean;
+  mintNull: boolean;
+  freezeNull: boolean;
+};
+
 /**
  * My Tokens Page
  * Displays all tokens created by the connected wallet
@@ -20,6 +27,7 @@ export default function MyTokensPage() {
   const { publicKey, connected } = useWallet();
   const [items, setItems] = useState<Item[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [statuses, setStatuses] = useState<Record<string, HonestStatus>>({});
 
   // Fetch tokens when wallet connection changes
   useEffect(() => {
@@ -35,7 +43,26 @@ export default function MyTokensPage() {
           cache: "no-store" 
         });
         const j = await r.json();
-        setItems(j?.ok ? j.items : []);
+        const fetchedItems = j?.ok ? j.items : [];
+        setItems(fetchedItems);
+        
+        // Batch fetch honest statuses for all tokens
+        const mints = (fetchedItems || []).map(i => i.mint);
+        if (mints.length) {
+          const statusResponse = await fetch(`/api/honest-status/batch`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ mints })
+          });
+          const statusJson = await statusResponse.json();
+          const statusMap: Record<string, HonestStatus> = {};
+          if (statusJson?.ok && Array.isArray(statusJson.items)) {
+            statusJson.items.forEach((st: any) => { 
+              statusMap[st.mint] = st; 
+            });
+          }
+          setStatuses(statusMap);
+        }
       } catch (error) { 
         console.error("Error fetching tokens:", error);
         setItems([]); 
@@ -86,14 +113,26 @@ export default function MyTokensPage() {
         {/* Token list */}
         {connected && !!items?.length && (
           <div className="grid mt-6 gap-4 md:grid-cols-2">
-            {items.map((it) => (
-              <article key={it.mint} className="card p-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="h3">
-                    {it.name} <span className="text-neutral-400">({it.ticker})</span>
-                  </h3>
-                  <span className="chip">Mint</span>
-                </div>
+            {items.map((it) => {
+              const st = statuses[it.mint];
+              const honest = st?.isHonest;
+              
+              return (
+                <article key={it.mint} className="card p-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="h3">
+                      {it.name} <span className="text-neutral-400">({it.ticker})</span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span 
+                        className="chip" 
+                        title={honest ? "Mint & freeze revoked" : "Pending enforcement"}
+                      >
+                        {honest ? "Honest Launch ✅" : "Pending Honest Launch"}
+                      </span>
+                      <span className="chip">Mint</span>
+                    </div>
+                  </div>
                 
                 {/* Mint address */}
                 <p className="small mt-1 break-all text-neutral-300">
@@ -123,9 +162,16 @@ export default function MyTokensPage() {
                   >
                     Download Meme Kit
                   </a>
+                  {/* Enforce link for creators when token is not honest */}
+                  {!honest && publicKey?.toBase58() === it.creatorWallet && (
+                    <Link href={`/share/${it.mint}?enforce=1`}>
+                      <a className="btn btn-primary">Enforce</a>
+                    </Link>
+                  )}
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
