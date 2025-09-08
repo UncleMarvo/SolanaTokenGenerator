@@ -11,6 +11,7 @@ export interface ErrorInfo {
 }
 
 export const ERROR_MAP: Record<string, ErrorInfo> = {
+  // Legacy error codes (kept for backward compatibility)
   NoPool: {
     title: "No Pool Found",
     message: "No Raydium CLMM pool available for this token pair",
@@ -57,6 +58,68 @@ export const ERROR_MAP: Record<string, ErrorInfo> = {
     title: "Invalid Transaction",
     message: "The transaction instruction data is invalid",
     solution: "Refresh the page and try again",
+    severity: 'error'
+  },
+  
+  // New standardized error codes from normalizeError
+  SigVerify: {
+    title: "Signature Verification Failed",
+    message: "Signature verification failed. Make sure your wallet is unlocked and try again.",
+    solution: "Unlock your wallet and ensure it's properly connected",
+    severity: 'error'
+  },
+  UserReject: {
+    title: "Transaction Rejected",
+    message: "You rejected the transaction in your wallet.",
+    solution: "Approve the transaction in your wallet to continue",
+    severity: 'info'
+  },
+  NoFunds: {
+    title: "Insufficient Funds",
+    message: "Not enough SOL to cover fees/rent. Top up and retry.",
+    solution: "Add more SOL to your wallet for transaction fees",
+    severity: 'error'
+  },
+  AccountOwner: {
+    title: "Account Ownership Issue",
+    message: "A required token account is owned by another wallet. Refresh and try again.",
+    solution: "Refresh the page to reload account information",
+    severity: 'error'
+  },
+  Uninitialized: {
+    title: "Account Not Initialized",
+    message: "A required token account isn't initialized. We'll create it automatically—please retry.",
+    solution: "Retry the transaction - the system will create the required account",
+    severity: 'warning'
+  },
+  Slippage: {
+    title: "Slippage Too High",
+    message: "Price moved too much (slippage). Increase slippage or reduce amount.",
+    solution: "Increase slippage tolerance or reduce the transaction amount",
+    severity: 'warning'
+  },
+  StaleBlockhash: {
+    title: "Network Busy",
+    message: "Network was busy. Retrying usually fixes this.",
+    solution: "The system will automatically retry with a fresh blockhash",
+    severity: 'warning'
+  },
+  RateLimited: {
+    title: "Rate Limited",
+    message: "RPC is rate-limited. Wait a few seconds and try again.",
+    solution: "Wait a few seconds before trying again",
+    severity: 'warning'
+  },
+  ProgramError: {
+    title: "Program Error",
+    message: "A program rejected the transaction. Try a smaller amount or different pool.",
+    solution: "Try reducing the amount or using a different liquidity pool",
+    severity: 'error'
+  },
+  Unknown: {
+    title: "Unknown Error",
+    message: "Something went wrong. Please try again.",
+    solution: "Try the operation again or refresh the page",
     severity: 'error'
   }
 };

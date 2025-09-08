@@ -4,7 +4,7 @@ import { buildIncreaseTx, IncreaseParams } from "../../../lib/orcaActions.increa
 import { preflightPositionOperation, getFriendlyErrorMessage } from "../../../lib/preflight";
 import { getTokenBalanceUi } from "../../../lib/balances";
 import { clampSlippageBp } from "../../../lib/slippage";
-import { mapDexError } from "../../../lib/errors";
+import { normalizeError } from "../../../lib/errors";
 import { flags } from "../../../lib/flags";
 import { withRpc } from "../../../lib/rpc";
 import { logAction } from "../../../lib/log";
@@ -169,14 +169,14 @@ export default async function handler(
       console.error("Error building increase liquidity transaction:", error);
       
       // Map error to clean code and message
-      const { code, message } = mapDexError(error);
+      const { code, message } = normalizeError(error);
       return res.status(400).json({ error: code, message });
     }
   } catch (error) {
     console.error("Error in increase liquidity handler:", error);
     
     // Map error to clean code and message
-    const { code, message } = mapDexError(error);
+    const { code, message } = normalizeError(error);
     return res.status(400).json({ error: code, message });
   }
 }

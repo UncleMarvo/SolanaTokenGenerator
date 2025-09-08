@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { buildCollectTx, CollectParams } from "../../../lib/orcaActions.collect";
 import { preflightPositionOperation, getFriendlyErrorMessage } from "../../../lib/preflight";
-import { mapDexError } from "../../../lib/errors";
+import { normalizeError } from "../../../lib/errors";
 import { flags } from "../../../lib/flags";
 
 export default async function handler(
@@ -86,7 +86,7 @@ export default async function handler(
     console.error("Error building collect fees transaction:", error);
     
     // Map error to clean code and message
-    const { code, message } = mapDexError(error);
+    const { code, message } = normalizeError(error);
     return res.status(400).json({ error: code, message });
   }
 }

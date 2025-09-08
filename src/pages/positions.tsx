@@ -5,7 +5,7 @@ import { PublicKey, Transaction, Connection } from "@solana/web3.js";
 import { Spinner } from "../components/ui/Spinner";
 import { sendWithRetry } from "../lib/clientSend";
 import { toastError, toastOk } from "../components/toast";
-import { mapFriendlyError } from "../lib/errors";
+import { normalizeError } from "../lib/errors";
 
 interface OrcaPosition {
   positionMint: string;
@@ -247,7 +247,7 @@ const PositionsPage: FC = () => {
       
     } catch (error) {
       // Handle transaction signing/confirmation errors
-      toastError(mapFriendlyError(error));
+      toastError(normalizeError(error).message);
     } finally {
       setIsActionLoading(false);
     }
@@ -327,7 +327,7 @@ const PositionsPage: FC = () => {
       
     } catch (error) {
       // Handle transaction signing/confirmation errors
-      toastError(mapFriendlyError(error));
+      toastError(normalizeError(error).message);
     } finally {
       setIsActionLoading(false);
     }
@@ -404,7 +404,7 @@ const PositionsPage: FC = () => {
       
     } catch (error) {
       // Handle transaction signing/confirmation errors
-      toastError(mapFriendlyError(error));
+      toastError(normalizeError(error).message);
     } finally {
       setIsActionLoading(false);
     }
@@ -496,7 +496,7 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      toastError(mapFriendlyError(error));
+      toastError(normalizeError(error).message);
     } finally {
       setIsActionLoading(false);
     }
@@ -585,7 +585,7 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      toastError(mapFriendlyError(error));
+      toastError(normalizeError(error).message);
     } finally {
       setIsActionLoading(false);
     }
@@ -662,7 +662,7 @@ const PositionsPage: FC = () => {
       fetchPositions();
       
     } catch (error) {
-      toastError(mapFriendlyError(error));
+      toastError(normalizeError(error).message);
     } finally {
       setIsActionLoading(false);
     }

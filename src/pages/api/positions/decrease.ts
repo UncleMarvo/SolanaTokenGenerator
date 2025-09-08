@@ -5,7 +5,7 @@ import { preflightPositionOperation, getFriendlyErrorMessage } from "../../../li
 import { getTokenBalanceUi } from "../../../lib/balances";
 import { isWSOL } from "../../../lib/wsol";
 import { clampSlippageBp } from "../../../lib/slippage";
-import { mapDexError } from "../../../lib/errors";
+import { normalizeError } from "../../../lib/errors";
 import { flags } from "../../../lib/flags";
 
 export default async function handler(
@@ -129,7 +129,7 @@ export default async function handler(
     console.error("Error building decrease liquidity transaction:", error);
     
     // Map error to clean code and message
-    const { code, message } = mapDexError(error);
+    const { code, message } = normalizeError(error);
     return res.status(400).json({ error: code, message });
   }
 }
