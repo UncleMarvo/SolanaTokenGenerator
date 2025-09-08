@@ -1,6 +1,9 @@
 "use client";
 
+import { feeSummaryText } from "@/lib/feeCopy";
+
 export default function PricingPage() {
+  const { flat, skimPct } = feeSummaryText();
   const tiers = [
     {
       name: "Free",
@@ -34,8 +37,8 @@ export default function PricingPage() {
   ];
 
   const fees = [
-    { label: "Launch flat fee", value: "0.02 SOL" },
-    { label: "Liquidity skim", value: "2% of both sides at pool commit" },
+    { label: "Launch flat fee", value: `${flat} SOL` },
+    { label: "Liquidity skim", value: `${skimPct}% of both sides at pool commit` },
     { label: "DEX trading fees", value: "Standard Orca/Raydium swap fees (we do not change these)" },
     { label: "We do not take supply", value: "No token allocation is taken by the platform" },
   ];

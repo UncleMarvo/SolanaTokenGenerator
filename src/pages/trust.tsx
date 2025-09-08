@@ -1,8 +1,10 @@
 "use client";
 
 import DeleteWalletDataButton from "@/components/DeleteWalletDataButton";
+import { feeSummaryText } from "@/lib/feeCopy";
 
 export default function TrustPage() {
+  const { flat, skimPct } = feeSummaryText();
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
       <header className="mb-8">
@@ -22,8 +24,8 @@ export default function TrustPage() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold">Fees</h2>
         <ul className="mt-3 list-disc pl-5 text-sm text-neutral-300 space-y-2">
-          <li><b>Launch flat fee:</b> 0.02 SOL (charged at liquidity commit).</li>
-          <li><b>Liquidity skim:</b> 2% of both sides at pool commit (pool receives 98%).</li>
+          <li><b>Launch flat fee:</b> {flat} SOL (charged at liquidity commit).</li>
+          <li><b>Liquidity skim:</b> {skimPct}% of both sides at pool commit (pool receives {100 - Number(skimPct)}%).</li>
           <li><b>DEX swap fees:</b> Standard Orca/Raydium protocol fees apply. We do not alter these.</li>
           <li><b>Pro upgrade:</b> optional 0.25 SOL (unlocks premium branding assets).</li>
           <li>We do <b>not</b> take a token supply allocation.</li>

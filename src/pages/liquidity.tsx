@@ -6,6 +6,7 @@ import { useCanaryStatus, useWalletCanaryCheck } from "../hooks/useCanaryStatus"
 import { AiOutlineClose } from "react-icons/ai";
 import { Spinner } from "../components/ui/Spinner";
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
+import { FeeCallout, FeeCalloutCompact } from "../components/FeeCallout";
 import { DEV_ALLOW_MANUAL_RAY } from "../lib/env";
 
 const LiquidityPage: FC = () => {
@@ -421,6 +422,9 @@ const LiquidityPage: FC = () => {
         );
       })()}
 
+      {/* Fee Information */}
+      <FeeCallout />
+
       <div className="flex justify-between">
         <button
           onClick={goBackFromQuote}
@@ -525,6 +529,11 @@ const LiquidityPage: FC = () => {
             </div>
           </div>
         )}
+        
+        {/* Fee Summary */}
+        <div className="text-center">
+          <FeeCallout />
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -760,16 +769,8 @@ const LiquidityPage: FC = () => {
                   <div className="flex items-start space-x-2">
                     <div className="text-info text-sm">
                       <p className="font-medium">Platform Fee:</p>
-                      <p className="text-xs opacity-80">
-                        {process.env.NEXT_PUBLIC_LAUNCH_FLAT_FEE_SOL || "0.02"} SOL + {process.env.NEXT_PUBLIC_LAUNCH_SKIM_BP || "200"} bps (2%) skim on both sides
-                      </p>
+                      <FeeCalloutCompact />
                     </div>
-                    <a 
-                      href="/pricing" 
-                      className="text-info hover:text-info/80 text-xs underline flex-shrink-0"
-                    >
-                      Learn more
-                    </a>
                   </div>
                 </div>
               </div>
@@ -784,9 +785,7 @@ const LiquidityPage: FC = () => {
                    isTxInFlight ? `Transaction ${txPhase}...` : 
                    "Confirm & Commit Liquidity"}
                 </button>
-                <p className="small mt-2 text-center">
-                  Includes platform fee (0.02 SOL) and 2% skim. <a className="underline" href="/pricing">Details</a>
-                </p>
+                <FeeCalloutCompact />
                 <button
                   onClick={() => setShowConfirmModal(false)}
                   className="btn btn-ghost w-full py-2 px-4"
