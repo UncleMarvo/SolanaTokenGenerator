@@ -19,6 +19,7 @@ import {
   NetworkConfigurationProvider,
   useNetworkConfiguration,
 } from "./NetworkConfigurationProvider";
+import { CreateTokenModalProvider } from "./CreateTokenModalProvider";
 
 const WalletContextProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { autoConnect } = useAutoConnect();
@@ -77,7 +78,11 @@ export const ContextProvider: FC<{ children: ReactNode }> = ({
     <>
       <NetworkConfigurationProvider>
         <AutoConnectProvider>
-          <WalletContextProvider>{children}</WalletContextProvider>
+          <WalletContextProvider>
+            <CreateTokenModalProvider>
+              {children}
+            </CreateTokenModalProvider>
+          </WalletContextProvider>
         </AutoConnectProvider>
       </NetworkConfigurationProvider>
     </>

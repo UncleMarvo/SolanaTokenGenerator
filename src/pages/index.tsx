@@ -10,13 +10,13 @@ import {
   FaqView,
   AirdropView,
   DonateView,
-  CreateView,
   TokenMetadata,
   ContactView,
 } from "../views";
+import { useCreateTokenModal } from "../contexts/CreateTokenModalProvider";
 
 const Home: NextPage = (props) => {
-  const [openCreateModal, setOpenCreateModal] = useState(false);
+  const { openModal } = useCreateTokenModal();
   const [openTokenMetadata, setOpenTokenMetadata] = useState(false);
   const [openContact, setOpenContact] = useState(false);
   const [openAirdrop, setOpenAirdrop] = useState(false);
@@ -33,29 +33,24 @@ const Home: NextPage = (props) => {
       </Head>
 
 
-      <HomeView setOpenCreateModal={setOpenCreateModal} />
+      <HomeView setOpenCreateModal={openModal} />
       <ToolView
         setOpenAirdrop={setOpenAirdrop}
         setOpenContact={setOpenContact}
-        setOpenCreateModal={setOpenCreateModal}
+        setOpenCreateModal={openModal}
         setOpenSendTransaction={setOpenSendTransaction}
         setOpenTokenMetadata={setOpenTokenMetadata}
       />
       <FeatureView
         setOpenAirdrop={setOpenAirdrop}
         setOpenContact={setOpenContact}
-        setOpenCreateModal={setOpenCreateModal}
+        setOpenCreateModal={openModal}
         setOpenSendTransaction={setOpenSendTransaction}
         setOpenTokenMetadata={setOpenTokenMetadata}
       />
       <OfferView />
       <FaqView />
 
-      {openCreateModal && (
-        <div className="new_loader relative h-full bg-slate-900">
-          <CreateView setOpenCreateModal={setOpenCreateModal} />
-        </div>
-      )}
      
       {openTokenMetadata && (
         <div className="new_loader relative h-full bg-slate-900">
