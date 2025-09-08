@@ -19,7 +19,10 @@ import { getSocialShareUrls } from "../../helpers/share";
 import dynamic from "next/dynamic";
 
 // Dynamically import WsolDustBanner to avoid SSR issues
-const WsolDustBanner = dynamic(() => import("../../components/WsolDustBanner"), { ssr: false });
+const WsolDustBanner = dynamic(
+  () => import("../../components/WsolDustBanner"),
+  { ssr: false }
+);
 
 const TokenSharePage: FC = () => {
   const router = useRouter();
@@ -87,7 +90,7 @@ const TokenSharePage: FC = () => {
     try {
       // First, try to get from localStorage (fast, for recent tokens)
       let tokenData = tokenStorage.getToken(mint as string);
-      
+
       // If not found in localStorage, fetch from database
       if (!tokenData) {
         const response = await fetch(`/api/token/metadata?mint=${mint}`);
@@ -100,7 +103,7 @@ const TokenSharePage: FC = () => {
           }
         }
       }
-      
+
       setToken(tokenData);
       setIsLoading(false);
 
@@ -234,7 +237,10 @@ const TokenSharePage: FC = () => {
           await bustCacheAndRefresh();
           setIsOnChainVerified(true);
         } else {
-          alert("⚠️ Token verification failed: " + (result.reason || "Unknown reason"));
+          alert(
+            "⚠️ Token verification failed: " +
+              (result.reason || "Unknown reason")
+          );
         }
       } else {
         alert("❌ Verification check failed");
@@ -383,10 +389,10 @@ const TokenSharePage: FC = () => {
       </Head>
 
       <div className="min-h-screen bg-bg text-fg">
-        <div className="container mx-auto px-6 py-8">
-          <div className="max-w-4xl mx-auto pt-20">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto">
             {/* Premium Hero Section */}
-            <div className="section text-center">
+            <div className="text-center mb-4">
               <div className="mx-auto inline-flex items-center justify-center w-28 h-28 rounded-full bg-neutral-900 relative">
                 <img
                   src={token.image || "/brand/meme-placeholder.png"}
@@ -422,13 +428,15 @@ const TokenSharePage: FC = () => {
                 {/* Honest Badge and Preset Badge */}
                 <div className="mt-4 space-y-3">
                   {/* HonestBadge - shows honest launch status and enforce button for creator */}
+                  {/*                   
                   {creatorWallet && (
                     <HonestBadge
                       mint={token.mintAddress}
                       creator={creatorWallet}
                       onEnforce={handleEnforce}
                     />
-                  )}
+                  )} 
+                  */}
 
                   {/* Preset Badge - shows the original preset */}
                   <PresetBadge
@@ -564,7 +572,7 @@ const TokenSharePage: FC = () => {
                         console.error("Failed to copy shill bundle:", error);
                       }
                     }}
-                    className={`font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center space-x-2 ${
+                    className={`btn btn-secondary transition-all duration-300 flex items-center space-x-2 ${
                       copySuccess
                         ? "bg-success text-bg"
                         : "bg-accent hover:bg-accent/80 text-bg"
@@ -578,31 +586,7 @@ const TokenSharePage: FC = () => {
               </div>
 
               {/* LP Status Chips */}
-              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold">LP Status</h2>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-sm text-muted">
-                      Last updated: {new Date().toLocaleTimeString()}
-                    </div>
-                    <button
-                      onClick={() => {
-                        fetchLpChips();
-                        if (walletAddress) {
-                          fetchWalletLP();
-                        }
-                      }}
-                      disabled={isLpLoading}
-                      className="flex items-center space-x-2 text-sm text-muted hover:text-fg transition-colors disabled:opacity-50"
-                    >
-                      <AiOutlineReload
-                        size={16}
-                        className={isLpLoading ? "animate-spin" : ""}
-                      />
-                      <span>Refresh</span>
-                    </button>
-                  </div>
-                </div>
+              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   {/* LP Size */}
                   <div className="bg-muted/10 border border-muted/20 rounded-lg p-4 text-center">
@@ -765,6 +749,10 @@ const TokenSharePage: FC = () => {
                   </div>
                 </div>
 
+                <div className="text-sm text-muted">
+                  Last updated: {new Date().toLocaleTimeString()}
+                </div>
+
                 {/* Data Source Info */}
                 {lpChips?.source && (
                   <div className="mt-4 text-center">
@@ -802,11 +790,10 @@ const TokenSharePage: FC = () => {
                   </div>
                 </summary>
 
-                <div className="mt-6 space-y-4">
+                <div className="mt-2 space-y-4">
                   {/* Check if there's anything to show */}
                   {!isOnChainVerified && !lpChips?.lastTx && !walletLP?.has ? (
-                    <div className="text-center py-8">
-                      <div className="text-4xl mb-4">📋</div>
+                    <div className="text-center py-4">
                       <h3 className="text-lg font-semibold text-muted mb-2">
                         No proofs yet
                       </h3>
@@ -819,7 +806,7 @@ const TokenSharePage: FC = () => {
                           href={`/liquidity?tokenMint=${encodeURIComponent(
                             token.mintAddress
                           )}&dex=Raydium&pair=SOL/TOKEN`}
-                          className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                          className="btn btn-primary"
                         >
                           Add Liquidity
                         </a>
@@ -859,7 +846,7 @@ const TokenSharePage: FC = () => {
                               alert("❌ Error checking verification: " + error);
                             }
                           }}
-                          className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                          className="btn btn-secondary"
                         >
                           Check Honest Launch
                         </button>
@@ -871,7 +858,6 @@ const TokenSharePage: FC = () => {
                       <div className="bg-muted/10 rounded-lg p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className="text-2xl">✅</div>
                             <div>
                               <h3 className="font-semibold">
                                 Honest Verification
@@ -923,7 +909,7 @@ const TokenSharePage: FC = () => {
                                 );
                               }
                             }}
-                            className="bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
+                            className="btn btn-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
                           >
                             Check on Chain
                           </button>
@@ -969,7 +955,9 @@ const TokenSharePage: FC = () => {
                                 </h3>
                                 <p className="text-sm text-muted">
                                   {walletLP.positionsCount} position
-                                  {walletLP.positionsCount !== 1 ? "s" : ""}{" "}
+                                  {walletLP.positionsCount !== 1
+                                    ? "s"
+                                    : ""}{" "}
                                   found
                                 </p>
                               </div>
@@ -1021,7 +1009,7 @@ const TokenSharePage: FC = () => {
                               alert("❌ Failed to copy proof: " + error);
                             }
                           }}
-                          className="bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-6 rounded-lg transition-all duration-300 flex items-center space-x-2"
+                          className="btn btn-secondary duration-300 flex items-center space-x-2"
                         >
                           <AiOutlineCopy size={16} />
                           <span>Copy Proof</span>
@@ -1041,7 +1029,7 @@ const TokenSharePage: FC = () => {
                   href={`/meme-kit?name=${encodeURIComponent(
                     token.name
                   )}&ticker=${encodeURIComponent(token.symbol)}`}
-                  className="btn btn-primary py-3 px-4 text-center"
+                  className="btn btn-primary"
                 >
                   Get Meme Kit
                 </a>
@@ -1054,7 +1042,7 @@ const TokenSharePage: FC = () => {
                   )}&vibe=degen&preset=${encodeURIComponent(
                     token.preset
                   )}&shareUrl=${encodeURIComponent(window.location.href)}`}
-                  className="bg-accent hover:bg-accent/80 text-bg font-bold py-3 px-4 rounded-lg transition-all duration-300 text-center"
+                  className="btn btn-primary"
                 >
                   Download ZIP
                 </a>
@@ -1063,24 +1051,24 @@ const TokenSharePage: FC = () => {
                   href={`/liquidity?tokenMint=${encodeURIComponent(
                     token.mintAddress
                   )}&dex=Raydium&pair=SOL/TOKEN`}
-                  className="btn btn-ghost py-3 px-4 text-center"
+                  className="btn btn-primary"
                 >
                   Add Liquidity
                 </a>
 
                 <button
                   onClick={handleOpenDexScreener}
-                  className="bg-accent hover:bg-accent/80 text-bg font-bold py-3 px-4 rounded-lg transition-all duration-300"
+                  className="btn btn-secondary"
                 >
                   Open on DexScreener
                 </button>
 
                 <button
                   onClick={handleCopyLink}
-                  className={`font-bold py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
+                  className={`btn btn-secondary duration-300 flex items-center justify-center space-x-2 ${
                     copySuccess
                       ? "bg-success text-bg"
-                      : "bg-muted/20 hover:bg-muted/30 text-fg"
+                      : "bg-accent hover:bg-accent/80 text-bg"
                   }`}
                 >
                   <AiOutlineCopy size={16} />
@@ -1103,7 +1091,7 @@ const TokenSharePage: FC = () => {
                     );
                     window.open(shareUrls.twitter, "_blank");
                   }}
-                  className="bg-black hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2"
+                  className="btn btn-primary duration-300 flex items-center justify-center space-x-2"
                 >
                   <FaTwitter size={16} />
                   <span>Share on X</span>
@@ -1119,7 +1107,7 @@ const TokenSharePage: FC = () => {
                     );
                     window.open(shareUrls.telegram, "_blank");
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2"
+                  className="btn btn-primary duration-300 flex items-center justify-center space-x-2"
                 >
                   <FaTelegram size={16} />
                   <span>Share on Telegram</span>
@@ -1141,10 +1129,10 @@ const TokenSharePage: FC = () => {
                       console.error("Failed to copy link:", error);
                     }
                   }}
-                  className={`font-bold py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
+                  className={`btn btn-secondary duration-300 flex items-center justify-center space-x-2 ${
                     copySuccess
                       ? "bg-success text-bg"
-                      : "bg-muted/20 hover:bg-muted/30 text-fg"
+                      : "bg-accent hover:bg-accent/80 text-bg"
                   }`}
                 >
                   <AiOutlineCopy size={16} />
