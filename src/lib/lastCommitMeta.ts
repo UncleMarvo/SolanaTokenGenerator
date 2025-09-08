@@ -15,8 +15,13 @@ export type Meta = {
 // In-memory storage with disk persistence
 const mem = new Map<string, Meta>();
 
-// Bootstrap from disk on startup
+// Bootstrap from disk on startup (client-side only)
 (function init() {
+  // Only run on client-side to avoid server-side fetch errors
+  if (typeof window === "undefined") {
+    return;
+  }
+  
   try {
     // Load data from disk via API route
     fetch("/api/admin/persist", {
@@ -60,20 +65,22 @@ export function saveTx(mint: string, meta: Omit<Meta, "ts">) {
   const rec = { ...meta, ts: Date.now() };
   mem.set(mint, rec);
   
-  // Schedule disk persistence via API route
-  try {
-    fetch("/api/admin/persist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        action: "save", 
-        data: toObj() 
-      })
-    }).catch(error => {
-      console.warn("Failed to persist to disk:", error);
-    });
-  } catch (error) {
-    console.warn("Failed to schedule disk save:", error);
+  // Schedule disk persistence via API route (client-side only)
+  if (typeof window !== "undefined") {
+    try {
+      fetch("/api/admin/persist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          action: "save", 
+          data: toObj() 
+        })
+      }).catch(error => {
+        console.warn("Failed to persist to disk:", error);
+      });
+    } catch (error) {
+      console.warn("Failed to schedule disk save:", error);
+    }
   }
   
   console.log(`Saved tx metadata for ${mint.slice(0, 8)}...:`, meta.txid);

@@ -146,25 +146,25 @@ export default function MyTokensPage() {
                 
                 {/* Action buttons */}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={`/share/${it.mint}`}>
-                    <a className="btn btn-ghost">
+                  <Link href={`/token/${it.mint}`}>
+                    <a className="btn btn-secondary">
                       Open Token Page
                     </a>
                   </Link>
                   <Link href={`/liquidity?mint=${it.mint}`}>
-                    <a className="btn btn-ghost">
+                    <a className="btn btn-secondary">
                       Liquidity Wizard
                     </a>
                   </Link>
                   <a 
-                    href={`/api/kit/download?mint=${it.mint}`} 
-                    className="btn btn-primary"
+                    href={`/api/meme/kit.zip?name=${encodeURIComponent(it.name)}&ticker=${encodeURIComponent(it.ticker)}&vibe=degen&preset=degen&shareUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/token/' + it.mint : '')}`} 
+                    className="btn btn-secondary"
                   >
                     Download Meme Kit
                   </a>
                   {/* Enforce link for creators when token is not honest */}
                   {!honest && publicKey?.toBase58() === it.creatorWallet && (
-                    <Link href={`/share/${it.mint}?enforce=1`}>
+                    <Link href={`/token/${it.mint}?enforce=1`}>
                       <a className="btn btn-primary">Enforce</a>
                     </Link>
                   )}
