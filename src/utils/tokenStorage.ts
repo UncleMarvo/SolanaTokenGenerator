@@ -9,6 +9,7 @@ export interface StoredToken {
   preset: "honest" | "degen";
   vibe: "funny" | "serious" | "degen";
   createdAt: number;
+  creatorWallet?: string; // Optional for backward compatibility
   links?: {
     tg?: string;
     x?: string;

@@ -201,8 +201,8 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         const mintAddress = mintKeypair.publicKey.toString();
         setTokenMintAddress(mintAddress);
 
-        // Store token data locally
-        tokenStorage.storeToken({
+        // Create complete token metadata
+        const tokenMetadata = {
           mintAddress,
           name: token.name,
           symbol: token.symbol,
@@ -213,18 +213,18 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           preset: token.preset,
           vibe: token.vibe || "degen", // Default to degen if not specified
           createdAt: Date.now(),
-        });
+          creatorWallet: publicKey.toBase58(),
+          links: token.links || {}
+        };
 
-        // Log token creation to database (non-blocking)
+        // Store token data locally
+        tokenStorage.storeToken(tokenMetadata);
+
+        // Log complete token metadata to database (non-blocking)
         fetch("/api/my-tokens/log", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ 
-            mint: mintAddress, 
-            creatorWallet: publicKey.toBase58(), 
-            name: token.name, 
-            ticker: token.symbol 
-          })
+          body: JSON.stringify(tokenMetadata)
         }).catch((error) => { 
           console.error("Failed to log token creation:", error);
           // Non-blocking - don't show error to user

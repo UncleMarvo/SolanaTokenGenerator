@@ -78,15 +78,40 @@ const TokenSharePage: FC = () => {
 
   useEffect(() => {
     if (mint && typeof mint === "string") {
-      const tokenData = tokenStorage.getToken(mint);
+      fetchTokenData();
+    }
+  }, [mint]);
+
+  // Function to fetch token data from database (primary) or localStorage (fallback)
+  const fetchTokenData = async () => {
+    try {
+      // First, try to get from localStorage (fast, for recent tokens)
+      let tokenData = tokenStorage.getToken(mint as string);
+      
+      // If not found in localStorage, fetch from database
+      if (!tokenData) {
+        const response = await fetch(`/api/token/metadata?mint=${mint}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.ok && result.token) {
+            tokenData = result.token;
+            // Store in localStorage for future use
+            tokenStorage.storeToken(tokenData);
+          }
+        }
+      }
+      
       setToken(tokenData);
       setIsLoading(false);
 
       // Fetch LP chips data and creator wallet
       fetchLpChips();
       fetchCreatorWallet();
+    } catch (error) {
+      console.error("Error fetching token data:", error);
+      setIsLoading(false);
     }
-  }, [mint]);
+  };
 
   // Function to connect wallet
   const connectWallet = async () => {

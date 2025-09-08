@@ -1,29 +1,41 @@
 import { prisma } from "@/lib/db";
+import { StoredToken } from "@/utils/tokenStorage";
 
 /**
- * Log a created token to the database
+ * Log a created token to the database with full metadata
  * Uses upsert to handle cases where the same mint might be created multiple times
- * @param p - Token creation parameters
+ * @param token - Complete token metadata
  * @returns Promise<CreatedToken> - The created or updated token record
  */
-export async function logCreatedToken(p: { 
-  mint: string; 
-  creatorWallet: string; 
-  name: string; 
-  ticker: string; 
-}) {
+export async function logCreatedToken(token: StoredToken) {
   return prisma.createdToken.upsert({
-    where: { mint: p.mint },
+    where: { mint: token.mintAddress },
     update: { 
-      creatorWallet: p.creatorWallet, 
-      name: p.name, 
-      ticker: p.ticker 
+      creatorWallet: token.creatorWallet || "", // Will be set by the calling code
+      name: token.name, 
+      ticker: token.symbol, // Keep ticker for backward compatibility
+      symbol: token.symbol,
+      decimals: token.decimals,
+      amount: token.amount,
+      image: token.image,
+      description: token.description,
+      preset: token.preset,
+      vibe: token.vibe,
+      links: token.links || {}
     },
     create: { 
-      mint: p.mint, 
-      creatorWallet: p.creatorWallet, 
-      name: p.name, 
-      ticker: p.ticker 
+      mint: token.mintAddress, 
+      creatorWallet: token.creatorWallet || "", // Will be set by the calling code
+      name: token.name, 
+      ticker: token.symbol, // Keep ticker for backward compatibility
+      symbol: token.symbol,
+      decimals: token.decimals,
+      amount: token.amount,
+      image: token.image,
+      description: token.description,
+      preset: token.preset,
+      vibe: token.vibe,
+      links: token.links || {}
     },
   });
 }
@@ -57,4 +69,35 @@ export async function getTokenCreator(mint: string) {
       createdAt: true
     },
   });
+}
+
+/**
+ * Get a token by mint address with full metadata
+ * @param mint - The mint address to query
+ * @returns Promise<StoredToken | null> - The complete token metadata, or null if not found
+ */
+export async function getTokenByMint(mint: string): Promise<StoredToken | null> {
+  const token = await prisma.createdToken.findUnique({
+    where: { mint },
+  });
+
+  if (!token) {
+    return null;
+  }
+
+  // Convert database record to StoredToken format
+  return {
+    mintAddress: token.mint,
+    name: token.name,
+    symbol: token.symbol || token.ticker, // Fallback to ticker for backward compatibility
+    decimals: token.decimals || "9", // Default decimals
+    amount: token.amount || "0", // Default amount
+    image: token.image || "", // Default empty image
+    description: token.description || "", // Default empty description
+    preset: (token.preset as "honest" | "degen") || "honest", // Default to honest
+    vibe: (token.vibe as "funny" | "serious" | "degen") || "serious", // Default to serious
+    createdAt: token.createdAt.getTime(),
+    links: (token.links as any) || {},
+    creatorWallet: token.creatorWallet
+  };
 }

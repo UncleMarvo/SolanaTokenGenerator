@@ -78,17 +78,25 @@ model AdminSession {
   @@index([createdAt])
 }
 
-// Created Tokens - Tracks tokens created by users
+// Created Tokens - Tracks tokens created by users with full metadata
 model CreatedToken {
   mint           String   @id
   creatorWallet  String   @db.VarChar(64)
   name           String
-  ticker         String
+  ticker         String   // Keep for backward compatibility
+  symbol         String?  // New field matching StoredToken interface (optional for migration)
+  decimals       String?  // Optional for migration
+  amount         String?  // Optional for migration
+  image          String?  // Optional for migration
+  description    String?  // Optional for migration
+  preset         String?  // "honest" | "degen" (optional for migration)
+  vibe           String?  // "funny" | "serious" | "degen" (optional for migration)
+  links          Json?    // JSON object for social links {tg?, x?, site?}
   createdAt      DateTime @default(now())
-  // optional future fields:
-  // imageUrl     String?
-  // badge        String?   // Honest/Degen etc.
   
   @@index([creatorWallet])
   @@index([createdAt])
+  @@index([symbol])
+  @@index([preset])
+  @@index([vibe])
 }
