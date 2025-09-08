@@ -6,6 +6,7 @@ import { PresetBadge } from "../../components/PresetBadge";
 import HonestBadge from "../../components/HonestBadge";
 import HonestLaunchEnforcer from "../../components/HonestLaunchEnforcer";
 import TokenStats from "../../components/TokenStats";
+import AdvancedTools from "../../components/AdvancedTools";
 import { AiOutlineCopy, AiOutlineLink, AiOutlineReload } from "react-icons/ai";
 import { FaTelegram, FaTwitter } from "react-icons/fa";
 import {
@@ -47,6 +48,9 @@ const TokenSharePage: FC = () => {
 
   // Auto-refresh state
   const [autoRefresh, setAutoRefresh] = useState(false);
+
+  // AMM LP detection state
+  const [ammLpMint, setAmmLpMint] = useState<string | null>(null);
 
   // Check for wallet connection on mount
   useEffect(() => {
@@ -107,9 +111,10 @@ const TokenSharePage: FC = () => {
       setToken(tokenData);
       setIsLoading(false);
 
-      // Fetch LP chips data and creator wallet
+      // Fetch LP chips data, creator wallet, and detect AMM LP mint
       fetchLpChips();
       fetchCreatorWallet();
+      detectAmmLpMint();
     } catch (error) {
       console.error("Error fetching token data:", error);
       setIsLoading(false);
@@ -187,6 +192,32 @@ const TokenSharePage: FC = () => {
       }
     } catch (error) {
       console.error("Failed to fetch creator wallet:", error);
+    }
+  };
+
+  // Function to detect AMM LP mint for this token
+  const detectAmmLpMint = async () => {
+    if (!mint || typeof mint !== "string") return;
+
+    try {
+      // Try to find AMM LP mint by checking Raydium pools
+      const response = await fetch(`https://api.raydium.io/v2/sdk/liquidity/mainnet.json`);
+      if (response.ok) {
+        const data = await response.json();
+        const allPools = [...(data?.official ?? []), ...(data?.unOfficial ?? [])];
+        
+        // Find pool that contains our token mint
+        const matchingPool = allPools.find((pool: any) => 
+          pool.baseMint?.toLowerCase() === mint.toLowerCase() || 
+          pool.quoteMint?.toLowerCase() === mint.toLowerCase()
+        );
+        
+        if (matchingPool?.lpMint) {
+          setAmmLpMint(matchingPool.lpMint);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to detect AMM LP mint:", error);
     }
   };
 
@@ -1221,60 +1252,26 @@ const TokenSharePage: FC = () => {
                 </div>
               )}
 
-            {/* Advanced Section - LP Burn (Hidden by default) */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
-              <details className="group">
-                <summary className="cursor-pointer list-none">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-muted">
-                      Advanced Tools
-                    </h2>
-                    <div className="text-muted group-open:text-fg transition-colors">
-                      <svg
-                        className="w-5 h-5 transform group-open:rotate-180 transition-transform"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </summary>
-
-                <div className="mt-6 space-y-4">
-                  <div className="text-muted text-sm">
-                    <p className="mb-4">
-                      <strong>⚠️ Advanced Features:</strong> These tools are for
-                      experienced users only. Use with extreme caution as some
-                      actions are irreversible.
-                    </p>
-                  </div>
-
-                  {/* LP Token Burner - requires LP mint and owner token account */}
-                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold mb-3">
-                      LP Token Management
-                    </h3>
-                    <p className="text-muted text-sm mb-4">
-                      To use LP burn functionality, you need to provide the LP
-                      mint address and your LP token account address.
-                    </p>
-
-                    <div className="text-xs text-muted bg-muted/20 p-3 rounded border border-muted/30">
-                      <strong>Note:</strong> LP burn functionality requires
-                      specific LP token addresses. This is typically used after
-                      adding liquidity to DEX pairs like Raydium or Orca.
-                    </div>
-                  </div>
-                </div>
-              </details>
-            </div>
+            {/* Advanced Tools */}
+            <AdvancedTools
+              mint={token.mintAddress}
+              creatorWallet={creatorWallet || ""}
+              shareUrl={typeof window !== "undefined" ? window.location.href : ""}
+              liquidityUrl={`/liquidity?tokenMint=${encodeURIComponent(token.mintAddress)}&dex=Raydium&pair=SOL/TOKEN`}
+              kitUrl={`/api/meme/kit.zip?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}&vibe=degen&preset=${encodeURIComponent(token.preset)}&shareUrl=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+              ammLpMint={ammLpMint}
+              onRecheck={async () => {
+                await fetch("/api/honest-status/invalidate", { 
+                  method: "POST", 
+                  headers: { "content-type": "application/json" }, 
+                  body: JSON.stringify({ mint: token.mintAddress }) 
+                }).catch(() => {});
+                await fetch(`/api/honest-status?mint=${token.mintAddress}&bust=1`).catch(() => {});
+                // Trigger local refresh of badge by re-fetching creator wallet
+                await fetchCreatorWallet();
+              }}
+              onEnforce={handleEnforce}
+            />
           </div>
         </div>
       </div>
