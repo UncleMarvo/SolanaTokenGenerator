@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { tokenStorage, StoredToken } from "../../utils/tokenStorage";
 import { PresetBadge } from "../../components/PresetBadge";
+import HonestBadge from "../../components/HonestBadge";
 import HonestLaunchEnforcer from "../../components/HonestLaunchEnforcer";
 import TokenStats from "../../components/TokenStats";
 import { AiOutlineCopy, AiOutlineLink, AiOutlineReload } from "react-icons/ai";
@@ -23,6 +24,7 @@ const TokenSharePage: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isOnChainVerified, setIsOnChainVerified] = useState(false);
+  const [creatorWallet, setCreatorWallet] = useState<string | null>(null);
 
   // LP chips state
   const [lpChips, setLpChips] = useState<LpChips | null>(null);
@@ -76,8 +78,9 @@ const TokenSharePage: FC = () => {
       setToken(tokenData);
       setIsLoading(false);
 
-      // Fetch LP chips data
+      // Fetch LP chips data and creator wallet
       fetchLpChips();
+      fetchCreatorWallet();
     }
   }, [mint]);
 
@@ -138,6 +141,23 @@ const TokenSharePage: FC = () => {
     }
   };
 
+  // Function to fetch creator wallet information
+  const fetchCreatorWallet = async () => {
+    if (!mint || typeof mint !== "string") return;
+
+    try {
+      const response = await fetch(`/api/token/creator?mint=${mint}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok) {
+          setCreatorWallet(data.creator);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch creator wallet:", error);
+    }
+  };
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -160,6 +180,66 @@ const TokenSharePage: FC = () => {
   // Handle honest launch verification status changes
   const handleVerificationChange = (isVerified: boolean) => {
     setIsOnChainVerified(isVerified);
+  };
+
+  // Handle enforce action with cache busting
+  const handleEnforce = async () => {
+    if (!mint || typeof mint !== "string") return;
+
+    try {
+      // Call the honest verification function (this would be the actual enforce logic)
+      const response = await fetch("/api/token/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mint: mint,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.verified) {
+          // Success - now bust the cache and refresh
+          await bustCacheAndRefresh();
+          setIsOnChainVerified(true);
+        } else {
+          alert("⚠️ Token verification failed: " + (result.reason || "Unknown reason"));
+        }
+      } else {
+        alert("❌ Verification check failed");
+      }
+    } catch (error) {
+      alert("❌ Error checking verification: " + error);
+    }
+  };
+
+  // Function to bust cache and refresh honest status
+  const bustCacheAndRefresh = async () => {
+    if (!mint || typeof mint !== "string") return;
+
+    try {
+      // Invalidate the cache
+      await fetch("/api/honest-status/invalidate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mint }),
+      }).catch(() => {});
+
+      // Optionally force a fresh read
+      await fetch("/api/honest-status/batch?bust=1", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mints: [mint] }),
+      }).catch(() => {});
+
+      // Trigger a local refresh by re-fetching the creator wallet
+      // This will cause the HonestBadge to re-render with fresh data
+      await fetchCreatorWallet();
+    } catch (error) {
+      console.error("Failed to bust cache:", error);
+    }
   };
 
   // Format shill post with metrics and link
@@ -310,8 +390,18 @@ const TokenSharePage: FC = () => {
                   {token.description}
                 </p>
 
-                {/* Preset Badge and Honest Launch Status */}
+                {/* Honest Badge and Preset Badge */}
                 <div className="mt-4 space-y-3">
+                  {/* HonestBadge - shows honest launch status and enforce button for creator */}
+                  {creatorWallet && (
+                    <HonestBadge
+                      mint={token.mintAddress}
+                      creator={creatorWallet}
+                      onEnforce={handleEnforce}
+                    />
+                  )}
+
+                  {/* Preset Badge - shows the original preset */}
                   <PresetBadge
                     preset={token.preset}
                     isOnChainVerified={isOnChainVerified}

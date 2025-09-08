@@ -40,3 +40,21 @@ export async function listCreatedTokens(wallet: string) {
     orderBy: { createdAt: "desc" },
   });
 }
+
+/**
+ * Get the creator wallet for a specific mint address
+ * @param mint - The mint address to query
+ * @returns Promise<CreatedToken | null> - The token record with creator wallet, or null if not found
+ */
+export async function getTokenCreator(mint: string) {
+  return prisma.createdToken.findUnique({
+    where: { mint },
+    select: { 
+      mint: true,
+      creatorWallet: true,
+      name: true,
+      ticker: true,
+      createdAt: true
+    },
+  });
+}
