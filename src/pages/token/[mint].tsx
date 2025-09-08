@@ -16,6 +16,10 @@ import {
   getLastTxElement,
 } from "../../lib/lpStats";
 import { getSocialShareUrls } from "../../helpers/share";
+import dynamic from "next/dynamic";
+
+// Dynamically import WsolDustBanner to avoid SSR issues
+const WsolDustBanner = dynamic(() => import("../../components/WsolDustBanner"), { ssr: false });
 
 const TokenSharePage: FC = () => {
   const router = useRouter();
@@ -443,6 +447,9 @@ const TokenSharePage: FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* WSOL Dust Banner */}
+            <WsolDustBanner />
 
             {/* Live Analytics */}
             <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">

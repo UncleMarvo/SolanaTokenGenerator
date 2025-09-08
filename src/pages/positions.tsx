@@ -6,6 +6,10 @@ import { Spinner } from "../components/ui/Spinner";
 import { sendWithRetry } from "../lib/clientSend";
 import { toastError, toastOk } from "../components/toast";
 import { normalizeError } from "../lib/errors";
+import dynamic from "next/dynamic";
+
+// Dynamically import WsolDustBanner to avoid SSR issues
+const WsolDustBanner = dynamic(() => import("../components/WsolDustBanner"), { ssr: false });
 
 interface OrcaPosition {
   positionMint: string;
@@ -1196,6 +1200,9 @@ const PositionsPage: FC = () => {
                  </p>
                </div>
              )}
+
+             {/* WSOL Dust Banner */}
+             <WsolDustBanner />
 
              {/* Filter Display */}
              {filterMint && (
