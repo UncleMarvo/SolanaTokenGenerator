@@ -69,8 +69,6 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
     setIsOnChainVerified(isVerified);
   };
 
-
-
   // CREATE TOKEN FUNCTION
   const createToken = useCallback(
     async (token) => {
@@ -186,14 +184,20 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
 
         // Wait for transaction confirmation before setting tokenMintAddress
         console.log("Waiting for transaction confirmation...");
-        const confirmPromise = connection.confirmTransaction(signature, "confirmed");
-        
-        await (DEV_RELAX_CONFIRM_MS > 0 
+        const confirmPromise = connection.confirmTransaction(
+          signature,
+          "confirmed"
+        );
+
+        await (DEV_RELAX_CONFIRM_MS > 0
           ? Promise.race([
               confirmPromise,
-              new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
-              )
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("Confirmation timeout")),
+                  DEV_RELAX_CONFIRM_MS
+                )
+              ),
             ])
           : confirmPromise);
         console.log("Transaction confirmed!");
@@ -214,7 +218,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           vibe: token.vibe || "degen", // Default to degen if not specified
           createdAt: Date.now(),
           creatorWallet: publicKey.toBase58(),
-          links: token.links || {}
+          links: token.links || {},
         };
 
         // Store token data locally
@@ -224,8 +228,8 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         fetch("/api/my-tokens/log", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(tokenMetadata)
-        }).catch((error) => { 
+          body: JSON.stringify(tokenMetadata),
+        }).catch((error) => {
           console.error("Failed to log token creation:", error);
           // Non-blocking - don't show error to user
         });
@@ -374,11 +378,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         Launch Preset
                       </label>
                       <div className="space-y-3">
-                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
-                          token.preset === "honest" 
-                            ? "bg-primary/5 border border-primary/20" 
-                            : "hover:bg-muted/20"
-                        }`}>
+                        <label
+                          className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                            token.preset === "honest"
+                              ? "bg-primary/5 border border-primary/20"
+                              : "hover:bg-muted/20"
+                          }`}
+                        >
                           <input
                             type="radio"
                             name="preset"
@@ -402,11 +408,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                             </p>
                           </div>
                         </label>
-                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
-                          token.preset === "degen" 
-                            ? "bg-accent/5 border border-accent/20" 
-                            : "hover:bg-muted/20"
-                        }`}>
+                        <label
+                          className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                            token.preset === "degen"
+                              ? "bg-accent/5 border border-accent/20"
+                              : "hover:bg-muted/20"
+                          }`}
+                        >
                           <input
                             type="radio"
                             name="preset"
@@ -439,11 +447,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         Token Vibe
                       </label>
                       <div className="space-y-3">
-                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
-                          token.vibe === "funny" 
-                            ? "bg-primary/5 border border-primary/20" 
-                            : "hover:bg-muted/20"
-                        }`}>
+                        <label
+                          className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                            token.vibe === "funny"
+                              ? "bg-primary/5 border border-primary/20"
+                              : "hover:bg-muted/20"
+                          }`}
+                        >
                           <input
                             type="radio"
                             name="vibe"
@@ -465,11 +475,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                             </p>
                           </div>
                         </label>
-                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
-                          token.vibe === "serious" 
-                            ? "bg-secondary/5 border border-secondary/20" 
-                            : "hover:bg-muted/20"
-                        }`}>
+                        <label
+                          className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                            token.vibe === "serious"
+                              ? "bg-secondary/5 border border-secondary/20"
+                              : "hover:bg-muted/20"
+                          }`}
+                        >
                           <input
                             type="radio"
                             name="vibe"
@@ -493,11 +505,13 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                             </p>
                           </div>
                         </label>
-                        <label className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
-                          token.vibe === "degen" 
-                            ? "bg-accent/5 border border-accent/20" 
-                            : "hover:bg-muted/20"
-                        }`}>
+                        <label
+                          className={`flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all duration-200 ${
+                            token.vibe === "degen"
+                              ? "bg-accent/5 border border-accent/20"
+                              : "hover:bg-muted/20"
+                          }`}
+                        >
                           <input
                             type="radio"
                             name="vibe"
@@ -637,33 +651,48 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
           <div className="container">
             <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
-              <div className="grid gap-10 lg:grid-cols-2">
+              <div>
                 {/* FIRST */}
-                <Branding
+                {/*                 <Branding
                   image="auth-img"
                   title="To build your Solana token creator"
                   message="Try and create your first ever Solana project"
-                />
+                /> */}
 
                 {/* SECOND */}
-                <div className="lg:ps-0 flex h-full flex-col p-10">
-                  <div className="pb-10">
-                    <a className="flex">
-                      <img
-                        src="assets/images/logo1.png"
-                        alt="logo"
-                        className="h-10"
-                      />
-                    </a>
+                <div className="lg:ps-0 flex h-full flex-col p-6">
+                  <div className="pb-10 grid grid-cols-2">
+                    <div>
+                      <a className="flex">
+                        <img
+                          src="assets/images/logo1.png"
+                          alt="logo"
+                          className="h-10"
+                        />
+                      </a>
+                    </div>
+                    <div>
+                      <ul className="text-right">
+                        <li>
+                          <a
+                            onClick={() => setOpenCreateModal(false)}
+                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
+                          >
+                            <i className="text-2xl text-fg group-hover:text-fg">
+                              <AiOutlineClose />
+                            </i>
+                          </a>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
 
-                  <div className="my-auto pb-6 text-center">
+                  <div className="my-auto text-center">
                     <h4 className="mb-4 text-2xl font-bold text-fg">
-                      Link to your new token
+                      Your new token
                     </h4>
                     <p className="text-muted mx-auto mb-5 max-w-sm">
-                      Your Solana token is successfully created, check now on
-                      explorer
+                      Your Solana token is successfully created, check now on explorer
                     </p>
 
                     <div className="flex items-start justify-center">
@@ -709,12 +738,12 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         </span>
                       </div>
 
-                      <div className="mb-6 text-center space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-2 mt-4">
                         <a
                           href={`https://explorer.solana.com/address/${tokenMintAddress}?cluster=${networkConfiguration}`}
                           target="_blank"
                           rel="noferrer"
-                          className="bg-primary-600/90 hover:bg-primary-600 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                          className="btn btn-secondary items-center rounded-lg px-6 py-2 transition-all duration-500"
                         >
                           <span className="fw-bold">View on Solana</span>
                         </a>
@@ -723,7 +752,7 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                           href={`/meme-kit?name=${encodeURIComponent(
                             token.name
                           )}&ticker=${encodeURIComponent(token.symbol)}`}
-                          className="bg-secondary hover:bg-secondary-600 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                          className="btn btn-primary items-center rounded-lg px-6 py-2 transition-all duration-500"
                         >
                           <span className="fw-bold">Get Your Meme Kit</span>
                         </a>
@@ -732,14 +761,14 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                           href={`/liquidity?tokenMint=${encodeURIComponent(
                             tokenMintAddress
                           )}&dex=Raydium&pair=SOL/TOKEN`}
-                          className="bg-accent hover:bg-accent/80 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-bg backdrop-blur-2xl transition-all duration-500"
+                          className="btn btn-primary items-center rounded-lg px-6 py-2 transition-all duration-500"
                         >
                           <span className="fw-bold">Add Liquidity</span>
                         </a>
 
                         <a
                           href={`/token/${tokenMintAddress}`}
-                          className="bg-muted/20 hover:bg-muted/30 group inline-flex w-full items-center justify-center rounded-lg px-6 py-2 text-fg backdrop-blur-2xl transition-all duration-500"
+                          className="btn btn-secondary items-center rounded-lg px-6 py-2 transition-all duration-500"
                         >
                           <span className="fw-bold">View Share Page</span>
                         </a>
@@ -747,22 +776,6 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                     </div>
                   </div>
 
-                  <div className="">
-                    <div className="text-center">
-                      <ul className="flex flex-wrap items-center justify-center gap-2">
-                        <li>
-                          <a
-                            onClick={() => setOpenCreateModal(false)}
-                            className="group inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/20 backdrop-blur-2xl transition-all duration-500 hover:bg-secondary-600/60"
-                          >
-                            <i className="text-2xl text-fg group-hover:text-fg">
-                              <AiOutlineClose />
-                            </i>
-                          </a>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

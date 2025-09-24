@@ -13,7 +13,9 @@ interface TokenMetadataProps {
   setOpenTokenMetadata: (value: boolean) => void;
 }
 
-export const TokenMetadata: FC<TokenMetadataProps> = ({ setOpenTokenMetadata }) => {
+export const TokenMetadata: FC<TokenMetadataProps> = ({
+  setOpenTokenMetadata,
+}) => {
   const { connection } = useConnection();
   const [tokenAddress, setTokenAddress] = useState("");
   const [tokenMetadata, setTokenMetadata] = useState(null);
@@ -87,13 +89,13 @@ export const TokenMetadata: FC<TokenMetadataProps> = ({ setOpenTokenMetadata }) 
       <section className="flex w-full items-center py-6 px-0 lg:h-screen lg:p-10">
         <div className="container">
           <div className="bg-bg/40 mx-auto max-w-5xl overflow-hidden backdrop-blur-2xl modal-grid">
-            <div className="grid gap-10 lg:grid-cols-2">
+            <div>
               {/* FIRST */}
-              <Branding
+              {/*               <Branding
                 image="auth-img"
                 title="To build your Solana token creator"
                 message="Try and create your first ever Solana project"
-              />
+              /> */}
 
               {/* SECOND */}
               {!loaded ? (
@@ -106,6 +108,20 @@ export const TokenMetadata: FC<TokenMetadataProps> = ({ setOpenTokenMetadata }) 
                         className="h-10"
                       />
                     </a>
+                  </div>
+                  <div className="pb-10 grid grid-cols-2">
+                    <div>
+                      <a className="flex">
+                        <img
+                          src="assets/images/logo1.png"
+                          alt="logo"
+                          className="h-10"
+                        />
+                      </a>
+                    </div>
+                    <div className="text-right">
+                      <CloseModal />
+                    </div>
                   </div>
 
                   <div className="my-auto pb-6 text-center">
@@ -173,11 +189,11 @@ export const TokenMetadata: FC<TokenMetadataProps> = ({ setOpenTokenMetadata }) 
                       <InputView
                         name={"Symbol"}
                         placeholder={tokenMetadata?.symbol || undefined}
-                      /> 
+                      />
                       <InputView
                         name={"Token URI"}
                         placeholder={tokenMetadata?.uri}
-                      />                                          
+                      />
 
                       <div className="mb-6 text-center">
                         <a

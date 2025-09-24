@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import {
@@ -6,6 +7,7 @@ import {
   getAccount,
   createBurnInstruction,
 } from "@solana/spl-token";
+import { AiOutlineCopy } from "react-icons/ai";
 
 export type AdvancedProps = {
   mint: string; // token mint (SPL)
@@ -23,6 +25,8 @@ export type AdvancedProps = {
 
 export default function AdvancedTools(p: AdvancedProps) {
   const { publicKey, signTransaction } = useWallet();
+  const [copyMintSuccess, setCopyMintSuccess] = useState(false);
+  const [copyUrlSuccess, setCopyUrlSuccess] = useState(false);
   const isCreator = publicKey?.toBase58() === p.creatorWallet;
 
   // Copy text to clipboard with toast notification
@@ -75,6 +79,26 @@ export default function AdvancedTools(p: AdvancedProps) {
       window?.toast?.error?.(e?.message || "LP burn failed");
     }
   }
+
+  const handleCopyMint = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopyMintSuccess(true);
+      setTimeout(() => setCopyMintSuccess(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy mint address:", error);
+    }
+  };
+
+  const handleCopyShareUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(p.shareUrl);
+      setCopyUrlSuccess(true);
+      setTimeout(() => setCopyUrlSuccess(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy share URL:", error);
+    }
+  };
 
   return (
     <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
@@ -142,18 +166,32 @@ export default function AdvancedTools(p: AdvancedProps) {
                 Open in Solscan
               </a>
               <button
-                className="btn btn-secondary"
-                onClick={() => copy(p.mint)}
+                onClick={handleCopyMint}
+                className={`btn btn-secondary duration-300 flex items-center justify-center space-x-2 ${
+                  copyMintSuccess
+                    ? "bg-success text-bg"
+                    : "bg-accent hover:bg-accent/80 text-bg"
+                }`}
                 title="Copy mint address"
               >
-                Copy Mint
+                <AiOutlineCopy size={16} />
+                <span>
+                  {copyMintSuccess ? "Copied Mint Address" : "Copy Mint Address"}
+                </span>
               </button>
               <button
-                className="btn btn-secondary"
-                onClick={() => copy(p.shareUrl)}
+                onClick={handleCopyShareUrl}
+                className={`btn btn-secondary duration-300 flex items-center justify-center space-x-2 ${
+                  copyUrlSuccess
+                    ? "bg-success text-bg"
+                    : "bg-accent hover:bg-accent/80 text-bg"
+                }`}
                 title="Copy share URL"
               >
-                Copy Share Link
+                <AiOutlineCopy size={16} />
+                <span>
+                  {copyUrlSuccess ? "Copied Share Link" : "Copy Share Link"}
+                </span>
               </button>
               {p.orcaPoolUrl && (
                 <a
