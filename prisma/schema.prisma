@@ -100,3 +100,21 @@ model CreatedToken {
   @@index([preset])
   @@index([vibe])
 }
+
+// Progressive Flow Completion - Tracks user progress through the post-creation flow
+model FlowCompletion {
+  id              String   @id @default(cuid())
+  tokenMint       String   // Reference to CreatedToken.mint
+  creatorWallet   String   // User's wallet address
+  honestLaunch    Boolean  @default(false) // Step 1: Honest launch enforcement
+  marketingKit    Boolean  @default(false) // Step 2: Marketing kit generation
+  liquidity       Boolean  @default(false) // Step 3: Liquidity setup
+  completedAt     DateTime? // When the flow was fully completed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([tokenMint])
+  @@index([creatorWallet])
+  @@index([completedAt])
+  @@unique([tokenMint, creatorWallet]) // One completion record per token per user
+}

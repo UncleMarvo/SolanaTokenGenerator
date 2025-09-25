@@ -1,6 +1,6 @@
-@import url("../../public/assets/libs/swiper/swiper-bundle.min.css");
-@import url("../../public/assets/css/style.min.css");
-@import url("../../public/assets/libs/aos/aos.css");
+@import url("/assets/libs/swiper/swiper-bundle.min.css");
+@import url("/assets/css/style.min.css");
+@import url("/assets/libs/aos/aos.css");
 @import "./theme.css";
 
 @tailwind base;

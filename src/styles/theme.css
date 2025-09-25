@@ -37,4 +37,22 @@ html {
 body {
   background-color: var(--bg);
   color: var(--fg);
+  transition: none; /* Prevent flash during theme changes */
+}
+
+/* Prevent white flash during page loads */
+html, body, #__next {
+  background-color: var(--bg) !important;
+  color: var(--fg) !important;
+}
+
+/* Ensure smooth page transitions */
+* {
+  box-sizing: border-box;
+}
+
+/* Optimize rendering performance */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

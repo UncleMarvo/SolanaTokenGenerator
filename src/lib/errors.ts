@@ -13,6 +13,7 @@ export function normalizeError(e: any): UiError {
   // Wallet / signature errors
   if (raw.includes("signature verification failure")) return { code: "SigVerify", message: "Signature verification failed. Make sure your wallet is unlocked and try again." };
   if (raw.includes("user rejected") || raw.includes("transaction was rejected")) return { code: "UserReject", message: "You rejected the transaction in your wallet." };
+  if (raw.includes("walletsendtransactionerror") || raw.includes("unexpected error")) return { code: "WalletError", message: "Transaction failed in wallet. This usually means insufficient SOL for fees, invalid parameters, or network issues. Check your SOL balance and try again." };
 
   // Funds / rent / ATA errors
   if (raw.includes("insufficient funds") || raw.includes("insufficient lamports")) return { code: "NoFunds", message: "Not enough SOL to cover fees/rent. Top up and retry." };

@@ -12,6 +12,7 @@ import {
   TorusWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { Cluster, clusterApiUrl } from "@solana/web3.js";
+import { getConnection } from "../lib/rpc";
 import { FC, ReactNode, useCallback, useMemo } from "react";
 import { AutoConnectProvider, useAutoConnect } from "./AutoConnectProvider";
 import { notify } from "../utils/notifications";
@@ -34,7 +35,9 @@ const WalletContextProvider: FC<{ children: ReactNode }> = ({ children }) => {
   if (network == "mainnet-beta") {
     endpoint = "https://solana-mainnet.g.alchemy.com/v2/BdasatJE2UYn8qoquRi-6B7jZcEfznT5";
   } else if (network == "devnet") {
-    endpoint = originalEndpoint;
+    // Use the RPC fallback system for devnet
+    endpoint = process.env.NEXT_PUBLIC_RPC_ENDPOINT || originalEndpoint;
+    console.log("[ContextProvider] Using devnet endpoint:", endpoint);
   } else {
     endpoint = originalEndpoint;
   }

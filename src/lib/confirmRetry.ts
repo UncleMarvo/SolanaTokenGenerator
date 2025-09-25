@@ -34,6 +34,12 @@ export async function retryWithBackoff<T>(fn: () => Promise<T>): Promise<T> {
       // Store the error for potential re-throwing
       lastErr = e;
       
+      // Check if we have time for another retry
+      const timeLeft = budget - (Date.now() - t0);
+      if (timeLeft <= delay) {
+        break;
+      }
+      
       // Wait before next retry with exponential backoff
       await new Promise(r => setTimeout(r, delay));
       

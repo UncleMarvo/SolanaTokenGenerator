@@ -24,6 +24,9 @@ import {
 } from "@metaplex-foundation/mpl-token-metadata";
 import axios from "axios";
 import { notify } from "../../utils/notifications";
+import { normalizeError } from "../../lib/errors";
+import { retryWithBackoff } from "../../lib/confirmRetry";
+import { withRpc } from "../../lib/rpc";
 import { ClipLoader } from "react-spinners";
 import { useNetworkConfiguration } from "contexts/NetworkConfigurationProvider";
 import { tokenStorage } from "../../utils/tokenStorage";
@@ -99,8 +102,44 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         return;
       }
 
+      // Validate numeric fields
+      const decimals = Number(token.decimals);
+      const amount = Number(token.amount);
+      
+      if (isNaN(decimals) || decimals < 0 || decimals > 9) {
+        notify({
+          type: "error",
+          message: "Decimals must be a number between 0 and 9",
+        });
+        return;
+      }
+      
+      if (isNaN(amount) || amount <= 0) {
+        notify({
+          type: "error",
+          message: "Amount must be a positive number",
+        });
+        return;
+      }
+      
+      // Check if mint amount would overflow
+      const mintAmount = amount * Math.pow(10, decimals);
+      if (mintAmount > Number.MAX_SAFE_INTEGER) {
+        notify({
+          type: "error",
+          message: "Token amount is too large. Please reduce the amount or decimals.",
+        });
+        return;
+      }
+
       setIsLoading(true);
-      const lamports = await getMinimumBalanceForRentExemptMint(connection);
+      
+      // Use RPC fallback system with retry logic for maximum reliability
+      const lamports = await withRpc(async (rpcConnection) => {
+        return await retryWithBackoff(() => 
+          getMinimumBalanceForRentExemptMint(rpcConnection)
+        );
+      });
       const mintKeypair = Keypair.generate();
       const tokenATA = await getAssociatedTokenAddress(
         mintKeypair.publicKey,
@@ -108,9 +147,11 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
       );
 
       try {
+        console.log("[createToken] Uploading metadata...");
         const metadataUrl = await uploadMetadata(token);
-        console.log(metadataUrl);
+        console.log("[createToken] Metadata uploaded to:", metadataUrl);
 
+        console.log("[createToken] Creating metadata instruction...");
         const createMetadataInstruction =
           createCreateMetadataAccountV3Instruction(
             {
@@ -143,8 +184,20 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
               },
             }
           );
+        console.log("[createToken] Metadata instruction created successfully");
 
-        const createNewTokenTransation = new Transaction().add(
+        // Debug transaction parameters
+        console.log("[createToken] Transaction parameters:");
+        console.log("- publicKey:", publicKey.toBase58());
+        console.log("- mintKeypair:", mintKeypair.publicKey.toBase58());
+        console.log("- tokenATA:", tokenATA.toBase58());
+        console.log("- decimals:", Number(token.decimals));
+        console.log("- amount:", Number(token.amount));
+        console.log("- mint amount:", Number(token.amount) * Math.pow(10, Number(token.decimals)));
+        console.log("- lamports:", lamports);
+        
+        // Create the transaction
+        const createNewTokenTransaction = new Transaction().add(
           SystemProgram.createAccount({
             fromPubkey: publicKey,
             newAccountPubkey: mintKeypair.publicKey,
@@ -174,8 +227,35 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           createMetadataInstruction
         );
 
+        // Get recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+        createNewTokenTransaction.recentBlockhash = blockhash;
+        createNewTokenTransaction.feePayer = publicKey;
+        
+        // Create a copy for simulation (we'll partially sign this one)
+        const simulationTransaction = Transaction.from(createNewTokenTransaction.serialize({ requireAllSignatures: false }));
+        simulationTransaction.partialSign(mintKeypair);
+        
+        // Simulate the transaction first to catch issues
+        console.log("[createToken] Simulating transaction...");
+        try {
+          const simulation = await connection.simulateTransaction(simulationTransaction);
+          console.log("[createToken] Simulation result:", simulation);
+          
+          if (simulation.value.err) {
+            console.error("[createToken] Simulation failed:", simulation.value.err);
+            throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
+          }
+          
+          console.log("[createToken] Simulation successful, sending transaction...");
+        } catch (simError) {
+          console.error("[createToken] Simulation error:", simError);
+          throw new Error(`Transaction simulation failed: ${simError.message}`);
+        }
+
+        // Send the original (unsigned) transaction
         const signature = await sendTransaction(
-          createNewTokenTransation,
+          createNewTokenTransaction,
           connection,
           {
             signers: [mintKeypair],
@@ -184,22 +264,26 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
 
         // Wait for transaction confirmation before setting tokenMintAddress
         console.log("Waiting for transaction confirmation...");
-        const confirmPromise = connection.confirmTransaction(
-          signature,
-          "confirmed"
-        );
+        
+        // Use retry logic for transaction confirmation
+        await retryWithBackoff(() => {
+          const confirmPromise = connection.confirmTransaction(
+            signature,
+            "confirmed"
+          );
 
-        await (DEV_RELAX_CONFIRM_MS > 0
-          ? Promise.race([
-              confirmPromise,
-              new Promise<never>((_, reject) =>
-                setTimeout(
-                  () => reject(new Error("Confirmation timeout")),
-                  DEV_RELAX_CONFIRM_MS
-                )
-              ),
-            ])
-          : confirmPromise);
+          return (DEV_RELAX_CONFIRM_MS > 0
+            ? Promise.race([
+                confirmPromise,
+                new Promise<never>((_, reject) =>
+                  setTimeout(
+                    () => reject(new Error("Confirmation timeout")),
+                    DEV_RELAX_CONFIRM_MS
+                  )
+                ),
+              ])
+            : confirmPromise);
+        });
         console.log("Transaction confirmed!");
 
         const mintAddress = mintKeypair.publicKey.toString();
@@ -240,9 +324,18 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           txid: signature,
         });
       } catch (error: any) {
+        // Log the actual error for debugging
+        console.error("Token creation error:", error);
+        console.error("Error name:", error?.name);
+        console.error("Error message:", error?.message);
+        console.error("Error stack:", error?.stack);
+        
+        // Use the error normalization system for better error messages
+        const normalizedError = normalizeError(error);
+        
         notify({
           type: "error",
-          message: "Token creation failed, try again later",
+          message: normalizedError.message,
         });
       }
       setIsLoading(false);
@@ -738,40 +831,35 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-1 gap-2 mt-4">
+                      <div className="mt-6">
+                        <p className="text-muted mb-4 text-sm">
+                          3 quick steps to maximize your token's success
+                        </p>
+                        
                         <a
-                          href={`https://explorer.solana.com/address/${tokenMintAddress}?cluster=${networkConfiguration}`}
-                          target="_blank"
-                          rel="noferrer"
-                          className="btn btn-secondary items-center rounded-lg px-6 py-2 transition-all duration-500"
+                          href={`/token/created/${tokenMintAddress}/honest-launch`}
+                          className="btn btn-primary items-center rounded-lg px-8 py-3 transition-all duration-500 text-lg font-semibold"
                         >
-                          <span className="fw-bold">View on Solana</span>
+                          <span className="fw-bold">Complete Your Launch</span>
                         </a>
-
-                        <a
-                          href={`/meme-kit?name=${encodeURIComponent(
-                            token.name
-                          )}&ticker=${encodeURIComponent(token.symbol)}`}
-                          className="btn btn-primary items-center rounded-lg px-6 py-2 transition-all duration-500"
-                        >
-                          <span className="fw-bold">Get Your Meme Kit</span>
-                        </a>
-
-                        <a
-                          href={`/liquidity?tokenMint=${encodeURIComponent(
-                            tokenMintAddress
-                          )}&dex=Raydium&pair=SOL/TOKEN`}
-                          className="btn btn-primary items-center rounded-lg px-6 py-2 transition-all duration-500"
-                        >
-                          <span className="fw-bold">Add Liquidity</span>
-                        </a>
-
-                        <a
-                          href={`/token/${tokenMintAddress}`}
-                          className="btn btn-secondary items-center rounded-lg px-6 py-2 transition-all duration-500"
-                        >
-                          <span className="fw-bold">View Share Page</span>
-                        </a>
+                        
+                        <div className="mt-4">
+                          <a
+                            href={`https://explorer.solana.com/address/${tokenMintAddress}?cluster=${networkConfiguration}`}
+                            target="_blank"
+                            rel="noferrer"
+                            className="btn btn-secondary items-center rounded-lg px-6 py-2 transition-all duration-500 mr-2"
+                          >
+                            <span className="fw-bold">View on Solana</span>
+                          </a>
+                          
+                          <a
+                            href={`/token/${tokenMintAddress}`}
+                            className="btn btn-secondary items-center rounded-lg px-6 py-2 transition-all duration-500"
+                          >
+                            <span className="fw-bold">View Share Page</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
