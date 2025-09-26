@@ -21,31 +21,31 @@ export const FeatureView: FC<FeatureViewProps> = ({
 }) => {
   const features = [
     {
-      name: "Token Generator",
+      name: "Create Tokens",
       icon: <MdGeneratingTokens />,
       description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus semper faucibus erat, quis malesuada risus tempor ac. Quisque et erat elit.",
+        "Set up your token with a name, symbol, and supply. We handle the technical stuff so you can focus on your idea.",
       function: setOpenCreateModal,
     },
     {
-      name: "Get Airdrop",
+      name: "Get Test SOL",
       icon: <MdToken />,
       description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus semper faucibus erat, quis malesuada risus tempor ac. Quisque et erat elit.",
+        "Claim free test SOL from the devnet to test token creation and other features without spending real money.",
       function: setOpenAirdrop,
     },
     {
-      name: "Transfer Sol",
+      name: "Donate",
       icon: <RiTokenSwapFill />,
       description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus semper faucibus erat, quis malesuada risus tempor ac. Quisque et erat elit.",
+        "Support the platform if you find it useful. Help us keep building and improving the token creation tools.",
       function: setOpenSendTransaction,
     },
     {
-      name: "Token Metadata",
+      name: "Token Info",
       icon: <RxTokens />,
       description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus semper faucibus erat, quis malesuada risus tempor ac. Quisque et erat elit.",
+        "Look up any token on Solana. Check its metadata, supply, and other details before you invest or trade.",
       function: setOpenTokenMetadata,
     },
   ];
@@ -56,11 +56,11 @@ export const FeatureView: FC<FeatureViewProps> = ({
         <div className="mb-10 flex items-end justify-between">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="h2 mb-4 capitalize text-fg">
-              Choose Solana Blockchain Generator
+              What you can do
             </h2>
             <p className="text-muted text-sm font-medium">
-              Now you can create Solana Tokens <br />
-              without code instantly
+              Everything you need to work with Solana tokens <br />
+              without writing any code
             </p>
           </div>
         </div>
@@ -69,15 +69,7 @@ export const FeatureView: FC<FeatureViewProps> = ({
           {features.map((list, index) => (
             <div
               key={index}
-              className={`w-auto grow border-b border-muted/10 md:w-12 ${
-                index == 0
-                  ? "md:border-e"
-                  : index == 1
-                  ? ""
-                  : index == 2
-                  ? "md:border-e md:border-b-0"
-                  : ""
-              }`}
+              className={`w-auto grow md:w-12`}
             >
               <div className="p-8 sm:p-10">
                 <div className="bg-primary/10 text-primary mb-10 inline-flex h-16 w-16 items-center justify-center rounded-xl">

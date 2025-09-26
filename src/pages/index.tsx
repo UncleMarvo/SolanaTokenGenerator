@@ -6,6 +6,7 @@ import {
   HomeView,
   ToolView,
   FeatureView,
+  UniqueFeatures,
   OfferView,
   FaqView,
   AirdropView,
@@ -34,13 +35,16 @@ const Home: NextPage = (props) => {
 
 
       <HomeView setOpenCreateModal={openModal} />
+      {/*
       <ToolView
         setOpenAirdrop={setOpenAirdrop}
         setOpenContact={setOpenContact}
         setOpenCreateModal={openModal}
         setOpenSendTransaction={setOpenSendTransaction}
         setOpenTokenMetadata={setOpenTokenMetadata}
-      />
+      /> 
+      */}
+      {/*}
       <FeatureView
         setOpenAirdrop={setOpenAirdrop}
         setOpenContact={setOpenContact}
@@ -48,8 +52,10 @@ const Home: NextPage = (props) => {
         setOpenSendTransaction={setOpenSendTransaction}
         setOpenTokenMetadata={setOpenTokenMetadata}
       />
-      <OfferView />
-      <FaqView />
+      */}
+      <UniqueFeatures setOpenCreateModal={openModal} />
+      {/* <OfferView /> */}
+      {/* <FaqView /> */}
 
      
       {openTokenMetadata && (

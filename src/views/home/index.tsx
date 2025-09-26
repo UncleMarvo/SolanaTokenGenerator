@@ -17,8 +17,8 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
           <div className="container">
             <div className="p-6">
               <div className="relative grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-                <div className="bg-primary/10 -z-1 start-0 absolute top-0 h-14 w-14 animate-[spin_10s_linear_infinite] rounded-2xl round-br-none rounded-tl-none"></div>
-                <div className="bg-primary/20 -z-1 end-0 absolute bottom-0 h-14 w-14 animate-ping rounded-full"></div>
+                {/* <div className="bg-primary/10 -z-1 start-0 absolute top-0 h-14 w-14 animate-[spin_10s_linear_infinite] rounded-2xl round-br-none rounded-tl-none"></div> */}
+                {/* <div className="bg-primary/20 -z-1 end-0 absolute bottom-0 h-14 w-14 animate-ping rounded-full"></div> */}
 
                 <div className="">
                   <span className="text-primary bg-primary/20 rounded-md px-3 py-1 text-sm font-medium uppercase tracking-wider">
@@ -58,7 +58,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                               key={index}
                               src={image.src}
                               alt={image.alt}
-                              className="aspect-1 h-full w-60 rounded-xl object-cover"
+                              className="aspect-1 h-full w-80 rounded-xl object-cover"
                             />
                           )
                         )}
@@ -74,7 +74,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                               key={index}
                               src={image.src}
                               alt={image.alt}
-                              className="aspect-1 h-full w-60 rounded-xl object-cover"
+                              className="aspect-1 h-full w-80 rounded-xl object-cover"
                             />
                           )
                         )}
@@ -89,7 +89,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                               key={index}
                               src={image.src}
                               alt={image.alt}
-                              className="aspect-1 h-full w-60 rounded-xl object-cover"
+                              className="aspect-1 h-full w-80 rounded-xl object-cover"
                             />
                           )
                         )}
@@ -105,7 +105,7 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
                               key={index}
                               src={image.src}
                               alt={image.alt}
-                              className="aspect-1 h-full w-60 rounded-xl object-cover"
+                              className="aspect-1 h-full w-80 rounded-xl object-cover"
                             />
                           )
                         )}
