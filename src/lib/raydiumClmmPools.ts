@@ -127,21 +127,27 @@ async function findClmmPoolViaDexScreener(tokenMint: string): Promise<string | n
  */
 async function validateClmmPool(connection: Connection, poolId: string): Promise<boolean> {
   try {
-    // For MVP, we'll do basic validation by checking if the pool ID is a valid PublicKey
-    // In production, you'd use the actual Raydium SDK methods with proper types
-    
     // Validate that poolId is a valid PublicKey format
+    let poolPublicKey: PublicKey;
     try {
-      new PublicKey(poolId);
+      poolPublicKey = new PublicKey(poolId);
     } catch {
       console.warn(`Invalid pool ID format: ${poolId}`);
       return false;
     }
     
-    // For now, assume the pool is valid if we can parse it as a PublicKey
-    // In production, you'd make an actual RPC call to verify the pool exists
-    console.log(`Pool validation passed for ${poolId} (basic format check)`);
-    return true;
+    // Use basic validation for now
+    // In production, you would use the actual SDK method when available
+    try {
+      // For now, just validate that it's a valid PublicKey format
+      // In production, you would make actual RPC calls to verify pool existence
+      console.log(`Pool validation passed for ${poolId} (basic format check)`);
+      return true;
+      
+    } catch (sdkError) {
+      console.warn(`Pool validation failed for ${poolId}:`, sdkError);
+      return false;
+    }
     
   } catch (error) {
     console.warn(`Pool validation failed for ${poolId}:`, error);

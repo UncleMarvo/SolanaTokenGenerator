@@ -60,23 +60,54 @@ export default async function handler(
       // Continue with false result if Orca check fails
     }
 
-    // TODO: Add Raydium LP ATA check here
-    // For now, only Orca positions are checked
-    const hasLP = hasOrcaLP;
-    const totalPositionsCount = orcaPositionsCount;
+    // Check Raydium LP positions
+    let hasRaydiumLP = false;
+    let raydiumPositionsCount = 0;
+    
+    try {
+      // Create connection for Raydium position fetching
+      const { Connection, PublicKey } = await import("@solana/web3.js");
+      const connection = new Connection(
+        process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com"
+      );
+      
+      // Import the Raydium position fetching function
+      const { fetchRaydiumLpBalances } = await import('../../../lib/positions');
+      
+      const raydiumPositions = await fetchRaydiumLpBalances({ 
+        connection, 
+        walletPubkey: new PublicKey(owner) 
+      });
+      
+      hasRaydiumLP = raydiumPositions.length > 0;
+      raydiumPositionsCount = raydiumPositions.length;
+      
+      console.log(`Raydium LP check for ${mint.slice(0, 8)}... by ${owner.slice(0, 8)}...: ${hasRaydiumLP ? "Yes" : "No"} (${raydiumPositionsCount} positions)`);
+      
+    } catch (error) {
+      console.warn("Raydium LP check failed:", error);
+      // Continue with false result if Raydium check fails
+    }
+
+    // Combine Orca and Raydium results
+    const hasLP = hasOrcaLP || hasRaydiumLP;
+    const totalPositionsCount = orcaPositionsCount + raydiumPositionsCount;
 
     console.log(`Wallet LP check for ${mint.slice(0, 8)}... by ${owner.slice(0, 8)}...: ${hasLP ? "Yes" : "No"} (${totalPositionsCount} total positions)`);
 
     return res.status(200).json({
       has: hasLP,
       positionsCount: totalPositionsCount,
-      source: "orca", // Will include "raydium" when implemented
+      source: hasOrcaLP && hasRaydiumLP ? "both" : hasOrcaLP ? "orca" : "raydium",
       details: {
         orca: {
           has: hasOrcaLP,
           count: orcaPositionsCount
+        },
+        raydium: {
+          has: hasRaydiumLP,
+          count: raydiumPositionsCount
         }
-        // ray: { has: false, count: 0 } // To be added
       }
     });
 
