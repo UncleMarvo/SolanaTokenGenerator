@@ -1,21 +1,21 @@
 import { FC } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { ArrowLeft, Info, DollarSign, Percent } from "lucide-react";
+import { ArrowLeft, Info, DollarSign, Percent, Check, Star } from "lucide-react";
 
 const PricingPage: FC = () => {
   // Get fee values from environment (with fallbacks)
-  const flatFeeSol = process.env.NEXT_PUBLIC_LAUNCH_FLAT_FEE_SOL || "0.02";
+  const flatFeeSol = process.env.NEXT_PUBLIC_LAUNCH_FLAT_FEE_SOL || "0.1";
   const skimBp = process.env.NEXT_PUBLIC_LAUNCH_SKIM_BP || "200";
   const skimPercent = (Number(skimBp) / 100).toFixed(1);
 
   return (
     <>
       <Head>
-        <title>Platform Fees - Solana Token Creator</title>
+        <title>Pricing - Solana Token Creator</title>
         <meta
           name="description"
-          content="Transparent platform fees for liquidity provision"
+          content="Choose between Free and Pro tiers for your token creation needs"
         />
       </Head>
 
@@ -23,77 +23,101 @@ const PricingPage: FC = () => {
         <div className="container">
           <div>
             {/* Header */}
-            <div className="mb-8">
-              <h1 className="h1 text-fg mb-2">Platform Fees</h1>
+            <div className="mb-8 text-center">
+              <h1 className="h1 text-fg mb-2">Choose Your Plan</h1>
               <p className="text-muted text-lg">
-                Transparent pricing for liquidity provision services
+                Start free or go Pro for the complete launch experience
               </p>
             </div>
 
-            {/* Fee Structure */}
-            <div className="grid md:grid-cols-2 gap-8 mb-12">
-              {/* Flat Fee Card */}
-              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="bg-primary/20 p-3 rounded-lg">
-                    <DollarSign className="text-primary" size={24} />
+            {/* Pricing Tiers */}
+            <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-4xl mx-auto">
+              {/* Free Tier Card */}
+              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 hover:border-muted/20 transition-all duration-300 flex flex-col h-full">
+                <div className="text-center mb-6">
+                  <h3 className="h2 text-fg mb-2">Free</h3>
+                  <p className="text-muted text-lg mb-4">Basic Token Creation</p>
+                  <div className="text-4xl font-bold text-fg mb-2">Free</div>
+                  <p className="text-muted text-sm">Perfect for getting started</p>
+                </div>
+                
+                <div className="space-y-4 mb-8 flex-grow">
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Token minting on Solana</span>
                   </div>
-                  <div>
-                    <h3 className="h3 text-fg">Flat Fee</h3>
-                    <p className="text-muted text-sm">
-                      One-time charge per transaction
-                    </p>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Basic token metadata</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Token explorer link</span>
                   </div>
                 </div>
-                <div className="text-center py-4">
-                  <div className="text-3xl font-bold text-primary mb-2">
-                    {flatFeeSol} SOL
-                  </div>
-                  <p className="text-muted text-sm">
-                    Charged upfront when building liquidity transactions
-                  </p>
-                </div>
-                <div className="bg-muted/10 rounded-lg p-3">
-                  <p className="text-xs text-muted">
-                    This fee covers transaction building, pool discovery, and
-                    platform infrastructure costs.
-                  </p>
-                </div>
+
+                <Link href="/">
+                  <a className="btn btn-outline w-full py-3 text-center block">
+                    Get Started
+                  </a>
+                </Link>
               </div>
 
-              {/* Skim Fee Card */}
-              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="bg-accent/20 p-3 rounded-lg">
-                    <Percent className="text-accent" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="h3 text-fg">Liquidity Skim</h3>
-                    <p className="text-muted text-sm">
-                      Percentage of provided liquidity
-                    </p>
+              {/* Pro Tier Card */}
+              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-primary/30 hover:border-primary/50 transition-all duration-300 relative overflow-hidden flex flex-col h-full">
+                {/* Most Popular Badge */}
+                <div className="absolute top-4 right-4">
+                  <div className="bg-gradient-to-r from-primary to-accent text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center space-x-1">
+                    <Star size={12} />
+                    <span>Most Popular</span>
                   </div>
                 </div>
-                <div className="text-center py-4">
-                  <div className="text-3xl font-bold text-accent mb-2">
-                    {skimPercent}%
+
+                <div className="text-center mb-6">
+                  <h3 className="h2 text-fg mb-2">Pro</h3>
+                  <p className="text-muted text-lg mb-4">Complete Launch Package</p>
+                  <div className="text-4xl font-bold text-primary mb-2">{flatFeeSol} SOL</div>
+                  <p className="text-muted text-sm">One-time payment, no subscriptions</p>
+                </div>
+                
+                <div className="space-y-4 mb-8 flex-grow">
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Everything in Free</span>
                   </div>
-                  <p className="text-muted text-sm">
-                    Applied to both token sides (A & B)
-                  </p>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Honest Launch verification</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">AI-powered Meme Kit</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Liquidity pool setup tools</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Professional share page</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Check className="text-accent flex-shrink-0" size={20} />
+                    <span className="text-fg">Token management dashboard</span>
+                  </div>
                 </div>
-                <div className="bg-muted/10 rounded-lg p-3">
-                  <p className="text-xs text-muted">
-                    A small percentage is skimmed from your liquidity provision
-                    to support platform development.
-                  </p>
-                </div>
+
+                <Link href="/">
+                  <a className="btn btn-primary w-full py-3 text-center block">
+                    Choose Pro
+                  </a>
+                </Link>
               </div>
             </div>
 
             {/* How It Works */}
             <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-8">
-              <h2 className="h2 text-fg mb-6">How Platform Fees Work</h2>
+              <h2 className="h2 text-fg mb-6 text-center">How It Works</h2>
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
                   <div className="bg-info/20 p-2 rounded-lg flex-shrink-0 mt-1">
@@ -101,13 +125,10 @@ const PricingPage: FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-fg mb-2">
-                      1. Flat SOL Fee
+                      1. Choose Your Tier
                     </h3>
                     <p className="text-muted text-sm leading-relaxed">
-                      When you commit to adding liquidity, a flat fee of{" "}
-                      {flatFeeSol} SOL is charged upfront. This covers the cost
-                      of building your transaction, discovering the best pools,
-                      and maintaining the platform infrastructure.
+                      Start free for basic tokens, or go Pro for the complete launch experience with AI tools and professional features.
                     </p>
                   </div>
                 </div>
@@ -118,15 +139,10 @@ const PricingPage: FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-fg mb-2">
-                      2. Liquidity Skim
+                      2. Create Your Token
                     </h3>
                     <p className="text-muted text-sm leading-relaxed">
-                      A {skimPercent}% skim is applied to both sides of your
-                      liquidity provision. For example, if you provide 1000
-                      TOKEN and 100 USDC, {skimPercent} TOKEN and
-                      {skimPercent} USDC will be skimmed. The remaining{" "}
-                      {100 - Number(skimPercent)}% goes into the actual
-                      liquidity position.
+                      Free tier: Create tokens instantly. Pro tier: {flatFeeSol} SOL one-time payment unlocks advanced features like Honest Launch verification and AI-powered tools.
                     </p>
                   </div>
                 </div>
@@ -137,12 +153,10 @@ const PricingPage: FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-fg mb-2">
-                      3. Transparent Tracking
+                      3. Optional Liquidity
                     </h3>
                     <p className="text-muted text-sm leading-relaxed">
-                      All fees are clearly displayed before you confirm your
-                      transaction. After completion, fee details are recorded in
-                      our system for transparency and admin tracking.
+                      When you're ready to add liquidity, a small {skimPercent}% skim applies to support the platform. This is separate from the Pro fee and only charged if you use liquidity features.
                     </p>
                   </div>
                 </div>
@@ -151,40 +165,51 @@ const PricingPage: FC = () => {
 
             {/* Example Calculation */}
             <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-8">
-              <h2 className="h2 text-fg mb-6">Fee Example</h2>
+              <h2 className="h2 text-fg mb-6 text-center">Example</h2>
               <div className="bg-muted/10 rounded-lg p-6">
-                <p className="text-muted mb-4">
-                  Let's say you want to add liquidity with:
+                <p className="text-muted mb-4 text-center">
+                  Create "DogeCoin 2.0" token:
                 </p>
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between">
-                    <span className="text-muted">Token A (Your Token):</span>
-                    <span className="text-fg font-mono">1,000 TOKEN</span>
+                    <span className="text-fg">Free Tier:</span>
+                    <span className="text-fg font-mono">0 SOL</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">Token B (USDC):</span>
-                    <span className="text-fg font-mono">100 USDC</span>
+                    <span className="text-muted">Basic token creation only</span>
+                    <span className="text-fg font-mono"></span>
+                  </div>
+                </div>
+
+                <div className="border-t border-muted/20 pt-4 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-fg">Pro Tier:</span>
+                    <span className="text-fg font-mono">{flatFeeSol} SOL</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Token + Honest Launch + Meme Kit + Liquidity Tools</span>
+                    <span className="text-fg font-mono"></span>
                   </div>
                 </div>
 
                 <div className="border-t border-muted/20 pt-4 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted">Flat Fee:</span>
-                    <span className="text-fg">{flatFeeSol} SOL</span>
+                    <span className="text-muted">Later, if you add 1000 tokens + 100 USDC liquidity:</span>
+                    <span className="text-fg"></span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted">
                       Token A Skim ({skimPercent}%):
                     </span>
                     <span className="text-fg">
-                      {Number(skimBp) / 100} TOKEN
+                      {(((Number(skimBp) / 100) / 100) * 1000)} TOKEN
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted">
                       Token B Skim ({skimPercent}%):
                     </span>
-                    <span className="text-fg">{Number(skimBp) / 100} USDC</span>
+                    <span className="text-fg">{(((Number(skimBp) / 100) / 100) * 100)} USDC</span>
                   </div>
                   <div className="border-t border-muted/20 pt-2">
                     <div className="flex justify-between font-semibold">
@@ -192,8 +217,8 @@ const PricingPage: FC = () => {
                         Actual Liquidity Added:
                       </span>
                       <span className="text-fg">
-                        {1000 - Number(skimBp) / 100} TOKEN +{" "}
-                        {100 - Number(skimBp) / 100} USDC
+                        {1000 - (((Number(skimBp) / 100) / 100) * 1000)} TOKEN +{" "}
+                        {100 - (((Number(skimBp) / 100) / 100) * 100)} USDC
                       </span>
                     </div>
                   </div>
@@ -203,14 +228,13 @@ const PricingPage: FC = () => {
 
             {/* CTA */}
             <div className="text-center">
-              <Link href="/liquidity">
+              <Link href="/">
                 <a className="btn btn-primary space-x-2 py-3 px-8">
-                  <span>Start Adding Liquidity</span>
+                  <span>Create Your Token</span>
                 </a>
               </Link>
               <p className="text-muted text-sm mt-3">
-                All fees are clearly displayed before you confirm your
-                transaction
+                Choose your tier and start building your token today
               </p>
             </div>
           </div>

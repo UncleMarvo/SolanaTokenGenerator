@@ -2,7 +2,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { generateMemeContent } from "../../../lib/memeTemplates";
 import { generateHashtags, generateSchedule } from "../../../lib/kitComposer";
 import { isPro } from "../../../lib/proStatus";
-import { getHashtagsByProStatus, getScheduleByProStatus, getEnhancedContentByProStatus } from "../../../lib/proAssets";
+import {
+  getHashtagsByProStatus,
+  getScheduleByProStatus,
+  getEnhancedContentByProStatus,
+} from "../../../lib/proAssets";
 
 interface MemeKitRequest {
   name: string;
@@ -31,8 +35,22 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 // Disallowed terms for safety
 const DISALLOWED_TERMS = [
-  'kill', 'murder', 'bomb', 'terror', 'hate', 'racist', 'nazi', 'hitler',
-  'scam', 'fake', 'rug', 'ponzi', 'pyramid', 'illegal', 'drugs', 'weapon'
+  "kill",
+  "murder",
+  "bomb",
+  "terror",
+  "hate",
+  "racist",
+  "nazi",
+  "hitler",
+  "scam",
+  "fake",
+  "rug",
+  "ponzi",
+  "pyramid",
+  "illegal",
+  "drugs",
+  "weapon",
 ];
 
 // Rate limiting function
@@ -42,7 +60,7 @@ function checkRateLimit(identifier: string): boolean {
   const maxRequests = 5;
 
   const record = rateLimitStore.get(identifier);
-  
+
   if (!record || now > record.resetTime) {
     rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
     return true;
@@ -59,56 +77,74 @@ function checkRateLimit(identifier: string): boolean {
 // Safety check function
 function checkSafety(name: string, ticker: string): string | null {
   const text = `${name} ${ticker}`.toLowerCase();
-  
+
   for (const term of DISALLOWED_TERMS) {
     if (text.includes(term)) {
       return `Content contains disallowed term: ${term}`;
     }
   }
-  
+
   return null;
 }
 
 // AI generation function
-async function generateWithAI(name: string, ticker: string, vibe: string): Promise<MemeKitResponse> {
+async function generateWithAI(
+  name: string,
+  ticker: string,
+  vibe: string
+): Promise<MemeKitResponse> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OpenAI API key not configured");
   }
 
   const vibePrompts = {
-    funny: "funny and humorous with lots of emojis and memes",
-    serious: "professional and business-focused with technical terms",
-    degen: "extremely hype and degen-style with rocket emojis and moon references"
+    funny: {
+      tone: "witty and self-aware crypto humor, avoiding cringe. Think crypto Twitter inside jokes, relatable degen experiences, clever wordplay",
+      examples:
+        "wagmi, gmi, few understand, touch grass, paper hands vs diamond hands",
+      avoid: "boomer memes, outdated references, trying too hard to be funny",
+    },
+    serious: {
+      tone: "professional but crypto-native. Technical confidence without being boring. Community-focused utility messaging",
+      examples:
+        "tokenomics, roadmap milestones, community governance, real utility",
+      avoid: "corporate speak, traditional finance language, overpromising",
+    },
+    degen: {
+      tone: "high-energy crypto culture, moon mission mentality, but smart about it. Hype with substance",
+      examples:
+        "LFG, diamond hands, aping in, generational wealth, 100x potential",
+      avoid: "scam language, pump and dump vibes, unrealistic promises",
+    },
   };
 
-  const prompt = `Generate a meme kit for token "${name}" ($${ticker}) with ${vibePrompts[vibe as keyof typeof vibePrompts]} tone.
+  const selectedVibe = vibePrompts[vibe as keyof typeof vibePrompts];
 
-Return ONLY a JSON object with this exact structure:
-{
-  "twitterThreads": [
-    "🧵 Thread 1 content here...",
-    "🚀 Thread 2 content here..."
-  ],
-  "copypastas": [
-    "Copypasta 1 here",
-    "Copypasta 2 here"
-  ],
-  "roadmap": [
-    "Step 1: Launch",
-    "Step 2: Vibe", 
-    "Step 3: Moon",
-    "Step 4: Lambo"
-  ]
-}
-
-Keep threads 6-8 lines each, copypastas short and punchy, roadmap 4 steps. Use emojis and hashtags appropriately.`;
+  const prompt = `Generate a meme kit for token "${name}" ($${ticker}).
+  
+  TONE: ${selectedVibe.tone}
+  USE THESE EXAMPLES: ${selectedVibe.examples}
+  AVOID: ${selectedVibe.avoid}
+  
+  Return ONLY a JSON object with this exact structure:
+  {
+    "twitterThreads": ["6-8 tweet threads with proper crypto hashtags"],
+    "singleTweets": ["Standalone promotional tweets"],
+    "copypastas": ["Telegram/Discord ready content"],
+    "hashtags": ["#SolanaGems #MemeCoin #WAGMI"],
+    "captions": ["Short punchy captions for social"],
+    "roadmap": ["4-step realistic roadmap"],
+    "launchAnnouncement": "Professional launch announcement"
+  }
+  
+  Make the content authentic to crypto Twitter culture and appropriate for the ${vibe} vibe. Each thread should be 6-8 tweets, use proper hashtags, and feel like something a real crypto community would share.`;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -116,12 +152,13 @@ Keep threads 6-8 lines each, copypastas short and punchy, roadmap 4 steps. Use e
         messages: [
           {
             role: "system",
-            content: "You are a meme kit generator for Solana tokens. Generate engaging, appropriate content."
+            content:
+              "You are an expert crypto marketing strategist specializing in Solana meme token launches. You understand current crypto Twitter culture, trending memes, and what drives token engagement. Generate professional marketing content that feels authentic to the crypto community.",
           },
           {
             role: "user",
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: 800,
         temperature: 0.8,
@@ -134,27 +171,31 @@ Keep threads 6-8 lines each, copypastas short and punchy, roadmap 4 steps. Use e
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
-    
+
     if (!content) {
       throw new Error("No content received from OpenAI");
     }
 
-         // Parse the JSON response (handle markdown formatting)
-     let jsonContent = content.trim();
-     
-     // Remove markdown code blocks if present
-     if (jsonContent.startsWith('```json')) {
-       jsonContent = jsonContent.replace(/^```json\n/, '').replace(/\n```$/, '');
-     } else if (jsonContent.startsWith('```')) {
-       jsonContent = jsonContent.replace(/^```\n/, '').replace(/\n```$/, '');
-     }
-     
-     const parsed = JSON.parse(jsonContent);
-    
+    // Parse the JSON response (handle markdown formatting)
+    let jsonContent = content.trim();
+
+    // Remove markdown code blocks if present
+    if (jsonContent.startsWith("```json")) {
+      jsonContent = jsonContent.replace(/^```json\n/, "").replace(/\n```$/, "");
+    } else if (jsonContent.startsWith("```")) {
+      jsonContent = jsonContent.replace(/^```\n/, "").replace(/\n```$/, "");
+    }
+
+    const parsed = JSON.parse(jsonContent);
+
     // Generate hashtags and schedule
     const hashtags = generateHashtags(ticker, name, vibe);
-    const schedule = generateSchedule(parsed.twitterThreads || [], parsed.copypastas || [], "en");
-    
+    const schedule = generateSchedule(
+      parsed.twitterThreads || [],
+      parsed.copypastas || [],
+      "en"
+    );
+
     return {
       logoUrl: "/brand/meme-placeholder.png",
       twitterThreads: parsed.twitterThreads || [],
@@ -192,16 +233,21 @@ export default async function handler(
     }
 
     // Rate limiting (using IP address)
-    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const clientIP =
+      req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
     const identifier = Array.isArray(clientIP) ? clientIP[0] : clientIP;
-    
+
     if (!checkRateLimit(identifier)) {
-      return res.status(429).json({ error: "Rate limit exceeded. Try again in 10 minutes." });
+      return res
+        .status(429)
+        .json({ error: "Rate limit exceeded. Try again in 10 minutes." });
     }
 
     // Check Pro status if wallet is provided
     const userIsPro = wallet ? await isPro(wallet) : false;
-    console.log(`User Pro status for ${name} ($${ticker}): ${userIsPro ? 'PRO' : 'BASIC'}`);
+    console.log(
+      `User Pro status for ${name} ($${ticker}): ${userIsPro ? "PRO" : "BASIC"}`
+    );
 
     let response: MemeKitResponse;
 
@@ -211,21 +257,30 @@ export default async function handler(
         response = await generateWithAI(name, ticker, vibe);
         response.isPro = userIsPro; // Add Pro status to AI response
       } catch (aiError) {
-        console.error("AI generation failed, falling back to templates:", aiError);
+        console.error(
+          "AI generation failed, falling back to templates:",
+          aiError
+        );
         // Fallback to template generation
         const generatedContent = generateMemeContent(name, ticker, vibe);
         const hashtags = getHashtagsByProStatus(ticker, name, vibe, userIsPro);
         const schedule = getScheduleByProStatus(vibe, userIsPro);
-        const enhancedContent = getEnhancedContentByProStatus(generatedContent, vibe, userIsPro);
-        
+        const enhancedContent = getEnhancedContentByProStatus(
+          generatedContent,
+          vibe,
+          userIsPro
+        );
+
         response = {
-          logoUrl: userIsPro ? "/brand/meme-placeholder.png" : "/brand/meme-placeholder.png",
+          logoUrl: userIsPro
+            ? "/brand/meme-placeholder.png"
+            : "/brand/meme-placeholder.png",
           twitterThreads: enhancedContent.twitterThreads,
           copypastas: enhancedContent.copypastas,
           roadmap: enhancedContent.roadmap,
           hashtags,
           schedule,
-          isPro: userIsPro
+          isPro: userIsPro,
         };
       }
     } else {
@@ -233,16 +288,22 @@ export default async function handler(
       const generatedContent = generateMemeContent(name, ticker, vibe);
       const hashtags = getHashtagsByProStatus(ticker, name, vibe, userIsPro);
       const schedule = getScheduleByProStatus(vibe, userIsPro);
-      const enhancedContent = getEnhancedContentByProStatus(generatedContent, vibe, userIsPro);
-      
+      const enhancedContent = getEnhancedContentByProStatus(
+        generatedContent,
+        vibe,
+        userIsPro
+      );
+
       response = {
-        logoUrl: userIsPro ? "/brand/meme-placeholder.png" : "/brand/meme-placeholder.png",
+        logoUrl: userIsPro
+          ? "/brand/meme-placeholder.png"
+          : "/brand/meme-placeholder.png",
         twitterThreads: enhancedContent.twitterThreads,
         copypastas: enhancedContent.copypastas,
         roadmap: enhancedContent.roadmap,
         hashtags,
         schedule,
-        isPro: userIsPro
+        isPro: userIsPro,
       };
     }
 
