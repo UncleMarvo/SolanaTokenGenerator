@@ -1,11 +1,30 @@
+/**
+ * DEPRECATED: Wallet-based Pro status system
+ * 
+ * This file is deprecated and will be removed in a future version.
+ * Use the new per-token payment system instead:
+ * - src/lib/tokenProStatus.ts - Token-based Pro validation
+ * - src/lib/paymentSession.ts - Session-based payment validation
+ * - src/hooks/useTokenProStatus.ts - Token Pro status hook
+ * 
+ * Migration guide:
+ * 1. Replace isPro(wallet) with isTokenPro(tokenMint)
+ * 2. Replace useProStatus() with useTokenProStatus()
+ * 3. Use session-based validation for token creation flow
+ * 4. Update Pro feature checks to use token tier instead of wallet status
+ */
+
 import { prisma } from "./db";
 
 /**
+ * @deprecated Use isTokenPro(tokenMint) from tokenProStatus.ts instead
  * Check if a wallet has Pro access
  * @param wallet - Wallet address to check
  * @returns Promise<boolean> - True if wallet has Pro access, false otherwise
  */
 export async function isPro(wallet: string): Promise<boolean> {
+  console.warn("⚠️ DEPRECATED: isPro() is deprecated. Use isTokenPro() from tokenProStatus.ts instead");
+  
   try {
     if (!wallet) {
       return false;
@@ -43,6 +62,7 @@ export async function isPro(wallet: string): Promise<boolean> {
 }
 
 /**
+ * @deprecated Use getTokenProStatus(tokenMint) from tokenProStatus.ts instead
  * Get Pro status with additional details
  * @param wallet - Wallet address to check
  * @returns Promise<{isPro: boolean, expiresAt?: string, error?: string}>
@@ -52,6 +72,8 @@ export async function getProStatus(wallet: string): Promise<{
   expiresAt?: string;
   error?: string;
 }> {
+  console.warn("⚠️ DEPRECATED: getProStatus() is deprecated. Use getTokenProStatus() from tokenProStatus.ts instead");
+  
   try {
     if (!wallet) {
       return { isPro: false, error: "No wallet provided" };

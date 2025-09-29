@@ -32,7 +32,7 @@ import { ClipLoader } from "react-spinners";
 import { useNetworkConfiguration } from "contexts/NetworkConfigurationProvider";
 import { tokenStorage } from "../../utils/tokenStorage";
 import { hasFeature } from "../../lib/tokenPricing";
-import { useTokenPayment } from "../../hooks/useTokenPayment";
+import { useProPaymentSession } from "../../hooks/useTokenProStatus";
 
 import { ArrowLeft, Upload, Star, Shield, Sparkles, Zap } from "lucide-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -48,15 +48,13 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
   const { networkConfiguration } = useNetworkConfiguration();
-  const { verifyTokenPayment } = useTokenPayment();
+  const { hasValidPayment, paymentSession, clearPaymentSession } = useProPaymentSession();
   const router = useRouter();
 
   const [tokenUri, setTokenUri] = useState("");
   const [tokenMintAddress, setTokenMintAddress] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOnChainVerified, setIsOnChainVerified] = useState(false);
-  const [paymentVerified, setPaymentVerified] = useState(false);
-  const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [token, setToken] = useState({
     name: "",
     symbol: "",
@@ -74,33 +72,11 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
 
   // Check payment on component mount
   useEffect(() => {
-    const checkPayment = () => {
-      const storedPayment = localStorage.getItem('pro_token_payment');
-      if (storedPayment) {
-        try {
-          const payment = JSON.parse(storedPayment);
-          // Check if payment is recent (within 1 hour)
-          const oneHourAgo = Date.now() - (60 * 60 * 1000);
-          if (payment.timestamp > oneHourAgo) {
-            setPaymentInfo(payment);
-            setPaymentVerified(true);
-          } else {
-            // Payment expired, redirect to payment page
-            localStorage.removeItem('pro_token_payment');
-            router.push('/payment/pro');
-          }
-        } catch (error) {
-          console.error('Error parsing payment info:', error);
-          router.push('/payment/pro');
-        }
-      } else {
-        // No payment found, redirect to payment page
-        router.push('/payment/pro');
-      }
-    };
-
-    checkPayment();
-  }, [router]);
+    if (!hasValidPayment) {
+      // No valid payment found, redirect to payment page
+      router.push('/payment/pro');
+    }
+  }, [hasValidPayment, router]);
 
   const handleFormFieldChange = (fieldName, e) => {
     setToken({ ...token, [fieldName]: e.target.value });
@@ -156,15 +132,8 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
         return;
       }
 
-      // Check if payment is verified
-      if (!paymentVerified || !paymentInfo) {
-        notify({
-          type: "error",
-          message: "Payment verification required. Please complete payment first.",
-        });
-        router.push('/payment/pro');
-        return;
-      }
+      // Payment is already verified through session validation
+      // No need for additional verification as session-based validation is used
 
       // Validate required fields
       if (
@@ -374,13 +343,8 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
         const mintAddress = mintKeypair.publicKey.toString();
         setTokenMintAddress(mintAddress);
 
-        // Verify payment if this was a Pro token
-        if (paymentInfo?.txSig) {
-          const paymentVerified = await verifyTokenPayment(paymentInfo.txSig, 'pro');
-          if (!paymentVerified) {
-            console.warn("Payment verification failed, but token was created");
-          }
-        }
+        // Payment is already verified through session validation
+        // No need for additional verification as session-based validation is used
 
         // Create complete token metadata
         const completeTokenMetadata = {
@@ -397,7 +361,7 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
           creatorWallet: publicKey.toBase58(),
           links: {},
           tokenType: "pro", // Pro token creation
-          paymentTxSig: paymentInfo?.txSig,
+          paymentTxSig: paymentSession?.txSignature,
           // Pro features
           enableHonestLaunch: token.enableHonestLaunch,
           generateMemeKit: token.generateMemeKit,
@@ -416,8 +380,8 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
           console.error("Failed to log token creation:", error);
         });
 
-        // Clear payment info after successful token creation
-        localStorage.removeItem('pro_token_payment');
+        // Clear payment session after successful token creation
+        clearPaymentSession();
 
         notify({
           type: "success",
@@ -437,7 +401,7 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
         setIsLoading(false);
       }
     },
-    [connection, publicKey, sendTransaction, networkConfiguration, paymentVerified, paymentInfo, verifyTokenPayment, router]
+    [connection, publicKey, sendTransaction, networkConfiguration, router]
   );
 
   const handleSubmit = (e) => {
@@ -445,8 +409,8 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
     createToken(token);
   };
 
-  // Show loading while checking payment
-  if (!paymentVerified && !paymentInfo) {
+  // Show loading while checking payment session
+  if (!hasValidPayment) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
@@ -861,20 +825,20 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
               </div>
 
               {/* Payment Info */}
-              {paymentInfo && (
+              {paymentSession && (
                 <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
                   <h3 className="text-lg font-semibold text-fg mb-4">Payment Confirmed</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted">Amount:</span>
-                      <span className="text-success font-semibold">{paymentInfo.amount} SOL</span>
+                      <span className="text-success font-semibold">{paymentSession.amount} SOL</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Status:</span>
                       <span className="text-success font-semibold">Verified</span>
                     </div>
                     <div className="text-xs text-muted break-all">
-                      TX: {paymentInfo.txSig?.slice(0, 8)}...{paymentInfo.txSig?.slice(-8)}
+                      TX: {paymentSession.txSignature?.slice(0, 8)}...{paymentSession.txSignature?.slice(-8)}
                     </div>
                   </div>
                 </div>

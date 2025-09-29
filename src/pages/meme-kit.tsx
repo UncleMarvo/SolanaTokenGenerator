@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { UpgradePro } from "../components/UpgradePro";
-import { useProStatus } from "../hooks/useProStatus";
+import { useTokenProStatus } from "../hooks/useTokenProStatus";
 import ProgressiveFlowLayout from "../components/ProgressiveFlowLayout";
 
 interface MemeKitForm {
@@ -29,11 +29,18 @@ interface MemeKitResult {
 const MemeKitPage: FC = () => {
   const router = useRouter();
   const { publicKey } = useWallet();
-  const { isPro, isLoading: isProLoading, refreshProStatus } = useProStatus();
+  const { isPro, isLoading: isProLoading, checkTokenProStatus } = useTokenProStatus();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Extract tokenMintAddress from URL if available (for flow navigation)
   const tokenMintAddress = router.query.tokenMintAddress as string;
+  
+  // Check token Pro status when tokenMintAddress is available
+  useEffect(() => {
+    if (tokenMintAddress) {
+      checkTokenProStatus(tokenMintAddress);
+    }
+  }, [tokenMintAddress, checkTokenProStatus]);
   
   const [form, setForm] = useState<MemeKitForm>({
     name: "",
@@ -64,9 +71,15 @@ const MemeKitPage: FC = () => {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
-    // Check if user needs to upgrade to Pro
-    if (publicKey && !isPro) {
+    // Check if token has Pro access (only if tokenMintAddress is provided)
+    if (tokenMintAddress && !isPro) {
       setShowUpgradeModal(true);
+      return;
+    }
+    
+    // If no tokenMintAddress, redirect to create Pro token first
+    if (!tokenMintAddress) {
+      router.push('/create-token/pro');
       return;
     }
     
@@ -81,7 +94,7 @@ const MemeKitPage: FC = () => {
         },
         body: JSON.stringify({
           ...form,
-          wallet: publicKey?.toBase58()
+          tokenMint: tokenMintAddress
         }),
       });
 
@@ -180,7 +193,7 @@ const MemeKitPage: FC = () => {
             handleCopy={handleCopy}
             showUpgradeModal={showUpgradeModal}
             setShowUpgradeModal={setShowUpgradeModal}
-            refreshProStatus={refreshProStatus}
+            refreshProStatus={() => tokenMintAddress && checkTokenProStatus(tokenMintAddress)}
           />
         </ProgressiveFlowLayout>
       ) : (
@@ -204,7 +217,7 @@ const MemeKitPage: FC = () => {
                 handleCopy={handleCopy}
                 showUpgradeModal={showUpgradeModal}
                 setShowUpgradeModal={setShowUpgradeModal}
-                refreshProStatus={refreshProStatus}
+                refreshProStatus={() => tokenMintAddress && checkTokenProStatus(tokenMintAddress)}
               />
             </div>
           </div>
@@ -217,7 +230,9 @@ const MemeKitPage: FC = () => {
         onClose={() => setShowUpgradeModal(false)}
         onUpgraded={() => {
           setShowUpgradeModal(false);
-          refreshProStatus();
+          if (tokenMintAddress) {
+            checkTokenProStatus(tokenMintAddress);
+          }
         }}
       />
     </>
@@ -264,42 +279,42 @@ const MemeKitContent: FC<MemeKitContentProps> = ({
 }) => {
   const router = useRouter();
   const { publicKey } = useWallet();
-  const { isPro, isLoading: isProLoading } = useProStatus();
+  const { isPro, isLoading: isProLoading } = useTokenProStatus();
 
   return (
     <div className="space-y-6">
       {/* Pro Status and Upgrade Section */}
       <div className="text-center mb-6">
-        {publicKey ? (
+        {router.query.tokenMintAddress ? (
           isProLoading ? (
             <div className="inline-flex items-center px-4 py-2 bg-muted/20 text-muted rounded-lg">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted mr-2"></div>
-              Checking Pro status...
+              Checking token Pro status...
             </div>
           ) : isPro ? (
             <div className="inline-flex items-center px-4 py-2 bg-success/20 text-success rounded-lg">
               <span className="mr-2">✨</span>
-              Pro Access Active
+              Pro Token - Full Access
             </div>
           ) : (
             <div className="space-y-2">
               <div className="inline-flex items-center px-4 py-2 bg-warning/20 text-warning rounded-lg">
                 <span className="mr-2">🔒</span>
-                Pro Feature - Upgrade Required
+                Free Token - Pro Features Locked
               </div>
               <button
                 onClick={() => setShowUpgradeModal(true)}
                 className="btn btn-primary animate-[pulse_2.5s_ease-in-out_infinite] px-6 py-3"
               >
                 <span className="mr-2">🚀</span>
-                Upgrade to Pro
+                Create Pro Token
               </button>
             </div>
           )
         ) : (
           <div className="inline-flex items-center px-4 py-2 bg-muted/20 text-muted rounded-lg">
             <span className="mr-2">🔗</span>
-            Connect Wallet to Check Pro Status
+            Create Pro Token to Access Meme Kit
           </div>
         )}
       </div>

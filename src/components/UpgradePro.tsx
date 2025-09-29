@@ -1,9 +1,5 @@
-import React, { useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useConnection } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
-import { DEV_RELAX_CONFIRM_MS } from "../lib/env";
-import { Spinner } from "./ui/Spinner";
+import React from "react";
+import { useRouter } from "next/router";
 
 // Props interface for the UpgradePro component
 interface UpgradeProProps {
@@ -12,283 +8,94 @@ interface UpgradeProProps {
   onUpgraded?: () => void;
 }
 
-// Payment verification response type
-interface PaymentVerificationResponse {
-  ok: boolean;
-  pro?: boolean;
-  error?: string;
-  message?: string;
-}
-
 export const UpgradePro: React.FC<UpgradeProProps> = ({
   isOpen,
   onClose,
   onUpgraded
 }) => {
-  const { publicKey, sendTransaction } = useWallet();
-  const { connection } = useConnection();
-  
-  // Local state management
-  const [isLoading, setIsLoading] = useState(false);
-  const [txSignature, setTxSignature] = useState("");
-  const [verificationStatus, setVerificationStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+  const router = useRouter();
 
-  // Payment configuration from environment variables
-  const feeWallet = process.env.NEXT_PUBLIC_FEE_WALLET || "";
-  const feeAmountSOL = Number(process.env.NEXT_PUBLIC_PRO_FEE_SOL || 0);
-  const feeAmountUSDC = Number(process.env.NEXT_PUBLIC_PRO_FEE_USDC || 0);
-
-  // Handle copying fee wallet address to clipboard
-  const handleCopyFeeAddress = async () => {
-    try {
-      await navigator.clipboard.writeText(feeWallet);
-      // You could add a toast notification here
-      console.log("Fee wallet address copied to clipboard");
-    } catch (error) {
-      console.error("Failed to copy address:", error);
-    }
+  // Handle redirect to Pro token creation
+  const handleCreateProToken = () => {
+    onClose();
+    router.push('/create-token/pro');
   };
 
-  // Handle opening wallet for SOL transfer
-  const handleOpenInWallet = async () => {
-    if (!publicKey || !connection) {
-      setErrorMessage("Wallet not connected");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setErrorMessage("");
-
-      // Create a simple SOL transfer transaction
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: new PublicKey(feeWallet),
-          lamports: feeAmountSOL * LAMPORTS_PER_SOL,
-        })
-      );
-
-      // Get recent blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
-
-      // Send transaction to wallet for signing
-      const signature = await sendTransaction(transaction, connection);
-      
-      // Wait for confirmation with devnet timeout if applicable
-      const confirmPromise = connection.confirmTransaction(signature, "confirmed");
-      
-      const confirmation = DEV_RELAX_CONFIRM_MS > 0 
-        ? await Promise.race([
-            confirmPromise,
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error("Confirmation timeout")), DEV_RELAX_CONFIRM_MS)
-            )
-          ])
-        : await confirmPromise;
-      
-      if (confirmation.value.err) {
-        throw new Error("Transaction failed");
-      }
-
-      // Auto-fill the transaction signature
-      setTxSignature(signature);
-      setVerificationStatus("idle");
-      
-    } catch (error: any) {
-      console.error("Transaction error:", error);
-      setErrorMessage(error.message || "Failed to create transaction");
-    } finally {
-      setIsLoading(false);
-    }
+  // Handle redirect to payment page
+  const handleGoToPayment = () => {
+    onClose();
+    router.push('/payment/pro');
   };
 
-  // Handle payment verification
-  const handleVerifyPayment = async () => {
-    if (!txSignature.trim() || !publicKey) {
-      setErrorMessage("Please enter a transaction signature");
-      return;
-    }
-
-    try {
-      setVerificationStatus("verifying");
-      setErrorMessage("");
-
-      const response = await fetch("/api/paywall/notify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          wallet: publicKey.toString(),
-          txSig: txSignature.trim()
-        }),
-      });
-
-      const result: PaymentVerificationResponse = await response.json();
-
-      if (result.ok && result.pro) {
-        setVerificationStatus("success");
-        // Call the upgrade callback
-        if (onUpgraded) {
-          onUpgraded();
-        }
-        // Close modal after a short delay
-        setTimeout(() => {
-          onClose();
-        }, 2000);
-      } else {
-        setVerificationStatus("error");
-        setErrorMessage(result.message || result.error || "Verification failed");
-      }
-    } catch (error: any) {
-      console.error("Verification error:", error);
-      setVerificationStatus("error");
-      setErrorMessage("Network error. Please try again.");
-    }
-  };
-
-  // Don't render if modal is not open
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Upgrade to Pro</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
-          >
-            ×
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-bg/95 backdrop-blur-xl border border-muted/20 rounded-2xl p-8 max-w-md w-full">
+        <div className="text-center space-y-6">
+          {/* Header */}
+          <div className="space-y-2">
+            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-2xl">🚀</span>
+            </div>
+            <h2 className="text-2xl font-bold text-fg">Upgrade to Pro</h2>
+            <p className="text-muted">
+              Create a Pro token to unlock advanced features like AI Meme Kit generation
+            </p>
+          </div>
 
-        {/* Payment Information */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Payment Details</h3>
-          
-          {/* Fee Wallet Address */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fee Wallet Address
-            </label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={feeWallet}
-                readOnly
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-blue-600 text-sm"
-              />
-              <button
-                onClick={handleCopyFeeAddress}
-                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-              >
-                Copy
-              </button>
+          {/* Pro Features List */}
+          <div className="space-y-3 text-left">
+            <div className="flex items-center space-x-3">
+              <span className="text-success">✨</span>
+              <span className="text-sm">AI-powered Meme Kit generation</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-success">✨</span>
+              <span className="text-sm">Advanced marketing tools</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-success">✨</span>
+              <span className="text-sm">Professional templates</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-success">✨</span>
+              <span className="text-sm">Enhanced analytics</span>
             </div>
           </div>
 
-          {/* Payment Amounts */}
-          <div className="grid grid-cols-2 gap-4">
-            {feeAmountSOL > 0 && (
-              <div className="text-center p-3 bg-green-50 rounded-md">
-                <div className="text-lg font-bold text-green-800">{feeAmountSOL} SOL</div>
-                <div className="text-sm text-green-600">Required</div>
-              </div>
-            )}
-            {feeAmountUSDC > 0 && (
-              <div className="text-center p-3 bg-blue-50 rounded-md">
-                <div className="text-lg font-bold text-blue-800">{feeAmountUSDC} USDC</div>
-                <div className="text-sm text-blue-600">Required</div>
-              </div>
-            )}
+          {/* Pricing */}
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">0.1 SOL</div>
+              <div className="text-sm text-muted">Per Pro token creation</div>
+            </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-3 mb-6">
-          {/* Open in Wallet Button */}
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={handleCreateProToken}
+              className="w-full bg-primary hover:bg-primary/80 text-bg font-bold py-3 px-6 rounded-lg transition-all duration-300"
+            >
+              Create Pro Token
+            </button>
+            
+            <button
+              onClick={handleGoToPayment}
+              className="w-full bg-muted/20 hover:bg-muted/30 text-fg font-medium py-2 px-6 rounded-lg transition-all duration-300"
+            >
+              Go to Payment Page
+            </button>
+          </div>
+
+          {/* Close Button */}
           <button
-            onClick={handleOpenInWallet}
-            disabled={isLoading || !publicKey}
-            className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+            onClick={onClose}
+            className="text-muted hover:text-fg transition-colors duration-200"
           >
-            {isLoading ? (
-              <>
-                <Spinner size={16} className="mr-2" />
-                Creating Transaction...
-              </>
-            ) : (
-              "Open in Wallet"
-            )}
+            Cancel
           </button>
-
-          {/* Transaction Signature Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Transaction Signature
-            </label>
-            <input
-              type="text"
-              value={txSignature}
-              onChange={(e) => setTxSignature(e.target.value)}
-              placeholder="Enter transaction signature after payment"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Verify Payment Button */}
-          <button
-            onClick={handleVerifyPayment}
-            disabled={verificationStatus === "verifying" || !txSignature.trim()}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {verificationStatus === "verifying" ? (
-              <>
-                <Spinner size={16} className="mr-2" />
-                Verifying Payment...
-              </>
-            ) : (
-              "I Paid – Verify"
-            )}
-          </button>
-        </div>
-
-        {/* Status Messages */}
-        {verificationStatus === "success" && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-            <div className="text-green-800 font-medium">✅ Pro Access Granted!</div>
-            <div className="text-green-600 text-sm">Your account has been upgraded successfully.</div>
-          </div>
-        )}
-
-        {verificationStatus === "error" && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <div className="text-red-800 font-medium">❌ Verification Failed</div>
-            <div className="text-red-600 text-sm">{errorMessage}</div>
-          </div>
-        )}
-
-        {errorMessage && verificationStatus !== "success" && verificationStatus !== "error" && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <div className="text-yellow-800 text-sm">{errorMessage}</div>
-          </div>
-        )}
-
-        {/* Instructions */}
-        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-          <p className="font-medium mb-2">How to upgrade:</p>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Copy the fee wallet address above</li>
-            <li>Send {feeAmountSOL > 0 ? `${feeAmountSOL} SOL` : ""}{feeAmountSOL > 0 && feeAmountUSDC > 0 ? " or " : ""}{feeAmountUSDC > 0 ? `${feeAmountUSDC} USDC` : ""} to the fee wallet</li>
-            <li>Copy the transaction signature from your wallet</li>
-            <li>Paste it above and click "Verify"</li>
-          </ol>
         </div>
       </div>
     </div>

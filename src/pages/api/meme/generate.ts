@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { generateMemeContent } from "../../../lib/memeTemplates";
 import { generateHashtags, generateSchedule } from "../../../lib/kitComposer";
-import { isPro } from "../../../lib/proStatus";
+import { isTokenPro } from "../../../lib/tokenProStatus";
 import {
   getHashtagsByProStatus,
   getScheduleByProStatus,
@@ -12,7 +12,7 @@ interface MemeKitRequest {
   name: string;
   ticker: string;
   vibe: "funny" | "serious" | "degen";
-  wallet?: string; // Optional wallet for Pro status checking
+  tokenMint?: string; // Optional token mint for Pro status checking
 }
 
 interface MemeKitResponse {
@@ -220,7 +220,7 @@ export default async function handler(
   }
 
   try {
-    const { name, ticker, vibe, wallet }: MemeKitRequest = req.body;
+    const { name, ticker, vibe, tokenMint }: MemeKitRequest = req.body;
 
     if (!name || !ticker || !vibe) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -243,10 +243,10 @@ export default async function handler(
         .json({ error: "Rate limit exceeded. Try again in 10 minutes." });
     }
 
-    // Check Pro status if wallet is provided
-    const userIsPro = wallet ? await isPro(wallet) : false;
+    // Check Pro status if token mint is provided
+    const userIsPro = tokenMint ? await isTokenPro(tokenMint) : false;
     console.log(
-      `User Pro status for ${name} ($${ticker}): ${userIsPro ? "PRO" : "BASIC"}`
+      `Token Pro status for ${name} ($${ticker}): ${userIsPro ? "PRO" : "BASIC"}`
     );
 
     let response: MemeKitResponse;

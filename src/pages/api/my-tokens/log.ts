@@ -20,6 +20,10 @@ const Body = z.object({
     x: z.string().optional(),
     site: z.string().optional(),
   }).optional(),
+  // NEW: Payment tracking fields for per-token payment model
+  tokenType: z.enum(["free", "pro"]).optional().default("free"),
+  paymentTxSig: z.string().optional(),
+  paidAmount: z.number().optional(),
 });
 
 /**

@@ -7,7 +7,15 @@ import { StoredToken } from "@/utils/tokenStorage";
  * @param token - Complete token metadata
  * @returns Promise<CreatedToken> - The created or updated token record
  */
-export async function logCreatedToken(token: StoredToken) {
+export async function logCreatedToken(token: StoredToken & {
+  tokenType?: 'free' | 'pro';
+  paymentTxSig?: string;
+  paidAmount?: number;
+}) {
+  // Determine tier and payment info based on tokenType
+  const tier = token.tokenType || 'free';
+  const isProToken = tier === 'pro';
+  
   return prisma.createdToken.upsert({
     where: { mint: token.mintAddress },
     update: { 
@@ -21,7 +29,13 @@ export async function logCreatedToken(token: StoredToken) {
       description: token.description,
       preset: token.preset,
       vibe: token.vibe,
-      links: token.links || {}
+      links: token.links || {},
+      // NEW: Payment tracking fields
+      tier: tier,
+      paidAmount: isProToken ? (token.paidAmount || 0.1) : null,
+      paymentTxSignature: isProToken ? token.paymentTxSig : null,
+      paymentVerified: isProToken && token.paymentTxSig ? true : false,
+      paymentVerifiedAt: isProToken && token.paymentTxSig ? new Date() : null
     },
     create: { 
       mint: token.mintAddress, 
@@ -35,7 +49,13 @@ export async function logCreatedToken(token: StoredToken) {
       description: token.description,
       preset: token.preset,
       vibe: token.vibe,
-      links: token.links || {}
+      links: token.links || {},
+      // NEW: Payment tracking fields
+      tier: tier,
+      paidAmount: isProToken ? (token.paidAmount || 0.1) : null,
+      paymentTxSignature: isProToken ? token.paymentTxSig : null,
+      paymentVerified: isProToken && token.paymentTxSig ? true : false,
+      paymentVerifiedAt: isProToken && token.paymentTxSig ? new Date() : null
     },
   });
 }

@@ -53,6 +53,8 @@ model TxEvent {
 }
 
 // Pro Access Management - Tracks users who have paid for Pro features
+// DEPRECATED: This table is being phased out in favor of per-token payments
+// Use CreatedToken.tier instead for new Pro access model
 model ProAccess {
   wallet         String   @id  // User's wallet address (primary key)
   txSig          String   // Transaction signature that granted Pro access
@@ -92,6 +94,12 @@ model CreatedToken {
   preset         String?  // "honest" | "degen" (optional for migration)
   vibe           String?  // "funny" | "serious" | "degen" (optional for migration)
   links          Json?    // JSON object for social links {tg?, x?, site?}
+  // NEW: Per-token payment tracking fields
+  tier           String   @default("free") // "free" or "pro"
+  paidAmount     Float?   // Amount paid in SOL (0.1 for pro, null for free)
+  paymentTxSignature String? // Solana transaction signature for payment
+  paymentVerified Boolean @default(false) // Whether payment was verified
+  paymentVerifiedAt DateTime? // When payment was verified
   createdAt      DateTime @default(now())
   
   @@index([creatorWallet])
@@ -99,6 +107,9 @@ model CreatedToken {
   @@index([symbol])
   @@index([preset])
   @@index([vibe])
+  @@index([tier])
+  @@index([paymentTxSignature])
+  @@index([paymentVerified])
 }
 
 // Progressive Flow Completion - Tracks user progress through the post-creation flow

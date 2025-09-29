@@ -1,3 +1,17 @@
+/**
+ * DEPRECATED: Wallet-based Pro status hook
+ * 
+ * This hook is deprecated and will be removed in a future version.
+ * Use the new per-token payment system instead:
+ * - useTokenProStatus() - For token-based Pro validation
+ * - useProPaymentSession() - For session-based payment validation
+ * 
+ * Migration guide:
+ * 1. Replace useProStatus() with useTokenProStatus()
+ * 2. Pass tokenMint instead of relying on wallet
+ * 3. Use session-based validation for token creation flow
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 
@@ -21,6 +35,8 @@ interface UseProStatusReturn {
 }
 
 export const useProStatus = (): UseProStatusReturn => {
+  console.warn("⚠️ DEPRECATED: useProStatus() is deprecated. Use useTokenProStatus() from useTokenProStatus.ts instead");
+  
   const { publicKey } = useWallet();
   const [isPro, setIsPro] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

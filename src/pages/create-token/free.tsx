@@ -328,6 +328,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
           links: {},
           tokenType: "free", // Free token creation
           paymentTxSig: null, // No payment for free tokens
+          paidAmount: null, // No payment amount for free tokens
         };
 
         // Store token data locally
