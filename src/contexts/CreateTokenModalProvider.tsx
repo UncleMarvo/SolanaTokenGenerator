@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { CreateView } from '../views';
+import { CreateViewWithPricing } from '../views/create/CreateViewWithPricing';
 
 /**
  * Global Create Token Modal Context
@@ -35,7 +35,7 @@ export const CreateTokenModalProvider: React.FC<CreateTokenModalProviderProps> =
       {/* Global Create Token Modal - renders when isOpen is true */}
       {isOpen && (
         <div className="new_loader relative h-full bg-slate-900">
-          <CreateView setOpenCreateModal={closeModal} />
+          <CreateViewWithPricing setOpenCreateModal={closeModal} />
         </div>
       )}
     </CreateTokenModalContext.Provider>

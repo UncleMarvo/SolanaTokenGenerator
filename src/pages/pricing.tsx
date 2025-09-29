@@ -2,8 +2,11 @@ import { FC } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { ArrowLeft, Info, DollarSign, Percent, Check, Star } from "lucide-react";
+import { useCreateTokenModal } from "../contexts/CreateTokenModalProvider";
 
 const PricingPage: FC = () => {
+  const { openModal } = useCreateTokenModal();
+  
   // Get fee values from environment (with fallbacks)
   const flatFeeSol = process.env.NEXT_PUBLIC_LAUNCH_FLAT_FEE_SOL || "0.1";
   const skimBp = process.env.NEXT_PUBLIC_LAUNCH_SKIM_BP || "200";
@@ -56,11 +59,12 @@ const PricingPage: FC = () => {
                   </div>
                 </div>
 
-                <Link href="/">
-                  <a className="btn btn-outline w-full py-3 text-center block">
-                    Get Started
-                  </a>
-                </Link>
+                <button 
+                  onClick={openModal}
+                  className="btn btn-outline w-full py-3 text-center block"
+                >
+                  Get Started
+                </button>
               </div>
 
               {/* Pro Tier Card */}
@@ -107,11 +111,12 @@ const PricingPage: FC = () => {
                   </div>
                 </div>
 
-                <Link href="/">
-                  <a className="btn btn-primary w-full py-3 text-center block">
-                    Choose Pro
-                  </a>
-                </Link>
+                <button 
+                  onClick={openModal}
+                  className="btn btn-primary w-full py-3 text-center block"
+                >
+                  Choose Pro
+                </button>
               </div>
             </div>
 
@@ -125,10 +130,10 @@ const PricingPage: FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-fg mb-2">
-                      1. Choose Your Tier
+                      1. Choose Your Token Type
                     </h3>
                     <p className="text-muted text-sm leading-relaxed">
-                      Start free for basic tokens, or go Pro for the complete launch experience with AI tools and professional features.
+                      Select Free for basic token creation, or Pro for enhanced features. Payment is per-token, not a subscription.
                     </p>
                   </div>
                 </div>
@@ -142,7 +147,7 @@ const PricingPage: FC = () => {
                       2. Create Your Token
                     </h3>
                     <p className="text-muted text-sm leading-relaxed">
-                      Free tier: Create tokens instantly. Pro tier: {flatFeeSol} SOL one-time payment unlocks advanced features like Honest Launch verification and AI-powered tools.
+                      Free tokens: Create instantly with no payment. Pro tokens: Pay {flatFeeSol} SOL per token to unlock advanced features like Honest Launch verification, AI-powered Meme Kit, and liquidity tools.
                     </p>
                   </div>
                 </div>
@@ -156,7 +161,7 @@ const PricingPage: FC = () => {
                       3. Optional Liquidity
                     </h3>
                     <p className="text-muted text-sm leading-relaxed">
-                      When you're ready to add liquidity, a small {skimPercent}% skim applies to support the platform. This is separate from the Pro fee and only charged if you use liquidity features.
+                      When you're ready to add liquidity, a small {skimPercent}% skim applies to support the platform. This is separate from the token creation fee and only charged if you use liquidity features.
                     </p>
                   </div>
                 </div>
@@ -172,7 +177,7 @@ const PricingPage: FC = () => {
                 </p>
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between">
-                    <span className="text-fg">Free Tier:</span>
+                    <span className="text-fg">Free Token:</span>
                     <span className="text-fg font-mono">0 SOL</span>
                   </div>
                   <div className="flex justify-between">
@@ -183,7 +188,7 @@ const PricingPage: FC = () => {
 
                 <div className="border-t border-muted/20 pt-4 space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-fg">Pro Tier:</span>
+                    <span className="text-fg">Pro Token:</span>
                     <span className="text-fg font-mono">{flatFeeSol} SOL</span>
                   </div>
                   <div className="flex justify-between">
@@ -228,11 +233,12 @@ const PricingPage: FC = () => {
 
             {/* CTA */}
             <div className="text-center">
-              <Link href="/">
-                <a className="btn btn-primary space-x-2 py-3 px-8">
-                  <span>Create Your Token</span>
-                </a>
-              </Link>
+              <button 
+                onClick={openModal}
+                className="btn btn-primary space-x-2 py-3 px-8"
+              >
+                <span>Create Your Token</span>
+              </button>
               <p className="text-muted text-sm mt-3">
                 Choose your tier and start building your token today
               </p>
