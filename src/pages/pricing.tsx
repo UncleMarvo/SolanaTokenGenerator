@@ -1,11 +1,11 @@
 import { FC } from "react";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { ArrowLeft, Info, DollarSign, Percent, Check, Star } from "lucide-react";
-import { useCreateTokenModal } from "../contexts/CreateTokenModalProvider";
 
 const PricingPage: FC = () => {
-  const { openModal } = useCreateTokenModal();
+  const router = useRouter();
   
   // Get fee values from environment (with fallbacks)
   const flatFeeSol = process.env.NEXT_PUBLIC_LAUNCH_FLAT_FEE_SOL || "0.1";
@@ -60,7 +60,7 @@ const PricingPage: FC = () => {
                 </div>
 
                 <button 
-                  onClick={openModal}
+                  onClick={() => router.push('/create-token/free')}
                   className="btn btn-outline w-full py-3 text-center block"
                 >
                   Get Started
@@ -112,7 +112,7 @@ const PricingPage: FC = () => {
                 </div>
 
                 <button 
-                  onClick={openModal}
+                  onClick={() => router.push('/payment/pro')}
                   className="btn btn-primary w-full py-3 text-center block"
                 >
                   Choose Pro
@@ -175,7 +175,7 @@ const PricingPage: FC = () => {
                 <p className="text-muted mb-4 text-center">
                   Create "DogeCoin 2.0" token:
                 </p>
-                <div className="space-y-3 mb-6">
+                <div className="pt-4 space-y-3 mb-6">
                   <div className="flex justify-between">
                     <span className="text-fg">Free Token:</span>
                     <span className="text-fg font-mono">0 SOL</span>
@@ -186,7 +186,7 @@ const PricingPage: FC = () => {
                   </div>
                 </div>
 
-                <div className="border-t border-muted/20 pt-4 space-y-3">
+                <div className="border-t border-muted/20 pt-4 space-y-3 mb-6">
                   <div className="flex justify-between">
                     <span className="text-fg">Pro Token:</span>
                     <span className="text-fg font-mono">{flatFeeSol} SOL</span>
@@ -199,8 +199,8 @@ const PricingPage: FC = () => {
 
                 <div className="border-t border-muted/20 pt-4 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted">Later, if you add 1000 tokens + 100 USDC liquidity:</span>
-                    <span className="text-fg"></span>
+                    <span className="text-fg">Optional Liquidity:</span>
+                    <span className="text-fg">Later, if you add 1000 tokens + 100 USDC liquidity</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted">
@@ -216,8 +216,8 @@ const PricingPage: FC = () => {
                     </span>
                     <span className="text-fg">{(((Number(skimBp) / 100) / 100) * 100)} USDC</span>
                   </div>
-                  <div className="border-t border-muted/20 pt-2">
-                    <div className="flex justify-between font-semibold">
+                  <div className="pt-2">
+                    <div className="flex justify-between">
                       <span className="text-muted">
                         Actual Liquidity Added:
                       </span>
@@ -233,12 +233,20 @@ const PricingPage: FC = () => {
 
             {/* CTA */}
             <div className="text-center">
-              <button 
-                onClick={openModal}
-                className="btn btn-primary space-x-2 py-3 px-8"
-              >
-                <span>Create Your Token</span>
-              </button>
+              <div className="flex justify-center space-x-4">
+                <button 
+                  onClick={() => router.push('/create-token/free')}
+                  className="btn btn-outline py-3 px-8"
+                >
+                  Start Free
+                </button>
+                <button 
+                  onClick={() => router.push('/payment/pro')}
+                  className="btn btn-primary py-3 px-8"
+                >
+                  Go Pro
+                </button>
+              </div>
               <p className="text-muted text-sm mt-3">
                 Choose your tier and start building your token today
               </p>

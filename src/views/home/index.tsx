@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { useRouter } from "next/router";
 import { MdGeneratingTokens } from "react-icons/md";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
@@ -10,6 +11,7 @@ interface HomeViewProps {
 }
 
 export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
+  const router = useRouter();
   return (
     <section id="home" className="section relative overflow-hidden">
       <div className="px-6 py-4">
@@ -34,8 +36,8 @@ export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {
 
                   <div className="new_add_css">
                     <a
-                      onClick={() => setOpenCreateModal(true)}
-                      className="btn btn-primary pe-4 group mt-10 gap-2"
+                      onClick={() => router.push('/pricing')}
+                      className="btn btn-primary pe-4 group mt-10 gap-2 cursor-pointer"
                     >
                       <span className="bg-primary/20 text-primary me-2 flex h-11 w-11 items-center justify-center rounded-full group-hover:bg-muted/10 group-hover:text-fg">
                         <MdGeneratingTokens />

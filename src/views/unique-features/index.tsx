@@ -1,4 +1,5 @@
 import React, { FC } from "react";
+import { useRouter } from "next/router";
 import { 
   MdRocketLaunch, 
   MdAutoAwesome, 
@@ -23,6 +24,7 @@ interface UniqueFeaturesProps {
 }
 
 export const UniqueFeatures: FC<UniqueFeaturesProps> = ({ setOpenCreateModal }) => {
+  const router = useRouter();
   const mainFeatures = [
     {
       icon: <MdRocketLaunch className="w-8 h-8" />,
@@ -286,7 +288,7 @@ export const UniqueFeatures: FC<UniqueFeaturesProps> = ({ setOpenCreateModal }) 
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
-                onClick={() => setOpenCreateModal(true)}
+                onClick={() => router.push('/pricing')}
                 className="btn btn-primary px-8 py-4 text-lg font-bold group"
               >
                 <MdRocketLaunch className="w-5 h-5 mr-2 group-hover:animate-bounce" />
