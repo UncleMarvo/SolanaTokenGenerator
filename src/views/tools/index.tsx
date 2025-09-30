@@ -1,4 +1,5 @@
 import React, { FC } from "react";
+import { useRouter } from "next/router";
 import { MdGeneratingTokens } from "react-icons/md";
 import { IoIosArrowRoundForward } from "react-icons/io";
 import { LuArrowRightFromLine } from "react-icons/lu";
@@ -18,11 +19,12 @@ export const ToolView: FC<ToolViewProps> = ({
   setOpenSendTransaction,
   setOpenTokenMetadata,
 }) => {
+  const router = useRouter();
   const tools = [
     {
       name: "Create Token",
       icon: <MdGeneratingTokens />,
-      function: setOpenCreateModal,
+      function: () => router.push('/pricing'),
     },
     {
       name: "Token Metadata",

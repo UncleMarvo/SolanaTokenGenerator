@@ -109,16 +109,19 @@ export const useProPaymentSession = (): UseProPaymentSessionReturn => {
         const sessionAge = now - session.timestamp;
         const maxSessionAge = 10 * 60 * 1000; // 10 minutes
         
-        if (sessionAge <= maxSessionAge && session.paymentConfirmed) {
+        if (sessionAge <= maxSessionAge && session.paymentConfirmed && session.txSignature) {
           setPaymentSession(session);
           setHasValidPayment(true);
+          console.log('Valid payment session found:', session);
         } else {
-          // Session expired
+          // Session expired or invalid
+          console.log('Payment session expired or invalid:', { sessionAge, maxSessionAge, session });
           localStorage.removeItem('pro_token_payment');
           setPaymentSession(null);
           setHasValidPayment(false);
         }
       } else {
+        console.log('No payment session found in localStorage');
         setPaymentSession(null);
         setHasValidPayment(false);
       }

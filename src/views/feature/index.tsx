@@ -1,4 +1,5 @@
 import React, { FC } from "react";
+import { useRouter } from "next/router";
 import { LuArrowRightFromLine } from "react-icons/lu";
 import { MdGeneratingTokens, MdToken } from "react-icons/md";
 import { RiTokenSwapFill } from "react-icons/ri";
@@ -19,13 +20,14 @@ export const FeatureView: FC<FeatureViewProps> = ({
   setOpenSendTransaction,
   setOpenTokenMetadata,
 }) => {
+  const router = useRouter();
   const features = [
     {
       name: "Create Tokens",
       icon: <MdGeneratingTokens />,
       description:
         "Set up your token with a name, symbol, and supply. We handle the technical stuff so you can focus on your idea.",
-      function: setOpenCreateModal,
+      function: () => router.push('/pricing'),
     },
     {
       name: "Get Test SOL",

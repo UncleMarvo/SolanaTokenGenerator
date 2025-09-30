@@ -7,7 +7,8 @@ import pkg from "../../../package.json";
 import { heroCarouselImages } from "../../config/brand";
 
 interface HomeViewProps {
-  setOpenCreateModal: (value: boolean) => void;
+  // Legacy prop - no longer used, kept for compatibility
+  setOpenCreateModal?: (value: boolean) => void;
 }
 
 export const HomeView: FC<HomeViewProps> = ({ setOpenCreateModal }) => {

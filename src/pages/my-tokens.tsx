@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useCreateTokenModal } from "../contexts/CreateTokenModalProvider";
 
 // Type definition for created token items
 type Item = { 
@@ -26,7 +26,7 @@ type HonestStatus = {
  */
 export default function MyTokensPage() {
   const { publicKey, connected } = useWallet();
-  const { openModal } = useCreateTokenModal();
+  const router = useRouter();
   const [items, setItems] = useState<Item[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, HonestStatus>>({});
@@ -105,7 +105,7 @@ export default function MyTokensPage() {
             <div className="h3 mb-1">No tokens yet</div>
             <p className="small">Create your first token to see it here.</p>
             <button 
-              onClick={openModal}
+              onClick={() => router.push('/pricing')}
               className="btn btn-primary mt-4"
             >
               Create a Token

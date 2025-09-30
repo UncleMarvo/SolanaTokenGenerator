@@ -64,6 +64,7 @@ export function createPaymentSession(txSignature: string, amount: number): Payme
 export function storePaymentSession(session: PaymentSession): void {
   try {
     localStorage.setItem('pro_token_payment', JSON.stringify(session));
+    console.log('Payment session stored successfully:', session);
   } catch (error) {
     console.error('Failed to store payment session:', error);
   }

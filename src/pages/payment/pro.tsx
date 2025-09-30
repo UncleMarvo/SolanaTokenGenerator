@@ -67,8 +67,11 @@ export const ProPaymentPage: FC<ProPaymentPageProps> = () => {
         txid: signature,
       });
 
-      // Redirect to Pro token creation
-      router.push('/create-token/pro');
+      // Add a small delay to ensure session is stored before redirect
+      setTimeout(() => {
+        // Redirect to Pro token creation
+        router.push('/create-token/pro');
+      }, 100);
     } catch (error: any) {
       console.error("Payment error:", error);
       notify({

@@ -406,20 +406,24 @@ export const CreateViewWithPricing: FC<CreateViewWithPricingProps> = ({ setOpenC
     formData.append("file", file);
 
     try {
+      // Use environment variables with fallback to hardcoded values
+      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d";
+      const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe";
+
       const response = await axios({
         method: "POST",
         url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
         data: formData,
         headers: {
-          pinata_api_key: "25ef6fe8484ca7a0ab7d",
-          pinata_secret_api_key:
-            "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe",
+          pinata_api_key: apiKey,
+          pinata_secret_api_key: secretKey,
           "Content-Type": "multipart/form-data",
         },
       });
 
       return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
     } catch (error: any) {
+      console.error("Pinata upload error:", error);
       notify({ type: "error", message: "Upload to Pinata failed" });
       return "";
     }
@@ -439,20 +443,24 @@ export const CreateViewWithPricing: FC<CreateViewWithPricingProps> = ({ setOpenC
     });
 
     try {
+      // Use environment variables with fallback to hardcoded values
+      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d";
+      const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe";
+
       const response = await axios({
         method: "POST",
         url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
         data: data,
         headers: {
-          pinata_api_key: "25ef6fe8484ca7a0ab7d",
-          pinata_secret_api_key:
-            "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe",
+          pinata_api_key: apiKey,
+          pinata_secret_api_key: secretKey,
           "Content-Type": "application/json",
         },
       });
 
       return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
     } catch (error: any) {
+      console.error("Pinata metadata upload error:", error);
       notify({ type: "error", message: "Upload to Pinata Json failed" });
       return "";
     } finally {

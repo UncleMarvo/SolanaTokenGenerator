@@ -20,7 +20,8 @@ import {
 } from "react-icons/lu";
 
 interface UniqueFeaturesProps {
-  setOpenCreateModal: (value: boolean) => void;
+  // Legacy prop - no longer used, kept for compatibility
+  setOpenCreateModal?: (value: boolean) => void;
 }
 
 export const UniqueFeatures: FC<UniqueFeaturesProps> = ({ setOpenCreateModal }) => {

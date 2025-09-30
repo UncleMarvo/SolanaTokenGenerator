@@ -86,19 +86,24 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
     formData.append("file", file);
 
     try {
+      // Use environment variables with fallback to hardcoded values
+      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d";
+      const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe";
+
       const response = await axios({
         method: "POST",
         url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
         data: formData,
         headers: {
-          pinata_api_key: process.env.NEXT_PUBLIC_PINATA_API_KEY,
-          pinata_secret_api_key: process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY,
+          pinata_api_key: apiKey,
+          pinata_secret_api_key: secretKey,
           "Content-Type": "multipart/form-data",
         },
       });
 
       return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
     } catch (error: any) {
+      console.error("Pinata upload error:", error);
       notify({ type: "error", message: "Upload to Pinata failed" });
       return "";
     }
@@ -202,14 +207,17 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
         };
 
         // Upload metadata to IPFS
+        const apiKey = process.env.PINATA_API_KEY;
+        const secretKey = process.env.PINATA_SECRET_API_KEY;
+        
         const metadataResponse = await axios.post(
           "https://api.pinata.cloud/pinning/pinJSONToIPFS",
           tokenMetadata,
           {
             headers: {
               "Content-Type": "application/json",
-              pinata_api_key: process.env.NEXT_PUBLIC_PINATA_API_KEY,
-              pinata_secret_api_key: process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY,
+              pinata_api_key: apiKey,
+              pinata_secret_api_key: secretKey,
             },
           }
         );
@@ -476,7 +484,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                         type="text"
                         value={token.name}
                         onChange={(e) => handleFormFieldChange("name", e)}
-                        className="w-full px-4 py-3 bg-bg/60 border border-muted/20 rounded-xl text-fg placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                        className="w-full px-4 py-3 bg-white border border-muted/20 rounded-xl text-black placeholder-gray-500 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
                         placeholder="My Awesome Token"
                         required
                       />
@@ -490,7 +498,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                         type="text"
                         value={token.symbol}
                         onChange={(e) => handleFormFieldChange("symbol", e)}
-                        className="w-full px-4 py-3 bg-bg/60 border border-muted/20 rounded-xl text-fg placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                        className="w-full px-4 py-3 bg-white border border-muted/20 rounded-xl text-black placeholder-gray-500 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
                         placeholder="MAT"
                         maxLength={10}
                         required
@@ -506,7 +514,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                           type="number"
                           value={token.decimals}
                           onChange={(e) => handleFormFieldChange("decimals", e)}
-                          className="w-full px-4 py-3 bg-bg/60 border border-muted/20 rounded-xl text-fg placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                          className="w-full px-4 py-3 bg-white border border-muted/20 rounded-xl text-black placeholder-gray-500 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
                           placeholder="9"
                           min="0"
                           max="9"
@@ -522,7 +530,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                           type="number"
                           value={token.amount}
                           onChange={(e) => handleFormFieldChange("amount", e)}
-                          className="w-full px-4 py-3 bg-bg/60 border border-muted/20 rounded-xl text-fg placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
+                          className="w-full px-4 py-3 bg-white border border-muted/20 rounded-xl text-black placeholder-gray-500 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors"
                           placeholder="1000000"
                           min="1"
                           required
@@ -537,7 +545,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       <textarea
                         value={token.description}
                         onChange={(e) => handleFormFieldChange("description", e)}
-                        className="w-full px-4 py-3 bg-bg/60 border border-muted/20 rounded-xl text-fg placeholder-muted focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors resize-none"
+                        className="w-full px-4 py-3 bg-white border border-muted/20 rounded-xl text-black placeholder-gray-500 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors resize-none"
                         placeholder="Describe your token..."
                         rows={3}
                         required
@@ -554,14 +562,16 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       <button
                         type="button"
                         onClick={() => setToken({ ...token, preset: "honest" })}
-                        className={`flex-1 p-4 rounded-xl border transition-all duration-300 ${
+                        className={`flex-1 p-4 rounded-xl border-2 transition-all duration-300 ${
                           token.preset === "honest"
-                            ? "border-accent/50 bg-accent/5"
-                            : "border-muted/20 hover:border-muted/40"
+                            ? "border-accent bg-accent/10 text-accent shadow-lg scale-105"
+                            : "border-muted/20 hover:border-muted/40 text-fg hover:bg-muted/5"
                         }`}
                       >
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-fg mb-2">Honest Launch</div>
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <div className="text-lg font-semibold">Honest Launch</div>
+                          </div>
                           <div className="text-sm text-muted">
                             Revoke mint & freeze authority for transparency
                           </div>
@@ -571,14 +581,16 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       <button
                         type="button"
                         onClick={() => setToken({ ...token, preset: "degen" })}
-                        className={`flex-1 p-4 rounded-xl border transition-all duration-300 ${
+                        className={`flex-1 p-4 rounded-xl border-2 transition-all duration-300 ${
                           token.preset === "degen"
-                            ? "border-accent/50 bg-accent/5"
-                            : "border-muted/20 hover:border-muted/40"
+                            ? "border-accent bg-accent/10 text-accent shadow-lg scale-105"
+                            : "border-muted/20 hover:border-muted/40 text-fg hover:bg-muted/5"
                         }`}
                       >
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-fg mb-2">Degen Mode</div>
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <div className="text-lg font-semibold">Degen Mode</div>
+                          </div>
                           <div className="text-sm text-muted">
                             Keep mint authority for future tokenomics
                           </div>
@@ -599,15 +611,23 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                         key={vibe}
                         type="button"
                         onClick={() => setToken({ ...token, vibe: vibe as any })}
-                        className={`p-3 rounded-xl border transition-all duration-300 capitalize ${
+                        className={`p-4 rounded-xl border-2 transition-all duration-300 capitalize font-medium ${
                           token.vibe === vibe
-                            ? "border-accent/50 bg-accent/5"
-                            : "border-muted/20 hover:border-muted/40"
+                            ? "border-accent bg-accent/10 text-accent shadow-lg scale-105"
+                            : "border-muted/20 hover:border-muted/40 text-fg hover:bg-muted/5"
                         }`}
                       >
-                        {vibe}
+                        <div className="flex items-center justify-center space-x-2">
+                          {token.vibe === vibe && (
+                            <div className="w-2 h-2 bg-accent rounded-full"></div>
+                          )}
+                          <span className="capitalize">{vibe}</span>
+                        </div>
                       </button>
                     ))}
+                  </div>
+                  <div className="mt-3 text-sm text-muted">
+                    Selected: <span className="font-semibold text-accent capitalize">{token.vibe}</span>
                   </div>
                 </div>
 
