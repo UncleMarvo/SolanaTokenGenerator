@@ -135,25 +135,27 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
     formData.append("file", file);
 
     try {
-      // Use environment variables with fallback to hardcoded values
-      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d";
-      const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe";
-
+      // Upload via secure server-side API endpoint
       const response = await axios({
         method: "POST",
-        url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        url: "/api/ipfs/upload",
         data: formData,
         headers: {
-          pinata_api_key: apiKey,
-          pinata_secret_api_key: secretKey,
           "Content-Type": "multipart/form-data",
         },
       });
 
-      return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
+      if (!response.data.ok) {
+        throw new Error(response.data.message || "Upload failed");
+      }
+
+      return response.data.ipfsUrl;
     } catch (error: any) {
-      console.error("Pinata upload error:", error);
-      notify({ type: "error", message: "Upload to Pinata failed" });
+      console.error("IPFS upload error:", error);
+      notify({ 
+        type: "error", 
+        message: error?.response?.data?.message || "Failed to upload image to IPFS" 
+      });
       return "";
     }
   };
@@ -270,23 +272,22 @@ export const ProTokenCreationPage: FC<ProTokenCreationPageProps> = () => {
           ],
         };
 
-        // Upload metadata to IPFS
-        const apiKey = process.env.PINATA_API_KEY;
-        const secretKey = process.env.PINATA_SECRET_API_KEY;
-        
+        // Upload metadata to IPFS via secure server-side API
         const metadataResponse = await axios.post(
-          "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-          tokenMetadata,
+          "/api/ipfs/upload",
+          { metadata: tokenMetadata },
           {
             headers: {
               "Content-Type": "application/json",
-              pinata_api_key: apiKey,
-              pinata_secret_api_key: secretKey,
             },
           }
         );
 
-        const tokenUri = `https://gateway.pinata.cloud/ipfs/${metadataResponse.data.IpfsHash}`;
+        if (!metadataResponse.data.ok) {
+          throw new Error(metadataResponse.data.message || "Metadata upload failed");
+        }
+
+        const tokenUri = metadataResponse.data.ipfsUrl;
         setTokenUri(tokenUri);
 
         // Create the transaction

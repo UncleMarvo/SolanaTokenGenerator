@@ -29,6 +29,8 @@
     "archiver": "^7.0.1",
     "axios": "^1.6.5",
     "daisyui": "^1.24.3",
+    "form-data": "^4.0.0",
+    "formidable": "^3.5.1",
     "immer": "^9.0.12",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.475.0",
@@ -48,6 +50,7 @@
     "zustand": "^3.6.9"
   },
   "devDependencies": {
+    "@types/formidable": "^3.4.5",
     "@types/node": "17.0.10",
     "@types/react": "17.0.38",
     "autoprefixer": "^10.4.2",

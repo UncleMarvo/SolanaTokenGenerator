@@ -9,8 +9,8 @@
  */
 export function getPinataCredentials() {
   return {
-    apiKey: process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d",
-    secretKey: process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe"
+    apiKey: process.env.PINATA_API_KEY,
+    secretKey: process.env.PINATA_SECRET_API_KEY
   };
 }
 

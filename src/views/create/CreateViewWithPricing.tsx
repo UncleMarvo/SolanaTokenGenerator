@@ -407,8 +407,8 @@ export const CreateViewWithPricing: FC<CreateViewWithPricingProps> = ({ setOpenC
 
     try {
       // Use environment variables with fallback to hardcoded values
-      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d";
-      const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe";
+      const apiKey = process.env.PINATA_API_KEY;
+      const secretKey = process.env.PINATA_SECRET_API_KEY;
 
       const response = await axios({
         method: "POST",
@@ -444,8 +444,8 @@ export const CreateViewWithPricing: FC<CreateViewWithPricingProps> = ({ setOpenC
 
     try {
       // Use environment variables with fallback to hardcoded values
-      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || "25ef6fe8484ca7a0ab7d";
-      const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY || "a08368b1fa4508b1be221bed2076db94f78cedee12a906ef6f619c624a46d4fe";
+      const apiKey = process.env.PINATA_API_KEY;
+      const secretKey = process.env.PINATA_SECRET_API_KEY;
 
       const response = await axios({
         method: "POST",
