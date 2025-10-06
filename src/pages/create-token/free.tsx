@@ -336,18 +336,26 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
           creatorWallet: publicKey.toBase58(),
           links: {},
           tokenType: "free", // Free token creation
-          paymentTxSig: null, // No payment for free tokens
-          paidAmount: null, // No payment amount for free tokens
+          // No payment fields for free tokens - omit them entirely
         };
 
         // Store token data locally
         tokenStorage.storeToken(completeTokenMetadata);
 
         // Log complete token metadata to database (non-blocking)
+        console.log('[CreateToken-Free] Logging token to database:', completeTokenMetadata);
         fetch("/api/my-tokens/log", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(completeTokenMetadata),
+        }).then((response) => {
+          console.log('[CreateToken-Free] Database logging response:', response.status, response.statusText);
+          return response.json();
+        }).then((result) => {
+          console.log('[CreateToken-Free] Database logging result:', result);
+          if (result.error === 'BadRequest') {
+            console.log('[CreateToken-Free] Validation error details:', result.details);
+          }
         }).catch((error) => {
           console.error("Failed to log token creation:", error);
         });
@@ -358,8 +366,10 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
           txid: signature,
         });
 
-        // Redirect to token page or show success
-        window.location.href = `/token/${mintAddress}`;
+        // Wait a moment to see the database logging results before redirecting
+        setTimeout(() => {
+          window.location.href = `/token/${mintAddress}`;
+        }, 10000);
       } catch (error: any) {
         console.error("Token creation error:", error);
         notify({

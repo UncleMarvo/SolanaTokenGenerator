@@ -1,21 +1,11 @@
 /**
  * Pinata IPFS Configuration and Utilities
- * Centralized configuration for Pinata API credentials and upload functions
+ * Secure server-side uploads via /api/ipfs/upload endpoint
+ * API keys are kept secure on the server and never exposed to the client
  */
 
 /**
- * Get Pinata API credentials with fallback to hardcoded values
- * This ensures the app works even if environment variables are not set
- */
-export function getPinataCredentials() {
-  return {
-    apiKey: process.env.PINATA_API_KEY,
-    secretKey: process.env.PINATA_SECRET_API_KEY
-  };
-}
-
-/**
- * Upload image file to Pinata IPFS
+ * Upload image file to Pinata IPFS via secure server-side API
  * @param file - The image file to upload
  * @returns Promise<string> - The IPFS URL of the uploaded image
  */
@@ -23,66 +13,77 @@ export async function uploadImageToPinata(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const { apiKey, secretKey } = getPinataCredentials();
-
   try {
-    const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+    // Upload via secure server-side API endpoint
+    const response = await fetch("/api/ipfs/upload", {
       method: "POST",
       body: formData,
-      headers: {
-        pinata_api_key: apiKey,
-        pinata_secret_api_key: secretKey,
-      },
     });
 
     if (!response.ok) {
-      throw new Error(`Pinata upload failed: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Upload failed: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+    
+    if (!data.ok) {
+      throw new Error(data.message || "Upload failed");
+    }
+
+    return data.ipfsUrl;
   } catch (error: any) {
-    console.error("Pinata image upload error:", error);
-    throw new Error(`Failed to upload image to Pinata: ${error.message}`);
+    console.error("IPFS image upload error:", error);
+    throw new Error(`Failed to upload image to IPFS: ${error.message}`);
   }
 }
 
 /**
- * Upload JSON metadata to Pinata IPFS
+ * Upload JSON metadata to Pinata IPFS via secure server-side API
  * @param metadata - The metadata object to upload
  * @returns Promise<string> - The IPFS URL of the uploaded metadata
  */
 export async function uploadMetadataToPinata(metadata: any): Promise<string> {
-  const { apiKey, secretKey } = getPinataCredentials();
-
   try {
-    const response = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+    // Upload via secure server-side API endpoint
+    const response = await fetch("/api/ipfs/upload", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        pinata_api_key: apiKey,
-        pinata_secret_api_key: secretKey,
       },
-      body: JSON.stringify(metadata),
+      body: JSON.stringify({ metadata }),
     });
 
     if (!response.ok) {
-      throw new Error(`Pinata metadata upload failed: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Metadata upload failed: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+    
+    if (!data.ok) {
+      throw new Error(data.message || "Metadata upload failed");
+    }
+
+    return data.ipfsUrl;
   } catch (error: any) {
-    console.error("Pinata metadata upload error:", error);
-    throw new Error(`Failed to upload metadata to Pinata: ${error.message}`);
+    console.error("IPFS metadata upload error:", error);
+    throw new Error(`Failed to upload metadata to IPFS: ${error.message}`);
   }
 }
 
 /**
- * Check if Pinata credentials are properly configured
- * @returns boolean - True if credentials are available
+ * Check if Pinata/IPFS upload service is available
+ * @returns Promise<boolean> - True if the upload service is working
  */
-export function isPinataConfigured(): boolean {
-  const { apiKey, secretKey } = getPinataCredentials();
-  return !!(apiKey && secretKey && apiKey !== "your_pinata_api_key_here" && secretKey !== "your_pinata_secret_api_key_here");
+export async function isPinataConfigured(): Promise<boolean> {
+  try {
+    // Try uploading a minimal test metadata object to check if the service is available
+    const testMetadata = { test: true, timestamp: Date.now() };
+    await uploadMetadataToPinata(testMetadata);
+    return true;
+  } catch (error) {
+    console.warn("IPFS upload service not configured or unavailable:", error);
+    return false;
+  }
 }

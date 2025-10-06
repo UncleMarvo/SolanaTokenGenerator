@@ -41,11 +41,17 @@ export default function MyTokensPage() {
       
       setLoading(true);
       try {
-        const r = await fetch(`/api/my-tokens?wallet=${publicKey.toBase58()}`, { 
+        const walletAddress = publicKey.toBase58();
+        console.log('[MyTokens] Fetching tokens for wallet:', walletAddress);
+        
+        const r = await fetch(`/api/my-tokens?wallet=${walletAddress}`, { 
           cache: "no-store" 
         });
         const j = await r.json();
+        console.log('[MyTokens] API response:', j);
+        
         const fetchedItems = j?.ok ? j.items : [];
+        console.log('[MyTokens] Fetched items:', fetchedItems);
         setItems(fetchedItems);
         
         // Batch fetch honest statuses for all tokens

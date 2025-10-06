@@ -34,74 +34,67 @@ model TxEvent {
   mint           String
   positionMint   String?
   poolId         String?
-  dex            String?  // DEX identifier: "raydium", "orca"
   action         String
   amountA        String?
   amountB        String?
   liquidityDelta String?
-  // NEW: Fee tracking fields for transparency and admin monitoring
-  skimBp         Int?     // Skim basis points (e.g., 200 for 2%)
-  skimA          String?  // Skimmed amount for token A
-  skimB          String?  // Skimmed amount for token B
-  flatSol        Float?   // Flat fee in SOL
   success        Boolean  @default(true)
   ts             DateTime @default(now())
+  dex            String?
+  flatSol        Float?
+  skimA          String?
+  skimB          String?
+  skimBp         Int?
 
-  @@index(wallet)
-  @@index(mint)
-  @@index(dex)
+  @@index([wallet])
+  @@index([mint])
+  @@index([dex])
 }
 
-// Pro Access Management - Tracks users who have paid for Pro features
-// DEPRECATED: This table is being phased out in favor of per-token payments
-// Use CreatedToken.tier instead for new Pro access model
 model ProAccess {
-  wallet         String   @id  // User's wallet address (primary key)
-  txSig          String   // Transaction signature that granted Pro access
-  expiresAt      DateTime? // Optional expiration date (null = permanent access)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  wallet    String    @id
+  txSig     String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  @@index(wallet)
-  @@index(expiresAt)
+  @@index([wallet])
+  @@index([expiresAt])
 }
 
-// Admin Authentication - Manages admin login sessions
 model AdminSession {
-  id         String   @id @default(cuid())
-  wallet     String   // Admin wallet address
-  nonce      String   // Challenge nonce for authentication
-  used       Boolean  @default(false) // Whether nonce has been used
-  createdAt  DateTime @default(now())
-  verifiedAt DateTime? // When authentication was completed
-  
+  id         String    @id @default(cuid())
+  wallet     String
+  nonce      String
+  used       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  verifiedAt DateTime?
+
   @@index([wallet])
   @@index([nonce])
   @@index([createdAt])
 }
 
-// Created Tokens - Tracks tokens created by users with full metadata
 model CreatedToken {
-  mint           String   @id
-  creatorWallet  String   @db.VarChar(64)
-  name           String
-  ticker         String   // Keep for backward compatibility
-  symbol         String?  // New field matching StoredToken interface (optional for migration)
-  decimals       String?  // Optional for migration
-  amount         String?  // Optional for migration
-  image          String?  // Optional for migration
-  description    String?  // Optional for migration
-  preset         String?  // "honest" | "degen" (optional for migration)
-  vibe           String?  // "funny" | "serious" | "degen" (optional for migration)
-  links          Json?    // JSON object for social links {tg?, x?, site?}
-  // NEW: Per-token payment tracking fields
-  tier           String   @default("free") // "free" or "pro"
-  paidAmount     Float?   // Amount paid in SOL (0.1 for pro, null for free)
-  paymentTxSignature String? // Solana transaction signature for payment
-  paymentVerified Boolean @default(false) // Whether payment was verified
-  paymentVerifiedAt DateTime? // When payment was verified
-  createdAt      DateTime @default(now())
-  
+  mint               String    @id
+  creatorWallet      String    @db.VarChar(64)
+  name               String
+  ticker             String
+  createdAt          DateTime  @default(now())
+  amount             String?
+  decimals           String?
+  description        String?
+  image              String?
+  links              Json?
+  preset             String?
+  symbol             String?
+  vibe               String?
+  paidAmount         Float?
+  paymentTxSignature String?
+  paymentVerified    Boolean   @default(false)
+  paymentVerifiedAt  DateTime?
+  tier               String    @default("free")
+
   @@index([creatorWallet])
   @@index([createdAt])
   @@index([symbol])
@@ -112,20 +105,19 @@ model CreatedToken {
   @@index([paymentVerified])
 }
 
-// Progressive Flow Completion - Tracks user progress through the post-creation flow
 model FlowCompletion {
-  id              String   @id @default(cuid())
-  tokenMint       String   // Reference to CreatedToken.mint
-  creatorWallet   String   // User's wallet address
-  honestLaunch    Boolean  @default(false) // Step 1: Honest launch enforcement
-  marketingKit    Boolean  @default(false) // Step 2: Marketing kit generation
-  liquidity       Boolean  @default(false) // Step 3: Liquidity setup
-  completedAt     DateTime? // When the flow was fully completed
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  id            String    @id @default(cuid())
+  tokenMint     String
+  creatorWallet String
+  honestLaunch  Boolean   @default(false)
+  marketingKit  Boolean   @default(false)
+  liquidity     Boolean   @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tokenMint, creatorWallet])
   @@index([tokenMint])
   @@index([creatorWallet])
   @@index([completedAt])
-  @@unique([tokenMint, creatorWallet]) // One completion record per token per user
 }

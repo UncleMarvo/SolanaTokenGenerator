@@ -28,7 +28,16 @@ A new secure server-side endpoint that:
 - Supports multipart/form-data for files and application/json for metadata
 - Returns IPFS URL and hash to the client
 
-### 2. Updated Free Token Creation
+### 2. Updated Pinata Utility Library
+**File:** `src/lib/pinata.ts`
+
+- Completely refactored to use secure server-side API
+- `uploadImageToPinata()` now uses `/api/ipfs/upload`
+- `uploadMetadataToPinata()` now uses `/api/ipfs/upload`
+- `isPinataConfigured()` now tests actual service availability
+- All API key references removed from client-side code
+
+### 3. Updated Free Token Creation
 **File:** `src/pages/create-token/free.tsx`
 
 - Updated `uploadImagePinata()` function to use `/api/ipfs/upload`
@@ -36,7 +45,7 @@ A new secure server-side endpoint that:
 - Removed all hardcoded API key fallbacks
 - Improved error handling with detailed messages
 
-### 3. Updated Pro Token Creation
+### 4. Updated Pro Token Creation
 **File:** `src/pages/create-token/pro.tsx`
 
 - Updated `uploadImagePinata()` function to use `/api/ipfs/upload`
@@ -44,7 +53,15 @@ A new secure server-side endpoint that:
 - Removed all hardcoded API key fallbacks
 - Improved error handling with detailed messages
 
-### 4. Updated Dependencies
+### 5. Updated Legacy Create Views
+**Files:** `src/views/create/index.tsx`, `src/views/create/CreateViewWithPricing.tsx`
+
+- Updated `uploadImagePinata()` functions to use `/api/ipfs/upload`
+- Updated `uploadMetadata()` functions to use `/api/ipfs/upload`
+- Removed all environment variable references from client code
+- Improved error handling with user-friendly messages
+
+### 6. Updated Dependencies
 **File:** `package.json`
 
 Added required packages for file upload handling:
@@ -52,11 +69,11 @@ Added required packages for file upload handling:
 - `form-data` v4.0.0 - Creates form data for Pinata uploads
 - `@types/formidable` v3.4.5 - TypeScript types
 
-### 5. Updated Environment Configuration
+### 7. Updated Environment Configuration
 **File:** `env.example`
 
-- Changed from `PINATA_API_KEY` to `PINATA_API_KEY` (server-side only)
-- Changed from `PINATA_SECRET_API_KEY` to `PINATA_SECRET_API_KEY` (server-side only)
+- Changed from `NEXT_PUBLIC_PINATA_API_KEY` to `PINATA_API_KEY` (server-side only)
+- Changed from `NEXT_PUBLIC_PINATA_SECRET_API_KEY` to `PINATA_SECRET_API_KEY` (server-side only)
 - Added clear documentation about security importance
 
 ## Installation Steps

@@ -406,25 +406,27 @@ export const CreateViewWithPricing: FC<CreateViewWithPricingProps> = ({ setOpenC
     formData.append("file", file);
 
     try {
-      // Use environment variables with fallback to hardcoded values
-      const apiKey = process.env.PINATA_API_KEY;
-      const secretKey = process.env.PINATA_SECRET_API_KEY;
-
+      // Upload via secure server-side API endpoint
       const response = await axios({
         method: "POST",
-        url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        url: "/api/ipfs/upload",
         data: formData,
         headers: {
-          pinata_api_key: apiKey,
-          pinata_secret_api_key: secretKey,
           "Content-Type": "multipart/form-data",
         },
       });
 
-      return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
+      if (!response.data.ok) {
+        throw new Error(response.data.message || "Upload failed");
+      }
+
+      return response.data.ipfsUrl;
     } catch (error: any) {
-      console.error("Pinata upload error:", error);
-      notify({ type: "error", message: "Upload to Pinata failed" });
+      console.error("IPFS upload error:", error);
+      notify({ 
+        type: "error", 
+        message: error?.response?.data?.message || "Upload to IPFS failed" 
+      });
       return "";
     }
   };
@@ -435,33 +437,35 @@ export const CreateViewWithPricing: FC<CreateViewWithPricingProps> = ({ setOpenC
       return "";
     }
 
-    const data = JSON.stringify({
+    const metadata = {
       name: token.name,
       symbol: token.symbol,
       description: token.description,
       image: token.image,
-    });
+    };
 
     try {
-      // Use environment variables with fallback to hardcoded values
-      const apiKey = process.env.PINATA_API_KEY;
-      const secretKey = process.env.PINATA_SECRET_API_KEY;
-
+      // Upload via secure server-side API endpoint
       const response = await axios({
         method: "POST",
-        url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-        data: data,
+        url: "/api/ipfs/upload",
+        data: { metadata },
         headers: {
-          pinata_api_key: apiKey,
-          pinata_secret_api_key: secretKey,
           "Content-Type": "application/json",
         },
       });
 
-      return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
+      if (!response.data.ok) {
+        throw new Error(response.data.message || "Metadata upload failed");
+      }
+
+      return response.data.ipfsUrl;
     } catch (error: any) {
-      console.error("Pinata metadata upload error:", error);
-      notify({ type: "error", message: "Upload to Pinata Json failed" });
+      console.error("IPFS metadata upload error:", error);
+      notify({ 
+        type: "error", 
+        message: error?.response?.data?.message || "Upload to IPFS failed" 
+      });
       return "";
     } finally {
       setIsLoading(false);

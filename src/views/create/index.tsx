@@ -309,10 +309,16 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
         tokenStorage.storeToken(tokenMetadata);
 
         // Log complete token metadata to database (non-blocking)
+        console.log('[CreateToken] Logging token to database:', tokenMetadata);
         fetch("/api/my-tokens/log", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(tokenMetadata),
+        }).then((response) => {
+          console.log('[CreateToken] Database logging response:', response.status, response.statusText);
+          return response.json();
+        }).then((result) => {
+          console.log('[CreateToken] Database logging result:', result);
         }).catch((error) => {
           console.error("Failed to log token creation:", error);
           // Non-blocking - don't show error to user
@@ -368,34 +374,36 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
           `***** src/views/create: uploadImagePinata: formData: ${formData[file]}`
         );
 
-        // Use environment variables with fallback to hardcoded values
-        const apiKey = process.env.PINATA_API_KEY;
-        const secretKey = process.env.PINATA_SECRET_API_KEY;
-
+        // Upload via secure server-side API endpoint
         const response = await axios({
           method: "POST",
-          url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
+          url: "/api/ipfs/upload",
           data: formData,
           headers: {
-            pinata_api_key: apiKey,
-            pinata_secret_api_key: secretKey,
             "Content-Type": "multipart/form-data",
           },
         });
 
-        const ImgHash = `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
+        if (!response.data.ok) {
+          throw new Error(response.data.message || "Upload failed");
+        }
+
+        const ImgHash = response.data.ipfsUrl;
         setIsLoading(false);
         return ImgHash;
       } catch (error: any) {
-        console.error(`Image file upload error: ${error}`);
-        notify({ type: "error", message: "Upload image failed" });
+        console.error(`IPFS image file upload error: ${error}`);
+        notify({ 
+          type: "error", 
+          message: error?.response?.data?.message || "Upload image failed" 
+        });
         setIsLoading(false);
         return;
       }
     }
   };
 
-  // METADATA UPLOAD
+  // METADATA UPLOAD - Secure server-side upload
   const uploadMetadata = async (token): Promise<string> => {
     setIsLoading(true);
     const { name, symbol, description, image } = token;
@@ -404,33 +412,35 @@ export const CreateView: FC<CreateViewProps> = ({ setOpenCreateModal }) => {
       return "";
     }
 
-    const data = JSON.stringify({
+    const metadata = {
       name: name,
       symbol: symbol,
       description: description,
       image: image,
-    });
+    };
 
     try {
-      // Use environment variables with fallback to hardcoded values
-      const apiKey = process.env.PINATA_API_KEY;
-      const secretKey = process.env.PINATA_SECRET_API_KEY;
-
+      // Upload via secure server-side API endpoint
       const response = await axios({
         method: "POST",
-        url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-        data: data,
+        url: "/api/ipfs/upload",
+        data: { metadata },
         headers: {
-          pinata_api_key: apiKey,
-          pinata_secret_api_key: secretKey,
           "Content-Type": "application/json",
         },
       });
 
-      return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
+      if (!response.data.ok) {
+        throw new Error(response.data.message || "Metadata upload failed");
+      }
+
+      return response.data.ipfsUrl;
     } catch (error: any) {
-      console.error("Pinata metadata upload error:", error);
-      notify({ type: "error", message: "Upload to Pinata Json failed" });
+      console.error("IPFS metadata upload error:", error);
+      notify({ 
+        type: "error", 
+        message: error?.response?.data?.message || "Upload to IPFS failed" 
+      });
       return "";
     } finally {
       setIsLoading(false);
