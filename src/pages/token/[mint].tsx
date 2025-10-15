@@ -201,17 +201,23 @@ const TokenSharePage: FC = () => {
 
     try {
       // Try to find AMM LP mint by checking Raydium pools
-      const response = await fetch(`https://api.raydium.io/v2/sdk/liquidity/mainnet.json`);
+      const response = await fetch(
+        `https://api.raydium.io/v2/sdk/liquidity/mainnet.json`
+      );
       if (response.ok) {
         const data = await response.json();
-        const allPools = [...(data?.official ?? []), ...(data?.unOfficial ?? [])];
-        
+        const allPools = [
+          ...(data?.official ?? []),
+          ...(data?.unOfficial ?? []),
+        ];
+
         // Find pool that contains our token mint
-        const matchingPool = allPools.find((pool: any) => 
-          pool.baseMint?.toLowerCase() === mint.toLowerCase() || 
-          pool.quoteMint?.toLowerCase() === mint.toLowerCase()
+        const matchingPool = allPools.find(
+          (pool: any) =>
+            pool.baseMint?.toLowerCase() === mint.toLowerCase() ||
+            pool.quoteMint?.toLowerCase() === mint.toLowerCase()
         );
-        
+
         if (matchingPool?.lpMint) {
           setAmmLpMint(matchingPool.lpMint);
         }
@@ -420,388 +426,456 @@ const TokenSharePage: FC = () => {
       </Head>
 
       <div className="min-h-screen bg-bg text-fg">
-        <div className="container mx-auto px-6">
-          <div className="max-w-4xl mx-auto">
-            {/* Premium Hero Section */}
-            <div className="text-center mb-4">
-              <div className="mx-auto inline-flex items-center justify-center w-28 h-28 rounded-full bg-neutral-900 relative">
-                <img
-                  src={token.image || "/brand/meme-placeholder.png"}
-                  alt={`${token.name} logo`}
-                  className="w-20 h-20 object-contain relative z-10"
-                />
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    boxShadow:
-                      "0 0 60px 10px rgba(0,229,255,0.25), 0 0 90px 20px rgba(124,77,255,0.15)",
-                  }}
-                />
-              </div>
-              <h1 className="h1 mt-4">
-                {token.name}{" "}
-                <span className="text-neutral-400">({token.symbol})</span>
-              </h1>
-              <p className="small mt-1">
-                {isOnChainVerified
-                  ? "✅ Honest Launch Verified"
-                  : "🔒 Preset: " + token.preset}
-              </p>
-            </div>
-
-            {/* Token Details Section */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-8">
-              <div className="text-center mb-6">
-                <p className="text-muted max-w-md mx-auto">
-                  {token.description}
-                </p>
-
-                {/* Honest Badge and Preset Badge */}
-                <div className="mt-4 space-y-3">
-                  {/* HonestBadge - shows honest launch status and enforce button for creator */}
-                  {/*                   
-                  {creatorWallet && (
-                    <HonestBadge
-                      mint={token.mintAddress}
-                      creator={creatorWallet}
-                      onEnforce={handleEnforce}
-                    />
-                  )} 
-                  */}
-
-                  {/* Preset Badge - shows the original preset */}
-                  <PresetBadge
-                    preset={token.preset}
-                    isOnChainVerified={isOnChainVerified}
-                  />
-
-                  {/* Honest Launch Enforcer - shows verification status or enforcement button */}
-                  <HonestLaunchEnforcer
-                    mintAddress={token.mintAddress}
-                    preset={token.preset}
-                    onVerificationChange={handleVerificationChange}
-                  />
-                </div>
-              </div>
-
-              {/* Token Details */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-muted">Supply:</span>
-                  <div className="font-medium">
-                    {parseInt(token.amount).toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted">Decimals:</span>
-                  <div className="font-medium">{token.decimals}</div>
-                </div>
-                <div>
-                  <span className="text-muted">Created:</span>
-                  <div className="font-medium">
-                    {new Date(token.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted">Mint:</span>
-                  <div className="font-mono text-xs truncate">
-                    {token.mintAddress.slice(0, 8)}...
-                    {token.mintAddress.slice(-8)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* WSOL Dust Banner */}
-            <WsolDustBanner />
-
-            {/* Live Analytics */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
-              <h2 className="text-xl font-bold mb-6">Live Analytics</h2>
-              <TokenStats
-                mint={token.mintAddress}
-                tokenName={token.name}
-                tokenSymbol={token.symbol}
-              />
-            </div>
-
-            {/* LP Status Chips */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold">LP Status</h2>
-                <div className="flex items-center space-x-4">
-                  {!walletAddress ? (
-                    <button
-                      onClick={connectWallet}
-                      className="flex items-center space-x-2 bg-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300"
-                    >
-                      <span>👛 Connect Wallet</span>
-                    </button>
-                  ) : (
-                    <div className="text-sm text-muted">
-                      👛 {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => {
-                      fetchLpChips();
-                      if (walletAddress) {
-                        fetchWalletLP();
-                      }
-                    }}
-                    disabled={isLpLoading || isWalletLPLoading}
-                    className="flex items-center space-x-2 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50"
-                  >
-                    <AiOutlineReload
-                      size={16}
-                      className={
-                        isLpLoading || isWalletLPLoading ? "animate-spin" : ""
-                      }
-                    />
-                    <span>
-                      {isLpLoading || isWalletLPLoading
-                        ? "Refreshing..."
-                        : "Refresh"}
-                    </span>
-                  </button>
-
-                  {/* Auto-refresh toggle */}
-                  <div className="flex items-center space-x-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoRefresh}
-                        onChange={(e) => setAutoRefresh(e.target.checked)}
-                        className="sr-only"
+        <div className="container mx-auto px-6 py-6">
+          <div className="max-w-6xl mx-auto">
+            {/* Two-column grid layout for better space utilization */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* LEFT COLUMN - Token Preview & Details (Sticky) */}
+              <div className="space-y-6">
+                {/* Token Image & Basic Info Card */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10 lg:sticky lg:top-6">
+                  <div className="text-center">
+                    {/* Token Image with glow effect */}
+                    <div className="mx-auto inline-flex items-center justify-center w-32 h-32 rounded-full bg-neutral-900 relative mb-4">
+                      <img
+                        src={token.image || "/brand/meme-placeholder.png"}
+                        alt={`${token.name} logo`}
+                        className="w-24 h-24 object-contain relative z-10 rounded-full"
                       />
                       <div
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          autoRefresh ? "bg-primary" : "bg-muted/30"
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            autoRefresh ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </div>
-                      <span className="text-sm text-muted font-medium">
-                        Auto-refresh (30s)
-                      </span>
-                    </label>
-                  </div>
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          boxShadow:
+                            "0 0 60px 10px rgba(0,229,255,0.25), 0 0 90px 20px rgba(124,77,255,0.15)",
+                        }}
+                      />
+                    </div>
 
-                  {/* Copy Shill Bundle Button */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        const shillText = formatShill();
-                        await navigator.clipboard.writeText(shillText);
-                        setCopySuccess(true);
-                        setTimeout(() => setCopySuccess(false), 2000);
-                      } catch (error) {
-                        console.error("Failed to copy shill bundle:", error);
-                      }
-                    }}
-                    className={`btn btn-secondary transition-all duration-300 flex items-center space-x-2 ${
-                      copySuccess
-                        ? "bg-success text-bg"
-                        : "bg-accent hover:bg-accent/80 text-bg"
-                    }`}
-                    title="Copy preformatted shill post with metrics and link"
-                  >
-                    <AiOutlineCopy size={16} />
-                    <span>{copySuccess ? "Copied!" : "Copy Shill Bundle"}</span>
-                  </button>
+                    {/* Token Name & Symbol */}
+                    <h1 className="text-3xl font-bold mb-2">{token.name}</h1>
+                    <div className="text-xl text-muted mb-4">
+                      ${token.symbol}
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-sm text-muted mb-4">
+                      {token.description}
+                    </p>
+
+                    {/* Status badges */}
+                    <div className="space-y-3 mb-6">
+                      <PresetBadge
+                        preset={token.preset}
+                        isOnChainVerified={isOnChainVerified}
+                      />
+                      <HonestLaunchEnforcer
+                        mintAddress={token.mintAddress}
+                        preset={token.preset}
+                        onVerificationChange={handleVerificationChange}
+                      />
+                    </div>
+
+                    {/* Token Details Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-muted/10 rounded-lg p-3">
+                        <div className="text-muted text-xs mb-1">Supply</div>
+                        <div className="font-semibold">
+                          {parseInt(token.amount).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="bg-muted/10 rounded-lg p-3">
+                        <div className="text-muted text-xs mb-1">Decimals</div>
+                        <div className="font-semibold">{token.decimals}</div>
+                      </div>
+                      <div className="bg-muted/10 rounded-lg p-3">
+                        <div className="text-muted text-xs mb-1">Created</div>
+                        <div className="font-semibold">
+                          {new Date(token.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="bg-muted/10 rounded-lg p-3">
+                        <div className="text-muted text-xs mb-1">Mint</div>
+                        <div className="font-mono text-xs truncate">
+                          {token.mintAddress.slice(0, 6)}...
+                          {token.mintAddress.slice(-6)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {/* WSOL Dust Banner */}
+                <WsolDustBanner />
               </div>
 
-              {/* LP Status Chips */}
-              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {/* LP Size */}
-                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4 text-center">
-                    <div className="text-2xl mb-2">💧</div>
-                    <div className="text-sm text-muted mb-1">LP Size</div>
-                    <div className="font-semibold text-lg">
-                      {isLpLoading ? (
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-muted/30 rounded w-20 mx-auto"></div>
-                        </div>
-                      ) : (
-                        (() => {
-                          const display = formatLpUsd(lpChips?.lpUsd);
-                          if (display === "—") {
-                            return (
-                              <span
-                                className="text-muted cursor-help"
-                                title="Data unavailable. Try Refresh."
-                              >
-                                —
-                              </span>
-                            );
-                          }
-                          return display;
-                        })()
-                      )}
-                    </div>
-                  </div>
+              {/* RIGHT COLUMN - Analytics & Actions */}
+              <div className="space-y-6">
+                {/* Live Analytics */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10">
+                  <h2 className="text-lg font-bold mb-4">Live Analytics</h2>
+                  <TokenStats
+                    mint={token.mintAddress}
+                    tokenName={token.name}
+                    tokenSymbol={token.symbol}
+                  />
+                </div>
 
-                  {/* Range Status */}
-                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4 text-center">
-                    <div className="text-2xl mb-2">🎯</div>
-                    <div className="text-sm text-muted mb-1">Range</div>
-                    <div className="font-semibold text-lg">
-                      {isLpLoading ? (
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-muted/30 rounded w-16 mx-auto"></div>
-                        </div>
-                      ) : (
-                        (() => {
-                          const display = getRangeDisplay(lpChips?.inRange);
-                          if (display === "🎯 —") {
-                            return (
-                              <span
-                                className="text-muted cursor-help"
-                                title="Data unavailable. Try Refresh."
-                              >
-                                🎯 —
-                              </span>
-                            );
+                {/* LP Status Section - Compact design */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold">LP Status</h2>
+                    <div className="flex items-center space-x-2">
+                      {/* Refresh button */}
+                      <button
+                        onClick={() => {
+                          fetchLpChips();
+                          if (walletAddress) {
+                            fetchWalletLP();
                           }
-                          return display;
-                        })()
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Honest Verification */}
-                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4 text-center">
-                    <div className="text-2xl mb-2">✅</div>
-                    <div className="text-sm text-muted mb-1">Verification</div>
-                    <div className="font-semibold text-lg">
-                      {isLpLoading ? (
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-muted/30 rounded w-24 mx-auto"></div>
-                        </div>
-                      ) : (
-                        (() => {
-                          const display = getHonestDisplay(lpChips?.honest);
-                          if (display === "⚠️ —") {
-                            return (
-                              <span
-                                className="text-muted cursor-help"
-                                title="Data unavailable. Try Refresh."
-                              >
-                                ⚠️ —
-                              </span>
-                            );
-                          }
-                          return display;
-                        })()
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Last Transaction */}
-                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4 text-center">
-                    <div className="text-2xl mb-2">🔗</div>
-                    <div className="text-sm text-muted mb-1">Last TX</div>
-                    <div className="font-semibold text-lg">
-                      {isLpLoading ? (
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-muted/30 rounded w-20 mx-auto"></div>
-                        </div>
-                      ) : (
-                        (() => {
-                          const txElement = getLastTxElement(lpChips?.lastTx);
-                          if (txElement.href) {
-                            return (
-                              <a
-                                href={txElement.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:text-primary/80 underline transition-colors"
-                              >
-                                {txElement.text}
-                              </a>
-                            );
-                          }
-                          if (txElement.text === "🔗 —") {
-                            return (
-                              <span
-                                className="text-muted cursor-help"
-                                title="Data unavailable. Try Refresh."
-                              >
-                                🔗 —
-                              </span>
-                            );
-                          }
-                          return txElement.text;
-                        })()
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Wallet LP Badge */}
-                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-4 text-center">
-                    <div className="text-2xl mb-2">👛</div>
-                    <div className="text-sm text-muted mb-1">Your LP</div>
-                    <div className="font-semibold text-lg">
-                      {!walletAddress ? (
-                        <span className="text-muted">Connect</span>
-                      ) : isWalletLPLoading ? (
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-muted/30 rounded w-16 mx-auto"></div>
-                        </div>
-                      ) : walletLP ? (
-                        <span
+                        }}
+                        disabled={isLpLoading || isWalletLPLoading}
+                        className="flex items-center space-x-1 bg-muted/20 hover:bg-muted/30 text-fg px-3 py-1.5 rounded-lg transition-all duration-300 disabled:opacity-50 text-sm"
+                        title="Refresh LP data"
+                      >
+                        <AiOutlineReload
+                          size={14}
                           className={
-                            walletLP.has ? "text-success" : "text-muted"
+                            isLpLoading || isWalletLPLoading
+                              ? "animate-spin"
+                              : ""
                           }
+                        />
+                      </button>
+
+                      {/* Auto-refresh toggle - compact */}
+                      <label
+                        className="flex items-center space-x-1 cursor-pointer"
+                        title="Auto-refresh every 30s"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={autoRefresh}
+                          onChange={(e) => setAutoRefresh(e.target.checked)}
+                          className="sr-only"
+                        />
+                        <div
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            autoRefresh ? "bg-primary" : "bg-muted/30"
+                          }`}
                         >
-                          {walletLP.has ? "Yes" : "No"}
-                        </span>
-                      ) : (
-                        <span
-                          className="text-muted cursor-help"
-                          title="Data unavailable. Try Refresh."
-                        >
-                          —
-                        </span>
-                      )}
+                          <span
+                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                              autoRefresh ? "translate-x-5" : "translate-x-1"
+                            }`}
+                          />
+                        </div>
+                      </label>
                     </div>
-                    {walletLP?.positionsCount > 0 && (
-                      <div className="text-xs text-muted mt-1">
-                        {walletLP.positionsCount} position
-                        {walletLP.positionsCount !== 1 ? "s" : ""}
+                  </div>
+
+                  {/* Honest Verification - Full width, prominent placement */}
+                  <div className="bg-muted/10 border border-muted/20 rounded-lg p-2 mb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">✅</span>
+                        <span className="text-xs text-muted">Honest Launch Verification</span>
                       </div>
+                      <div className="font-semibold text-sm">
+                        {isLpLoading ? (
+                          <div className="animate-pulse">
+                            <div className="h-5 bg-muted/30 rounded w-24"></div>
+                          </div>
+                        ) : (
+                          (() => {
+                            const display = getHonestDisplay(lpChips?.honest);
+                            if (display === "⚠️ —") {
+                              return (
+                                <span
+                                  className="text-muted cursor-help"
+                                  title="Data unavailable. Try Refresh."
+                                >
+                                  ⚠️ —
+                                </span>
+                              );
+                            }
+                            return <span className={lpChips?.honest ? "text-success" : "text-warning"}>{display}</span>;
+                          })()
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LP Metrics Grid - 4 columns on desktop, 2 on mobile */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {/* LP Size */}
+                    <div className="bg-muted/10 border border-muted/20 rounded-lg p-2 text-center">
+                      <div className="text-lg mb-0.5">💧</div>
+                      <div className="text-xs text-muted mb-0.5">LP Size</div>
+                      <div className="font-semibold text-sm">
+                        {isLpLoading ? (
+                          <div className="animate-pulse">
+                            <div className="h-5 bg-muted/30 rounded w-16 mx-auto"></div>
+                          </div>
+                        ) : (
+                          (() => {
+                            const display = formatLpUsd(lpChips?.lpUsd);
+                            if (display === "—") {
+                              return (
+                                <span
+                                  className="text-muted cursor-help"
+                                  title="Data unavailable. Try Refresh."
+                                >
+                                  —
+                                </span>
+                              );
+                            }
+                            return display;
+                          })()
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Range Status */}
+                    <div className="bg-muted/10 border border-muted/20 rounded-lg p-2 text-center">
+                      <div className="text-lg mb-0.5">🎯</div>
+                      <div className="text-xs text-muted mb-0.5">Range</div>
+                      <div className="font-semibold text-sm">
+                        {isLpLoading ? (
+                          <div className="animate-pulse">
+                            <div className="h-5 bg-muted/30 rounded w-14 mx-auto"></div>
+                          </div>
+                        ) : (
+                          (() => {
+                            const display = getRangeDisplay(lpChips?.inRange);
+                            if (display === "🎯 —") {
+                              return (
+                                <span
+                                  className="text-muted cursor-help"
+                                  title="Data unavailable. Try Refresh."
+                                >
+                                  🎯 —
+                                </span>
+                              );
+                            }
+                            return display;
+                          })()
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Last Transaction */}
+                    <div className="bg-muted/10 border border-muted/20 rounded-lg p-2 text-center">
+                      <div className="text-lg mb-0.5">🔗</div>
+                      <div className="text-xs text-muted mb-0.5">Last TX</div>
+                      <div className="font-semibold text-sm">
+                        {isLpLoading ? (
+                          <div className="animate-pulse">
+                            <div className="h-5 bg-muted/30 rounded w-16 mx-auto"></div>
+                          </div>
+                        ) : (
+                          (() => {
+                            const txElement = getLastTxElement(lpChips?.lastTx);
+                            if (txElement.href) {
+                              return (
+                                <a
+                                  href={txElement.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:text-primary/80 underline transition-colors text-xs"
+                                >
+                                  {txElement.text}
+                                </a>
+                              );
+                            }
+                            if (txElement.text === "🔗 —") {
+                              return (
+                                <span
+                                  className="text-muted cursor-help"
+                                  title="Data unavailable. Try Refresh."
+                                >
+                                  🔗 —
+                                </span>
+                              );
+                            }
+                            return txElement.text;
+                          })()
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Wallet LP Badge */}
+                    {walletAddress ? (
+                      <div className="bg-muted/10 border border-muted/20 rounded-lg p-2 text-center">
+                        <div className="text-lg mb-0.5">👛</div>
+                        <div className="text-xs text-muted mb-0.5">
+                          Your LP
+                        </div>
+                        <div className="font-semibold text-sm">
+                          {isWalletLPLoading ? (
+                            <div className="animate-pulse">
+                              <div className="h-5 bg-muted/30 rounded w-16 mx-auto"></div>
+                            </div>
+                          ) : walletLP ? (
+                            <span
+                              className={
+                                walletLP.has ? "text-success" : "text-muted"
+                              }
+                              title={walletLP.has ? `${walletLP.positionsCount} position${walletLP.positionsCount !== 1 ? "s" : ""}` : "No positions"}
+                            >
+                              {walletLP.has ? "Yes" : "No"}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-muted cursor-help"
+                              title="Data unavailable. Try Refresh."
+                            >
+                              —
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-muted/10 border border-muted/20 rounded-lg p-2 text-center flex items-center justify-center">
+                        <button
+                          onClick={connectWallet}
+                          className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors"
+                          title="Connect wallet to view your LP positions"
+                        >
+                          👛 Connect
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Updated timestamp and source info on same line */}
+                  <div className="flex items-center justify-between text-xs text-muted pt-2">
+                    <span>Last updated: {new Date().toLocaleTimeString()}</span>
+                    {lpChips?.source && (
+                      <span>Source: {lpChips.source}</span>
                     )}
                   </div>
                 </div>
 
-                <div className="text-sm text-muted">
-                  Last updated: {new Date().toLocaleTimeString()}
+                {/* Quick Actions - Combined Actions & Share in compact format */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10">
+                  <h2 className="text-lg font-bold mb-4">Quick Actions</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href={`/liquidity?tokenMint=${encodeURIComponent(
+                        token.mintAddress
+                      )}&dex=Raydium&pair=SOL/TOKEN`}
+                      className="btn btn-primary py-2 text-sm"
+                    >
+                      Add Liquidity
+                    </a>
+
+                    <a
+                      href={`/meme-kit?name=${encodeURIComponent(
+                        token.name
+                      )}&ticker=${encodeURIComponent(token.symbol)}`}
+                      className="btn btn-primary py-2 text-sm"
+                    >
+                      Meme Kit
+                    </a>
+
+                    <button
+                      onClick={handleOpenDexScreener}
+                      className="btn btn-secondary py-2 text-sm"
+                    >
+                      DexScreener
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          const shillText = formatShill();
+                          await navigator.clipboard.writeText(shillText);
+                          setCopySuccess(true);
+                          setTimeout(() => setCopySuccess(false), 2000);
+                        } catch (error) {
+                          console.error("Failed to copy shill bundle:", error);
+                        }
+                      }}
+                      className={`btn btn-secondary py-2 text-sm transition-all duration-300 ${
+                        copySuccess ? "bg-success text-bg" : ""
+                      }`}
+                      title="Copy preformatted shill post"
+                    >
+                      {copySuccess ? "✓ Copied!" : "Shill Bundle"}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Data Source Info */}
-                {lpChips?.source && (
-                  <div className="mt-4 text-center">
-                    <span className="chip text-muted">
-                      Data source: {lpChips.source}
-                    </span>
+                {/* Share Section - Compact */}
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10">
+                  <h2 className="text-lg font-bold mb-4">Share</h2>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => {
+                        const shareUrls = getSocialShareUrls(
+                          window.location.href,
+                          token.name,
+                          token.symbol
+                        );
+                        window.open(shareUrls.twitter, "_blank");
+                      }}
+                      className="btn btn-primary py-2 text-sm flex items-center justify-center space-x-1"
+                    >
+                      <FaTwitter size={14} />
+                      <span>X</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const shareUrls = getSocialShareUrls(
+                          window.location.href,
+                          token.name,
+                          token.symbol
+                        );
+                        window.open(shareUrls.telegram, "_blank");
+                      }}
+                      className="btn btn-primary py-2 text-sm flex items-center justify-center space-x-1"
+                    >
+                      <FaTelegram size={14} />
+                      <span>TG</span>
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          const shareUrls = getSocialShareUrls(
+                            window.location.href,
+                            token.name,
+                            token.symbol
+                          );
+                          await navigator.clipboard.writeText(shareUrls.copy);
+                          setCopySuccess(true);
+                          setTimeout(() => setCopySuccess(false), 2000);
+                        } catch (error) {
+                          console.error("Failed to copy link:", error);
+                        }
+                      }}
+                      className={`btn btn-secondary py-2 text-sm flex items-center justify-center space-x-1 transition-all ${
+                        copySuccess ? "bg-success text-bg" : ""
+                      }`}
+                    >
+                      <AiOutlineCopy size={14} />
+                      <span>{copySuccess ? "✓" : "Copy"}</span>
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Proof Section */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
+            {/* Full-width sections at bottom - Collapsed by default for cleaner layout */}
+
+            {/* Proof Section - Compact collapsible */}
+            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10 mb-6 mt-6">
               <details className="group">
                 <summary className="cursor-pointer list-none">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-muted group-open:text-fg transition-colors">
-                      Proof
+                    <h2 className="text-lg font-bold text-muted group-open:text-fg transition-colors">
+                      Proof & Verification
                     </h2>
                     <div className="text-muted group-open:text-fg transition-colors">
                       <svg
@@ -821,23 +895,20 @@ const TokenSharePage: FC = () => {
                   </div>
                 </summary>
 
-                <div className="mt-2 space-y-4">
+                <div className="mt-4 space-y-3">
                   {/* Check if there's anything to show */}
                   {!isOnChainVerified && !lpChips?.lastTx && !walletLP?.has ? (
-                    <div className="text-center py-4">
-                      <h3 className="text-lg font-semibold text-muted mb-2">
-                        No proofs yet
-                      </h3>
-                      <p className="text-sm text-muted mb-4">
-                        Add liquidity or enforce Honest Launch to generate proof
-                        data.
+                    <div className="text-center py-3">
+                      <p className="text-sm text-muted mb-3">
+                        No proof data available yet. Add liquidity or verify
+                        Honest Launch.
                       </p>
-                      <div className="flex justify-center space-x-4">
+                      <div className="flex justify-center space-x-3">
                         <a
                           href={`/liquidity?tokenMint=${encodeURIComponent(
                             token.mintAddress
                           )}&dex=Raydium&pair=SOL/TOKEN`}
-                          className="btn btn-primary"
+                          className="btn btn-primary py-2 px-4 text-sm"
                         >
                           Add Liquidity
                         </a>
@@ -856,371 +927,173 @@ const TokenSharePage: FC = () => {
                                   }),
                                 }
                               );
-
                               if (response.ok) {
                                 const result = await response.json();
-                                if (result.verified) {
-                                  alert(
-                                    "✅ Token verified as honest on-chain!"
-                                  );
-                                  setIsOnChainVerified(true);
-                                } else {
-                                  alert(
-                                    "⚠️ Token verification failed: " +
-                                      (result.reason || "Unknown reason")
-                                  );
-                                }
-                              } else {
-                                alert("❌ Verification check failed");
+                                alert(
+                                  result.verified
+                                    ? "✅ Verified!"
+                                    : `⚠️ ${result.reason || "Failed"}`
+                                );
+                                if (result.verified) setIsOnChainVerified(true);
                               }
                             } catch (error) {
-                              alert("❌ Error checking verification: " + error);
+                              alert("❌ Error: " + error);
                             }
                           }}
-                          className="btn btn-secondary"
+                          className="btn btn-secondary py-2 px-4 text-sm"
                         >
-                          Check Honest Launch
+                          Check Verification
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <>
-                      {/* Honest Verification */}
-                      <div className="bg-muted/10 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div>
-                              <h3 className="font-semibold">
-                                Honest Verification
-                              </h3>
-                              <p className="text-sm text-muted">
-                                {isOnChainVerified
-                                  ? "Verified on-chain"
-                                  : "Not yet verified"}
-                              </p>
-                            </div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {/* Honest Verification Proof */}
+                      <div className="bg-muted/10 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-lg">✅</span>
+                            <h3 className="font-semibold text-sm">
+                              Honest Verification
+                            </h3>
                           </div>
-                          <button
-                            onClick={async () => {
-                              try {
-                                // Call the honest verification function
-                                const response = await fetch(
-                                  "/api/token/verify",
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      mint: token.mintAddress,
-                                    }),
-                                  }
-                                );
-
-                                if (response.ok) {
-                                  const result = await response.json();
-                                  // Show toast with result
-                                  if (result.verified) {
-                                    alert(
-                                      "✅ Token verified as honest on-chain!"
-                                    );
-                                    setIsOnChainVerified(true);
-                                  } else {
-                                    alert(
-                                      "⚠️ Token verification failed: " +
-                                        (result.reason || "Unknown reason")
-                                    );
-                                  }
-                                } else {
-                                  alert("❌ Verification check failed");
-                                }
-                              } catch (error) {
-                                alert(
-                                  "❌ Error checking verification: " + error
-                                );
-                              }
-                            }}
-                            className="btn btn-primary hover:bg-primary-600 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
-                          >
-                            Check on Chain
-                          </button>
                         </div>
+                        <p className="text-xs text-muted mb-2">
+                          {isOnChainVerified
+                            ? "Verified on-chain"
+                            : "Not yet verified"}
+                        </p>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(
+                                "/api/token/verify",
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    mint: token.mintAddress,
+                                  }),
+                                }
+                              );
+                              if (response.ok) {
+                                const result = await response.json();
+                                alert(
+                                  result.verified
+                                    ? "✅ Verified!"
+                                    : `⚠️ ${result.reason || "Failed"}`
+                                );
+                                if (result.verified) setIsOnChainVerified(true);
+                              }
+                            } catch (error) {
+                              alert("❌ Error: " + error);
+                            }
+                          }}
+                          className="btn btn-primary py-1.5 px-3 text-xs w-full"
+                        >
+                          Re-check
+                        </button>
                       </div>
 
-                      {/* Last Transaction */}
+                      {/* Last Transaction Proof */}
                       {lpChips?.lastTx && (
-                        <div className="bg-muted/10 rounded-lg p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="text-2xl">🔗</div>
-                              <div>
-                                <h3 className="font-semibold">
-                                  Last Transaction
-                                </h3>
-                                <p className="text-sm text-muted">
-                                  Most recent LP activity
-                                </p>
-                              </div>
-                            </div>
-                            <a
-                              href={`https://solscan.io/tx/${lpChips.lastTx}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bg-accent hover:bg-accent/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
-                            >
-                              View on Solscan
-                            </a>
+                        <div className="bg-muted/10 rounded-lg p-3">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-lg">🔗</span>
+                            <h3 className="font-semibold text-sm">
+                              Last Transaction
+                            </h3>
                           </div>
+                          <p className="text-xs text-muted mb-2">
+                            Most recent LP activity
+                          </p>
+                          <a
+                            href={`https://solscan.io/tx/${lpChips.lastTx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-primary py-1.5 px-3 text-xs w-full"
+                          >
+                            View on Solscan
+                          </a>
                         </div>
                       )}
 
-                      {/* Wallet LP Positions Link */}
+                      {/* Wallet LP Positions Proof */}
                       {walletLP?.has && (
-                        <div className="bg-muted/10 rounded-lg p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="text-2xl">👛</div>
-                              <div>
-                                <h3 className="font-semibold">
-                                  Your Positions
-                                </h3>
-                                <p className="text-sm text-muted">
-                                  {walletLP.positionsCount} position
-                                  {walletLP.positionsCount !== 1
-                                    ? "s"
-                                    : ""}{" "}
-                                  found
-                                </p>
-                              </div>
-                            </div>
-                            <a
-                              href={`/positions?filter=${encodeURIComponent(
-                                token.mintAddress
-                              )}`}
-                              className="bg-success hover:bg-success/80 text-bg font-bold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
-                            >
-                              View Positions
-                            </a>
+                        <div className="bg-muted/10 rounded-lg p-3">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-lg">👛</span>
+                            <h3 className="font-semibold text-sm">
+                              Your LP Positions
+                            </h3>
                           </div>
+                          <p className="text-xs text-muted mb-2">
+                            {walletLP.positionsCount} position
+                            {walletLP.positionsCount !== 1 ? "s" : ""} found
+                          </p>
+                          <a
+                            href={`/positions?filter=${encodeURIComponent(
+                              token.mintAddress
+                            )}`}
+                            className="btn btn-primary py-1.5 px-3 text-xs w-full"
+                          >
+                            View Positions
+                          </a>
                         </div>
                       )}
 
-                      {/* Copy Proof Button */}
-                      <div className="flex justify-center pt-4">
+                      {/* Copy All Proof Button */}
+                      <div className="bg-muted/10 rounded-lg p-3 md:col-span-2">
                         <button
                           onClick={async () => {
                             try {
                               let proofText = `Proof for ${token.name} ($${token.symbol}):\n`;
-
-                              // Add honest verification status
                               proofText += `✅ Honest: ${
                                 isOnChainVerified ? "Verified" : "Not verified"
                               }\n`;
-
-                              // Add last transaction if available
-                              if (lpChips?.lastTx) {
+                              if (lpChips?.lastTx)
                                 proofText += `🔗 Last TX: https://solscan.io/tx/${lpChips.lastTx}\n`;
-                              }
-
-                              // Add wallet LP status if available
-                              if (walletLP?.has) {
+                              if (walletLP?.has)
                                 proofText += `👛 Your LP: Yes (${
                                   walletLP.positionsCount
                                 } position${
                                   walletLP.positionsCount !== 1 ? "s" : ""
                                 })\n`;
-                              }
-
-                              // Add token page link
                               proofText += `🔗 Token: ${window.location.href}`;
-
                               await navigator.clipboard.writeText(proofText);
-                              alert("✅ Proof copied to clipboard!");
+                              alert("✅ Proof copied!");
                             } catch (error) {
-                              alert("❌ Failed to copy proof: " + error);
+                              alert("❌ Failed to copy: " + error);
                             }
                           }}
-                          className="btn btn-secondary duration-300 flex items-center space-x-2"
+                          className="btn btn-secondary w-full py-2 text-sm flex items-center justify-center space-x-2"
                         >
-                          <AiOutlineCopy size={16} />
-                          <span>Copy Proof</span>
+                          <AiOutlineCopy size={14} />
+                          <span>Copy All Proof Data</span>
                         </button>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </details>
             </div>
 
-            {/* Action Buttons */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
-              <h2 className="h3 mb-6">Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <a
-                  href={`/meme-kit?name=${encodeURIComponent(
-                    token.name
-                  )}&ticker=${encodeURIComponent(token.symbol)}`}
-                  className="btn btn-primary"
-                >
-                  Get Meme Kit
-                </a>
-
-                <a
-                  href={`/api/meme/kit.zip?name=${encodeURIComponent(
-                    token.name
-                  )}&ticker=${encodeURIComponent(
-                    token.symbol
-                  )}&vibe=degen&preset=${encodeURIComponent(
-                    token.preset
-                  )}&shareUrl=${encodeURIComponent(window.location.href)}`}
-                  className="btn btn-primary"
-                >
-                  Download ZIP
-                </a>
-
-                <a
-                  href={`/liquidity?tokenMint=${encodeURIComponent(
-                    token.mintAddress
-                  )}&dex=Raydium&pair=SOL/TOKEN`}
-                  className="btn btn-primary"
-                >
-                  Add Liquidity
-                </a>
-
-                <button
-                  onClick={handleOpenDexScreener}
-                  className="btn btn-secondary"
-                >
-                  Open on DexScreener
-                </button>
-
-                <button
-                  onClick={handleCopyLink}
-                  className={`btn btn-secondary duration-300 flex items-center justify-center space-x-2 ${
-                    copySuccess
-                      ? "bg-success text-bg"
-                      : "bg-accent hover:bg-accent/80 text-bg"
-                  }`}
-                >
-                  <AiOutlineCopy size={16} />
-                  <span>{copySuccess ? "Copied!" : "Copy Share Link"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Share Section */}
-            <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10 mb-4">
-              <h2 className="text-xl font-bold mb-6">Share</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Share on X (Twitter) */}
-                <button
-                  onClick={() => {
-                    const shareUrls = getSocialShareUrls(
-                      window.location.href,
-                      token.name,
-                      token.symbol
-                    );
-                    window.open(shareUrls.twitter, "_blank");
-                  }}
-                  className="btn btn-primary duration-300 flex items-center justify-center space-x-2"
-                >
-                  <FaTwitter size={16} />
-                  <span>Share on X</span>
-                </button>
-
-                {/* Share on Telegram */}
-                <button
-                  onClick={() => {
-                    const shareUrls = getSocialShareUrls(
-                      window.location.href,
-                      token.name,
-                      token.symbol
-                    );
-                    window.open(shareUrls.telegram, "_blank");
-                  }}
-                  className="btn btn-primary duration-300 flex items-center justify-center space-x-2"
-                >
-                  <FaTelegram size={16} />
-                  <span>Share on Telegram</span>
-                </button>
-
-                {/* Copy Link with UTM */}
-                <button
-                  onClick={async () => {
-                    try {
-                      const shareUrls = getSocialShareUrls(
-                        window.location.href,
-                        token.name,
-                        token.symbol
-                      );
-                      await navigator.clipboard.writeText(shareUrls.copy);
-                      setCopySuccess(true);
-                      setTimeout(() => setCopySuccess(false), 2000);
-                    } catch (error) {
-                      console.error("Failed to copy link:", error);
-                    }
-                  }}
-                  className={`btn btn-secondary duration-300 flex items-center justify-center space-x-2 ${
-                    copySuccess
-                      ? "bg-success text-bg"
-                      : "bg-accent hover:bg-accent/80 text-bg"
-                  }`}
-                >
-                  <AiOutlineCopy size={16} />
-                  <span>{copySuccess ? "Copied!" : "Copy Link"}</span>
-                </button>
-              </div>
-
-              {/* Share Preview */}
-              <div className="mt-6 p-4 bg-muted/10 rounded-lg border border-muted/20">
-                <h3 className="text-sm font-semibold mb-2 text-muted">
-                  Share Preview
-                </h3>
-                <p className="text-sm text-muted mb-2">
-                  <strong>Text:</strong>{" "}
-                  {getSocialShareUrls(
-                    window.location.href,
-                    token.name,
-                    token.symbol
-                  ).twitter.includes("text=")
-                    ? decodeURIComponent(
-                        getSocialShareUrls(
-                          window.location.href,
-                          token.name,
-                          token.symbol
-                        )
-                          .twitter.split("text=")[1]
-                          .split("&")[0]
-                      )
-                    : `${token.name} ($${token.symbol}) live now on Solana.`}
-                </p>
-                <p className="text-xs text-muted">
-                  <strong>Link:</strong>{" "}
-                  {
-                    getSocialShareUrls(
-                      window.location.href,
-                      token.name,
-                      token.symbol
-                    ).copy
-                  }
-                </p>
-              </div>
-            </div>
-
-            {/* Social Links (if available) */}
+            {/* Social Links (if available) - Compact */}
             {token.links &&
               (token.links.tg || token.links.x || token.links.site) && (
-                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-8 border border-muted/10">
-                  <h2 className="text-xl font-bold mb-6">Social Links</h2>
-                  <div className="flex flex-wrap gap-4">
+                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-4 border border-muted/10 mb-6">
+                  <h2 className="text-lg font-bold mb-4">Social Links</h2>
+                  <div className="flex flex-wrap gap-3">
                     {token.links.tg && (
                       <a
                         href={token.links.tg}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300"
+                        className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
                       >
-                        <FaTelegram size={16} />
+                        <FaTelegram size={14} />
                         <span>Telegram</span>
                       </a>
                     )}
@@ -1230,9 +1103,9 @@ const TokenSharePage: FC = () => {
                         href={token.links.x}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-2 bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300"
+                        className="flex items-center space-x-2 bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
                       >
-                        <FaTwitter size={16} />
+                        <FaTwitter size={14} />
                         <span>Twitter</span>
                       </a>
                     )}
@@ -1242,9 +1115,9 @@ const TokenSharePage: FC = () => {
                         href={token.links.site}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-2 bg-muted/20 hover:bg-muted/30 text-fg font-bold py-2 px-4 rounded-lg transition-all duration-300"
+                        className="flex items-center space-x-2 bg-muted/20 hover:bg-muted/30 text-fg font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm"
                       >
-                        <AiOutlineLink size={16} />
+                        <AiOutlineLink size={14} />
                         <span>Website</span>
                       </a>
                     )}
@@ -1256,17 +1129,31 @@ const TokenSharePage: FC = () => {
             <AdvancedTools
               mint={token.mintAddress}
               creatorWallet={creatorWallet || ""}
-              shareUrl={typeof window !== "undefined" ? window.location.href : ""}
-              liquidityUrl={`/liquidity?tokenMint=${encodeURIComponent(token.mintAddress)}&dex=Raydium&pair=SOL/TOKEN`}
-              kitUrl={`/api/meme/kit.zip?name=${encodeURIComponent(token.name)}&ticker=${encodeURIComponent(token.symbol)}&vibe=degen&preset=${encodeURIComponent(token.preset)}&shareUrl=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+              shareUrl={
+                typeof window !== "undefined" ? window.location.href : ""
+              }
+              liquidityUrl={`/liquidity?tokenMint=${encodeURIComponent(
+                token.mintAddress
+              )}&dex=Raydium&pair=SOL/TOKEN`}
+              kitUrl={`/api/meme/kit.zip?name=${encodeURIComponent(
+                token.name
+              )}&ticker=${encodeURIComponent(
+                token.symbol
+              )}&vibe=degen&preset=${encodeURIComponent(
+                token.preset
+              )}&shareUrl=${encodeURIComponent(
+                typeof window !== "undefined" ? window.location.href : ""
+              )}`}
               ammLpMint={ammLpMint}
               onRecheck={async () => {
-                await fetch("/api/honest-status/invalidate", { 
-                  method: "POST", 
-                  headers: { "content-type": "application/json" }, 
-                  body: JSON.stringify({ mint: token.mintAddress }) 
+                await fetch("/api/honest-status/invalidate", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ mint: token.mintAddress }),
                 }).catch(() => {});
-                await fetch(`/api/honest-status?mint=${token.mintAddress}&bust=1`).catch(() => {});
+                await fetch(
+                  `/api/honest-status?mint=${token.mintAddress}&bust=1`
+                ).catch(() => {});
                 // Trigger local refresh of badge by re-fetching creator wallet
                 await fetchCreatorWallet();
               }}

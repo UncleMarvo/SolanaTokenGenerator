@@ -103,9 +103,10 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
       return response.data.ipfsUrl;
     } catch (error: any) {
       console.error("IPFS upload error:", error);
-      notify({ 
-        type: "error", 
-        message: error?.response?.data?.message || "Failed to upload image to IPFS" 
+      notify({
+        type: "error",
+        message:
+          error?.response?.data?.message || "Failed to upload image to IPFS",
       });
       return "";
     }
@@ -144,7 +145,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
       // Validate numeric fields
       const decimals = Number(token.decimals);
       const amount = Number(token.amount);
-      
+
       if (isNaN(decimals) || decimals < 0 || decimals > 9) {
         notify({
           type: "error",
@@ -152,7 +153,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
         });
         return;
       }
-      
+
       if (isNaN(amount) || amount <= 0) {
         notify({
           type: "error",
@@ -160,23 +161,24 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
         });
         return;
       }
-      
+
       // Check if mint amount would overflow
       const mintAmount = amount * Math.pow(10, decimals);
       if (mintAmount > Number.MAX_SAFE_INTEGER) {
         notify({
           type: "error",
-          message: "Token amount is too large. Please reduce the amount or decimals.",
+          message:
+            "Token amount is too large. Please reduce the amount or decimals.",
         });
         return;
       }
 
       setIsLoading(true);
-      
+
       try {
         // Use RPC fallback system with retry logic for maximum reliability
         const lamports = await withRpc(async (rpcConnection) => {
-          return await retryWithBackoff(() => 
+          return await retryWithBackoff(() =>
             getMinimumBalanceForRentExemptMint(rpcConnection)
           );
         });
@@ -220,7 +222,9 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
         );
 
         if (!metadataResponse.data.ok) {
-          throw new Error(metadataResponse.data.message || "Metadata upload failed");
+          throw new Error(
+            metadataResponse.data.message || "Metadata upload failed"
+          );
         }
 
         const tokenUri = metadataResponse.data.ipfsUrl;
@@ -343,22 +347,35 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
         tokenStorage.storeToken(completeTokenMetadata);
 
         // Log complete token metadata to database (non-blocking)
-        console.log('[CreateToken-Free] Logging token to database:', completeTokenMetadata);
+        console.log(
+          "[CreateToken-Free] Logging token to database:",
+          completeTokenMetadata
+        );
         fetch("/api/my-tokens/log", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(completeTokenMetadata),
-        }).then((response) => {
-          console.log('[CreateToken-Free] Database logging response:', response.status, response.statusText);
-          return response.json();
-        }).then((result) => {
-          console.log('[CreateToken-Free] Database logging result:', result);
-          if (result.error === 'BadRequest') {
-            console.log('[CreateToken-Free] Validation error details:', result.details);
-          }
-        }).catch((error) => {
-          console.error("Failed to log token creation:", error);
-        });
+        })
+          .then((response) => {
+            console.log(
+              "[CreateToken-Free] Database logging response:",
+              response.status,
+              response.statusText
+            );
+            return response.json();
+          })
+          .then((result) => {
+            console.log("[CreateToken-Free] Database logging result:", result);
+            if (result.error === "BadRequest") {
+              console.log(
+                "[CreateToken-Free] Validation error details:",
+                result.details
+              );
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to log token creation:", error);
+          });
 
         notify({
           type: "success",
@@ -369,7 +386,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
         // Wait a moment to see the database logging results before redirecting
         setTimeout(() => {
           window.location.href = `/token/${mintAddress}`;
-        }, 10000);
+        }, 1000);
       } catch (error: any) {
         console.error("Token creation error:", error);
         notify({
@@ -434,13 +451,18 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                     <CreateSVG />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-fg">Free Token Creation</h2>
-                    <p className="text-sm text-muted">Basic features included</p>
+                    <h2 className="text-lg font-semibold text-fg">
+                      Free Token Creation
+                    </h2>
+                    <p className="text-sm text-muted">
+                      Basic features included
+                    </p>
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-accent mb-2">Free</div>
                 <p className="text-sm text-muted">
-                  No payment required. Create your token instantly with basic features.
+                  No payment required. Create your token instantly with basic
+                  features.
                 </p>
               </div>
 
@@ -448,16 +470,26 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Image Upload */}
                 <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
-                  <h3 className="text-lg font-semibold text-fg mb-4">Token Image</h3>
+                  <h3 className="text-lg font-semibold text-fg mb-4">
+                    Token Image
+                  </h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-center w-full">
-                      <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-muted/20 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-colors">
+                      <label
+                        htmlFor="image-upload"
+                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-muted/20 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-colors"
+                      >
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <Upload className="w-8 h-8 mb-2 text-muted" />
                           <p className="mb-2 text-sm text-muted">
-                            <span className="font-semibold">Click to upload</span> your token image
+                            <span className="font-semibold">
+                              Click to upload
+                            </span>{" "}
+                            your token image
                           </p>
-                          <p className="text-xs text-muted">PNG, JPG or GIF (MAX. 10MB)</p>
+                          <p className="text-xs text-muted">
+                            PNG, JPG or GIF (MAX. 10MB)
+                          </p>
                         </div>
                         <input
                           id="image-upload"
@@ -485,7 +517,9 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
 
                 {/* Basic Token Info */}
                 <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
-                  <h3 className="text-lg font-semibold text-fg mb-4">Token Details</h3>
+                  <h3 className="text-lg font-semibold text-fg mb-4">
+                    Token Details
+                  </h3>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-fg mb-2">
@@ -555,7 +589,9 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       </label>
                       <textarea
                         value={token.description}
-                        onChange={(e) => handleFormFieldChange("description", e)}
+                        onChange={(e) =>
+                          handleFormFieldChange("description", e)
+                        }
                         className="w-full px-4 py-3 bg-white border border-muted/20 rounded-xl text-black placeholder-gray-500 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-colors resize-none"
                         placeholder="Describe your token..."
                         rows={3}
@@ -567,7 +603,9 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
 
                 {/* Launch Preset */}
                 <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
-                  <h3 className="text-lg font-semibold text-fg mb-4">Launch Preset</h3>
+                  <h3 className="text-lg font-semibold text-fg mb-4">
+                    Launch Preset
+                  </h3>
                   <div className="space-y-4">
                     <div className="flex space-x-4">
                       <button
@@ -581,7 +619,9 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       >
                         <div className="text-center">
                           <div className="flex items-center justify-center space-x-2 mb-2">
-                            <div className="text-lg font-semibold">Honest Launch</div>
+                            <div className="text-lg font-semibold">
+                              Honest Launch
+                            </div>
                           </div>
                           <div className="text-sm text-muted">
                             Revoke mint & freeze authority for transparency
@@ -600,7 +640,9 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       >
                         <div className="text-center">
                           <div className="flex items-center justify-center space-x-2 mb-2">
-                            <div className="text-lg font-semibold">Degen Mode</div>
+                            <div className="text-lg font-semibold">
+                              Degen Mode
+                            </div>
                           </div>
                           <div className="text-sm text-muted">
                             Keep mint authority for future tokenomics
@@ -615,13 +657,17 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
 
                 {/* Token Vibe */}
                 <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10">
-                  <h3 className="text-lg font-semibold text-fg mb-4">Token Vibe</h3>
+                  <h3 className="text-lg font-semibold text-fg mb-4">
+                    Token Vibe
+                  </h3>
                   <div className="grid grid-cols-3 gap-3">
                     {["funny", "serious", "degen"].map((vibe) => (
                       <button
                         key={vibe}
                         type="button"
-                        onClick={() => setToken({ ...token, vibe: vibe as any })}
+                        onClick={() =>
+                          setToken({ ...token, vibe: vibe as any })
+                        }
                         className={`p-4 rounded-xl border-2 transition-all duration-300 capitalize font-medium ${
                           token.vibe === vibe
                             ? "border-accent bg-accent/10 text-accent shadow-lg scale-105"
@@ -638,39 +684,10 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                     ))}
                   </div>
                   <div className="mt-3 text-sm text-muted">
-                    Selected: <span className="font-semibold text-accent capitalize">{token.vibe}</span>
-                  </div>
-                </div>
-
-                {/* Pro Features (Disabled) */}
-                <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10 opacity-60">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Lock className="text-muted" size={20} />
-                    <h3 className="text-lg font-semibold text-muted">Pro Features</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between bg-muted/5 rounded-lg">
-                      <span className="text-muted">Honest Launch Enforcement</span>
-                      <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">Pro Only</span>
-                    </div>
-                    <div className="flex items-center justify-between bg-muted/5 rounded-lg">
-                      <span className="text-muted">AI Meme Kit Generation</span>
-                      <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">Pro Only</span>
-                    </div>
-                    <div className="flex items-center justify-between bg-muted/5 rounded-lg">
-                      <span className="text-muted">Liquidity Pool Setup</span>
-                      <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">Pro Only</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                    <p className="text-sm text-primary">
-                      Upgrade to Pro for advanced features and enhanced token launch capabilities.
-                    </p>
-                    <Link href="/pricing">
-                      <a className="inline-flex items-center mt-2 text-sm text-primary hover:text-primary/80 transition-colors">
-                        View Pro Features →
-                      </a>
-                    </Link>
+                    Selected:{" "}
+                    <span className="font-semibold text-accent capitalize">
+                      {token.vibe}
+                    </span>
                   </div>
                 </div>
 
@@ -699,8 +716,54 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
 
             {/* Right Side - Preview */}
             <div className="space-y-6">
+              {/* Pro Features (Disabled) */}
+              <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10 opacity-60">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Lock className="text-muted" size={20} />
+                  <h3 className="text-lg font-semibold text-muted">
+                    Pro Features
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-muted/5 rounded-lg">
+                    <span className="text-muted">
+                      Honest Launch Enforcement
+                    </span>
+                    <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">
+                      Pro Only
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between bg-muted/5 rounded-lg">
+                    <span className="text-muted">AI Meme Kit Generation</span>
+                    <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">
+                      Pro Only
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between bg-muted/5 rounded-lg">
+                    <span className="text-muted">Liquidity Pool Setup</span>
+                    <span className="text-xs text-muted bg-muted/20 px-2 py-1 rounded">
+                      Pro Only
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <p className="text-sm text-primary">
+                    Upgrade to Pro for advanced features and enhanced token
+                    launch capabilities.
+                  </p>
+                  <Link href="/pricing">
+                    <a className="inline-flex items-center mt-2 text-sm text-primary hover:text-primary/80 transition-colors">
+                      View Pro Features →
+                    </a>
+                  </Link>
+                </div>
+              </div>
+
+              {/* TOKEN PREVIEW */}
               <div className="bg-bg/40 backdrop-blur-2xl rounded-2xl p-6 border border-muted/10 sticky top-8">
-                <h3 className="text-lg font-semibold text-fg mb-4">Token Preview</h3>
+                <h3 className="text-lg font-semibold text-fg mb-4">
+                  Token Preview
+                </h3>
                 <div className="space-y-4">
                   {token.image && (
                     <div className="aspect-square w-full rounded-xl overflow-hidden bg-muted/10">
@@ -711,7 +774,7 @@ export const FreeTokenCreationPage: FC<FreeTokenCreationPageProps> = () => {
                       />
                     </div>
                   )}
-                  
+
                   {!token.image && (
                     <div className="aspect-square w-full rounded-xl bg-muted/10 flex items-center justify-center">
                       <Upload className="text-muted" size={48} />

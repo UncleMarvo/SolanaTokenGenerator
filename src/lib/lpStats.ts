@@ -127,8 +127,8 @@ export function getRangeDisplay(inRange?: boolean|null): string {
  * Get honest verification display text
  */
 export function getHonestDisplay(honest?: boolean): string {
-  if (honest === true) return "✅ Honest Verified";
-  if (honest === false) return "⚠️ Unverified";
+  if (honest === true) return "✅ Verified";
+  if (honest === false) return "⚠️ Not Verified";
   return "⚠️ —";
 }
 
